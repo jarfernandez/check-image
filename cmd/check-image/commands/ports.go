@@ -100,7 +100,7 @@ func parseAllowedPorts() ([]int, error) {
 func runPorts(imageName string) error {
 	fmt.Printf("Checking ports of image %s\n", imageName)
 
-	_, config, err := imageutil.GetRemoteImageAndConfig(imageName)
+	_, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return err
 	}

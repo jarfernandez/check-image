@@ -34,7 +34,7 @@ func init() {
 func runAge(imageName string) error {
 	fmt.Printf("Checking age of image %s\n", imageName)
 
-	_, config, err := imageutil.GetRemoteImageAndConfig(imageName)
+	_, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return err
 	}

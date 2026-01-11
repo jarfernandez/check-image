@@ -29,7 +29,7 @@ func init() {
 func runRootUser(imageName string) error {
 	fmt.Printf("Checking if image %s is configured to run as a non-root user\n", imageName)
 
-	_, config, err := imageutil.GetRemoteImageAndConfig(imageName)
+	_, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return err
 	}
