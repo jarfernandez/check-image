@@ -10,8 +10,8 @@ import (
 
 // Policy contains the list of trusted and excluded registries
 type Policy struct {
-	TrustedRegistries  []string `yaml:"trusted_registries" json:"trusted_registries"`
-	ExcludedRegistries []string `yaml:"excluded_registries,omitempty" json:"excluded_registries,omitempty"`
+	TrustedRegistries  []string `yaml:"trusted-registries" json:"trusted-registries"`
+	ExcludedRegistries []string `yaml:"excluded-registries,omitempty" json:"excluded-registries,omitempty"`
 }
 
 // LoadRegistryPolicy loads a registry policy from a file, which can be in
