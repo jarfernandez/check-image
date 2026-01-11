@@ -14,7 +14,7 @@ import (
 )
 
 type allowedPortsFile struct {
-	AllowedPorts []int `json:"allowed_ports" yaml:"allowed_ports"`
+	AllowedPorts []int `json:"allowed-ports" yaml:"allowed-ports"`
 }
 
 var (
