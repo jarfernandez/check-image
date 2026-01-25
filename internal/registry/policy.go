@@ -8,14 +8,18 @@ import (
 	"strings"
 )
 
-// Policy contains the list of trusted and excluded registries
+// Policy defines a registry allowlist or blocklist.
+// Only one of TrustedRegistries or ExcludedRegistries should be specified:
+// - If TrustedRegistries is set, only those registries are allowed (allowlist mode)
+// - If ExcludedRegistries is set, all registries except those are allowed (blocklist mode)
 type Policy struct {
-	TrustedRegistries  []string `yaml:"trusted-registries" json:"trusted-registries"`
+	TrustedRegistries  []string `yaml:"trusted-registries,omitempty" json:"trusted-registries,omitempty"`
 	ExcludedRegistries []string `yaml:"excluded-registries,omitempty" json:"excluded-registries,omitempty"`
 }
 
 // LoadRegistryPolicy loads a registry policy from a file, which can be in
-// either YAML or JSON format, and returns the parsed RegistryPolicy object.
+// either YAML or JSON format, and returns the parsed Policy object.
+// The policy must specify either trusted-registries or excluded-registries, but not both.
 func LoadRegistryPolicy(path string) (*Policy, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -36,6 +40,18 @@ func LoadRegistryPolicy(path string) (*Policy, error) {
 		}
 	}
 
+	// Validate that only one mode is specified
+	hasTrusted := len(policy.TrustedRegistries) > 0
+	hasExcluded := len(policy.ExcludedRegistries) > 0
+
+	if hasTrusted && hasExcluded {
+		return nil, fmt.Errorf("policy must specify either trusted-registries or excluded-registries, not both")
+	}
+
+	if !hasTrusted && !hasExcluded {
+		return nil, fmt.Errorf("policy must specify either trusted-registries or excluded-registries")
+	}
+
 	return &policy, nil
 }
 
@@ -43,29 +59,30 @@ func hasYAMLExtension(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-// IsRegistryAllowed checks if the given registry is allowed based on the policy
+// IsRegistryAllowed checks if the given registry is allowed based on the policy.
+// If trusted-registries is set (allowlist mode), only registries in that list are allowed.
+// If excluded-registries is set (blocklist mode), all registries except those in the list are allowed.
 func (p *Policy) IsRegistryAllowed(registry string) bool {
-	// If the registry is in the excluded list, deny always
-	for _, excluded := range p.ExcludedRegistries {
-		if registry == excluded {
-			return false
+	// Allowlist mode: only trusted registries are allowed
+	if len(p.TrustedRegistries) > 0 {
+		for _, trusted := range p.TrustedRegistries {
+			if registry == trusted {
+				return true
+			}
 		}
+		return false
 	}
 
-	// If "*" is in the list of trusted registries, all registries are allowed
-	for _, trusted := range p.TrustedRegistries {
-		if trusted == "*" {
-			return true
+	// Blocklist mode: all registries except excluded ones are allowed
+	if len(p.ExcludedRegistries) > 0 {
+		for _, excluded := range p.ExcludedRegistries {
+			if registry == excluded {
+				return false
+			}
 		}
+		return true
 	}
 
-	// If the registry is in the trusted list, allow
-	for _, trusted := range p.TrustedRegistries {
-		if registry == trusted {
-			return true
-		}
-	}
-
-	// It's not in the list of trusted registries and there's no wildcard
+	// This should not happen if LoadRegistryPolicy validation works correctly
 	return false
 }
