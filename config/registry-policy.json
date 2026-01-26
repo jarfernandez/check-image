@@ -1,0 +1,12 @@
+{
+  "trusted-registries": [
+    "index.docker.io",
+    "ghcr.io",
+    "gcr.io",
+    "quay.io",
+    "public.ecr.aws",
+    "mcr.microsoft.com",
+    "registry.redhat.io",
+    "registry.gitlab.com"
+  ]
+}

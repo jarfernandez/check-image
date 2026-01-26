@@ -1,0 +1,3 @@
+allowed-ports:
+  - 80
+  - 443
