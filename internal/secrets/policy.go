@@ -3,9 +3,13 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v3"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 // Policy defines configuration for secrets detection
@@ -71,6 +75,61 @@ var (
 	}
 )
 
+// readSecureFile reads a file securely using os.OpenRoot to prevent directory traversal
+func readSecureFile(path string) ([]byte, error) {
+	// Clean the path to remove any .. or . elements
+	cleanPath := filepath.Clean(path)
+
+	// Get absolute path
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file path: %w", err)
+	}
+
+	// Get the directory containing the file
+	dir := filepath.Dir(absPath)
+	fileName := filepath.Base(absPath)
+
+	// Create a root-scoped filesystem
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create root for directory: %w", err)
+	}
+	defer func() {
+		if closeErr := root.Close(); closeErr != nil {
+			log.Warnf("failed to close root: %v", closeErr)
+		}
+	}()
+
+	// Check if file exists and is a regular file
+	info, err := root.Stat(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot access file: %w", err)
+	}
+
+	if info.IsDir() {
+		return nil, fmt.Errorf("path is a directory, not a file")
+	}
+
+	// Open and read file using the scoped root
+	file, err := root.Open(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %w", err)
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			log.Warnf("failed to close file: %v", closeErr)
+		}
+	}()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	return data, nil
+}
+
 // LoadSecretsPolicy loads a secrets policy from a file (JSON or YAML)
 // If path is empty, returns a default policy
 func LoadSecretsPolicy(path string) (*Policy, error) {
@@ -85,7 +144,8 @@ func LoadSecretsPolicy(path string) (*Policy, error) {
 		}, nil
 	}
 
-	data, err := os.ReadFile(path)
+	// Read file securely
+	data, err := readSecureFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading secrets policy file: %w", err)
 	}

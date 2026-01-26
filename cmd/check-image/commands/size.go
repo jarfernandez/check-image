@@ -3,6 +3,8 @@ package commands
 import (
 	"check-image/internal/imageutil"
 	"fmt"
+	"math"
+
 	"github.com/spf13/cobra"
 )
 
@@ -65,6 +67,10 @@ func runSize(imageName string) error {
 	}
 	fmt.Printf("Total size: %d bytes (%.2f MB)\n", totalSize, float64(totalSize)/1024/1024)
 
+	// Validate that maxSize doesn't overflow when converting to int64
+	if maxSize > math.MaxInt64/(1024*1024) {
+		return fmt.Errorf("max-size value %d is too large", maxSize)
+	}
 	maxSizeBytes := int64(maxSize) * 1024 * 1024
 	if totalSize <= maxSizeBytes {
 		fmt.Printf("Image size is within the allowed limit of %d MB\n", maxSize)
