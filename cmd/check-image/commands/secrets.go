@@ -121,15 +121,11 @@ func runSecrets(imageName string) error {
 	}
 
 	// Set validation result
-	if totalFindings > 0 {
-		fmt.Println("Secrets detected")
-		Result = ValidationFailed
-	} else {
-		fmt.Println("No secrets detected")
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-	}
+	SetValidationResult(
+		totalFindings == 0,
+		"No secrets detected",
+		"Secrets detected",
+	)
 
 	return nil
 }

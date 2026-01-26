@@ -57,3 +57,17 @@ func Execute() {
 		log.Fatalf("Error executing check-image: %v", err)
 	}
 }
+
+// SetValidationResult updates the global validation result based on whether
+// validation passed or failed, and prints the appropriate message.
+func SetValidationResult(passed bool, successMsg, failureMsg string) {
+	if passed {
+		fmt.Println(successMsg)
+		if Result != ValidationFailed {
+			Result = ValidationSucceeded
+		}
+	} else {
+		fmt.Println(failureMsg)
+		Result = ValidationFailed
+	}
+}

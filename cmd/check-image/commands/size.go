@@ -51,8 +51,7 @@ func runSize(imageName string) error {
 
 	fmt.Printf("Number of layers: %d\n", len(layers))
 	if uint(len(layers)) > maxLayers {
-		fmt.Printf("Image has more than %d layers\n", maxLayers)
-		Result = ValidationFailed
+		SetValidationResult(false, "", fmt.Sprintf("Image has more than %d layers", maxLayers))
 	}
 
 	var totalSize int64
@@ -72,15 +71,11 @@ func runSize(imageName string) error {
 		return fmt.Errorf("max-size value %d is too large", maxSize)
 	}
 	maxSizeBytes := int64(maxSize) * 1024 * 1024
-	if totalSize <= maxSizeBytes {
-		fmt.Printf("Image size is within the allowed limit of %d MB\n", maxSize)
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-	} else {
-		fmt.Printf("Image size exceeds the recommended limit of %d MB\n", maxSize)
-		Result = ValidationFailed
-	}
+	SetValidationResult(
+		totalSize <= maxSizeBytes,
+		fmt.Sprintf("Image size is within the allowed limit of %d MB", maxSize),
+		fmt.Sprintf("Image size exceeds the recommended limit of %d MB", maxSize),
+	)
 
 	return nil
 }

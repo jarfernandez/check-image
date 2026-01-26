@@ -34,15 +34,12 @@ func runRootUser(imageName string) error {
 		return err
 	}
 
-	if config.Config.User == "root" || config.Config.User == "" {
-		fmt.Println("Image is not configured to run as a non-root user")
-		Result = ValidationFailed
-	} else {
-		fmt.Println("Image is configured to run as a non-root user")
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-	}
+	isNonRoot := config.Config.User != "root" && config.Config.User != ""
+	SetValidationResult(
+		isNonRoot,
+		"Image is configured to run as a non-root user",
+		"Image is not configured to run as a non-root user",
+	)
 
 	return nil
 }

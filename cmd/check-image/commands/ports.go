@@ -1,19 +1,14 @@
 package commands
 
 import (
+	"check-image/internal/fileutil"
 	"check-image/internal/imageutil"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 type allowedPortsFile struct {
@@ -56,61 +51,6 @@ func init() {
 	portsCmd.Flags().StringVarP(&allowedPorts, "allowed-ports", "p", "", "Comma-separated list of allowed ports or @<file> with JSON or YAML array (optional)")
 }
 
-// readSecureFile reads a file securely using os.OpenRoot to prevent directory traversal
-func readSecureFile(path string) ([]byte, error) {
-	// Clean the path to remove any .. or . elements
-	cleanPath := filepath.Clean(path)
-
-	// Get absolute path
-	absPath, err := filepath.Abs(cleanPath)
-	if err != nil {
-		return nil, fmt.Errorf("invalid file path: %w", err)
-	}
-
-	// Get the directory containing the file
-	dir := filepath.Dir(absPath)
-	fileName := filepath.Base(absPath)
-
-	// Create a root-scoped filesystem
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create root for directory: %w", err)
-	}
-	defer func() {
-		if closeErr := root.Close(); closeErr != nil {
-			log.Warnf("failed to close root: %v", closeErr)
-		}
-	}()
-
-	// Check if file exists and is a regular file
-	info, err := root.Stat(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access file: %w", err)
-	}
-
-	if info.IsDir() {
-		return nil, fmt.Errorf("path is a directory, not a file")
-	}
-
-	// Open and read file using the scoped root
-	file, err := root.Open(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
-	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			log.Warnf("failed to close file: %v", closeErr)
-		}
-	}()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
-	}
-
-	return data, nil
-}
-
 func parseAllowedPorts() ([]int, error) {
 	if allowedPorts == "" {
 		return nil, nil
@@ -120,24 +60,19 @@ func parseAllowedPorts() ([]int, error) {
 		path := strings.TrimPrefix(allowedPorts, "@")
 
 		// Read file securely
-		data, err := readSecureFile(path)
+		data, err := fileutil.ReadSecureFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read ports file: %w", err)
 		}
 
 		var portsFromFile allowedPortsFile
 
-		// First, try to unmarshal as JSON
-		if err := json.Unmarshal(data, &portsFromFile); err == nil {
-			return portsFromFile.AllowedPorts, nil
+		// Unmarshal config file (JSON or YAML)
+		if err := fileutil.UnmarshalConfigFile(data, &portsFromFile, path); err != nil {
+			return nil, err
 		}
 
-		// If JSON fails, try to unmarshal as YAML
-		if err := yaml.Unmarshal(data, &portsFromFile); err == nil {
-			return portsFromFile.AllowedPorts, nil
-		}
-
-		return nil, errors.New("invalid file format: must be valid JSON or YAML")
+		return portsFromFile.AllowedPorts, nil
 	}
 
 	parts := strings.Split(allowedPorts, ",")
@@ -219,13 +154,13 @@ func runPorts(imageName string) error {
 		for _, port := range unauthorizedPorts {
 			fmt.Printf("  - %d\n", port)
 		}
-		Result = ValidationFailed
-	} else {
-		fmt.Println("All exposed ports are in the allowed list")
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
 	}
+
+	SetValidationResult(
+		len(unauthorizedPorts) == 0,
+		"All exposed ports are in the allowed list",
+		"", // Empty because we already printed the unauthorized ports above
+	)
 
 	return nil
 }

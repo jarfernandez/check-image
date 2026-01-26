@@ -49,15 +49,11 @@ func runRegistry(imageName string) error {
 		return fmt.Errorf("unable to load registry policy: %w", err)
 	}
 
-	if policy.IsRegistryAllowed(imageRegistry) {
-		fmt.Printf("Registry %s is trusted\n", imageRegistry)
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-	} else {
-		fmt.Printf("Registry %s is not trusted\n", imageRegistry)
-		Result = ValidationFailed
-	}
+	SetValidationResult(
+		policy.IsRegistryAllowed(imageRegistry),
+		fmt.Sprintf("Registry %s is trusted", imageRegistry),
+		fmt.Sprintf("Registry %s is not trusted", imageRegistry),
+	)
 
 	return nil
 }

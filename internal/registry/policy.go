@@ -1,15 +1,8 @@
 package registry
 
 import (
-	"encoding/json"
+	"check-image/internal/fileutil"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 )
 
 // Policy defines a registry allowlist or blocklist.
@@ -21,83 +14,21 @@ type Policy struct {
 	ExcludedRegistries []string `yaml:"excluded-registries,omitempty" json:"excluded-registries,omitempty"`
 }
 
-// readSecureFile reads a file securely using os.OpenRoot to prevent directory traversal
-func readSecureFile(path string) ([]byte, error) {
-	// Clean the path to remove any .. or . elements
-	cleanPath := filepath.Clean(path)
-
-	// Get absolute path
-	absPath, err := filepath.Abs(cleanPath)
-	if err != nil {
-		return nil, fmt.Errorf("invalid file path: %w", err)
-	}
-
-	// Get the directory containing the file
-	dir := filepath.Dir(absPath)
-	fileName := filepath.Base(absPath)
-
-	// Create a root-scoped filesystem
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create root for directory: %w", err)
-	}
-	defer func() {
-		if closeErr := root.Close(); closeErr != nil {
-			log.Warnf("failed to close root: %v", closeErr)
-		}
-	}()
-
-	// Check if file exists and is a regular file
-	info, err := root.Stat(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access file: %w", err)
-	}
-
-	if info.IsDir() {
-		return nil, fmt.Errorf("path is a directory, not a file")
-	}
-
-	// Open and read file using the scoped root
-	file, err := root.Open(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
-	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			log.Warnf("failed to close file: %v", closeErr)
-		}
-	}()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
-	}
-
-	return data, nil
-}
-
 // LoadRegistryPolicy loads a registry policy from a file, which can be in
 // either YAML or JSON format, and returns the parsed Policy object.
 // The policy must specify either trusted-registries or excluded-registries, but not both.
 func LoadRegistryPolicy(path string) (*Policy, error) {
 	// Read file securely
-	data, err := readSecureFile(path)
+	data, err := fileutil.ReadSecureFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading registry policy file: %w", err)
 	}
 
 	var policy Policy
 
-	// Detect format by file extension
-	switch {
-	case hasYAMLExtension(path):
-		if err := yaml.Unmarshal(data, &policy); err != nil {
-			return nil, fmt.Errorf("invalid YAML: %w", err)
-		}
-	default: // JSON as fallback
-		if err := json.Unmarshal(data, &policy); err != nil {
-			return nil, fmt.Errorf("invalid JSON: %w", err)
-		}
+	// Unmarshal config file (JSON or YAML)
+	if err := fileutil.UnmarshalConfigFile(data, &policy, path); err != nil {
+		return nil, err
 	}
 
 	// Validate that only one mode is specified
@@ -113,10 +44,6 @@ func LoadRegistryPolicy(path string) (*Policy, error) {
 	}
 
 	return &policy, nil
-}
-
-func hasYAMLExtension(path string) bool {
-	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
 // IsRegistryAllowed checks if the given registry is allowed based on the policy.

@@ -48,15 +48,11 @@ func runAge(imageName string) error {
 	fmt.Printf("Image creation date: %s\n", config.Created.Format(time.RFC3339))
 	fmt.Printf("Image age: %.0f days\n", age)
 
-	if age > float64(maxAge) {
-		fmt.Printf("Image is older than %d days\n", maxAge)
-		Result = ValidationFailed
-	} else {
-		fmt.Printf("Image is less than %d days old\n", maxAge)
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-	}
+	SetValidationResult(
+		age <= float64(maxAge),
+		fmt.Sprintf("Image is less than %d days old", maxAge),
+		fmt.Sprintf("Image is older than %d days", maxAge),
+	)
 
 	return nil
 }
