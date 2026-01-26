@@ -22,6 +22,7 @@ go test ./...
 # Run tests for a specific package
 go test ./internal/imageutil
 go test ./internal/registry
+go test ./internal/secrets
 ```
 
 ### Running the CLI
@@ -73,10 +74,19 @@ The `imageutil` package implements a fallback strategy:
 - No flags
 - Checks if `config.Config.User` is empty or "root"
 
+**secrets**: Validates that image does not contain sensitive data (passwords, tokens, keys)
+- Flags: `--secrets-policy` (optional, JSON or YAML file), `--skip-env-vars`, `--skip-files`
+- Scans environment variables for sensitive patterns (case-insensitive matching for keywords like password, secret, token, key, etc.)
+- Scans all image layers for files matching sensitive patterns (SSH keys, cloud credentials, password files, etc.)
+- Uses `DefaultFilePatterns` map in `internal/secrets/policy.go` as single source of truth for patterns and descriptions
+- Policy supports `excluded-paths`, `excluded-env-vars`, and custom patterns
+- Works out-of-the-box with sensible defaults when no policy file is provided
+
 ### Configuration Files
 Sample configuration files are in `config/`:
-- `registry-policy.yaml` / `registry-policy.json`: Trusted registries list
 - `allowed-ports.yaml` / `allowed-ports.json`: Allowed ports list
+- `registry-policy.yaml` / `registry-policy.json`: Trusted registries list
+- `secrets-policy.yaml` / `secrets-policy.json`: Secrets detection policy with exclusions
 
 Both JSON and YAML formats are supported throughout the tool. Format detection is by file extension (`.yaml`, `.yml` for YAML, otherwise JSON).
 
@@ -85,6 +95,15 @@ In `internal/registry/policy.go`:
 - Policy must specify either `trusted-registries` or `excluded-registries`, not both
 - Allowlist mode (trusted-registries): only registries in the list are allowed
 - Blocklist mode (excluded-registries): all registries except those in the list are allowed
+
+### Secrets Detection Logic
+In `internal/secrets/`:
+- `policy.go`: Defines `DefaultFilePatterns` map as single source of truth for patterns and descriptions
+- `detector.go`: Implements `CheckEnvironmentVariables()` and `CheckFilesInLayers()`
+- Environment variable detection uses case-insensitive pattern matching against variable names
+- File detection scans all layers (secrets in earlier layers remain in image history)
+- Supports exclusion lists for both paths and environment variables to handle false positives
+- Pattern descriptions consolidated in `DefaultFilePatterns` map to avoid duplication
 
 ### Logging
 - Uses `logrus` with stderr output
