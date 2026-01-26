@@ -164,6 +164,9 @@ In `internal/secrets/`:
 - Format code with `gofmt`.
 - Run `go vet` and `golangci-lint`.
 - Keep `go.mod` tidy.
+- Pre-commit hooks automatically enforce these requirements before each commit.
+- See `.golangci.yml` for linter configuration (balanced settings).
+- Install hooks with: `pre-commit install && pre-commit install --hook-type commit-msg`.
 
 #### Documentation
 - Explain *why*, not *what*.

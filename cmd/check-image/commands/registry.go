@@ -29,7 +29,9 @@ The 'image' argument should be the name of a container image.`,
 func init() {
 	rootCmd.AddCommand(registryCmd)
 	registryCmd.Flags().StringVarP(&registryPolicy, "registry-policy", "r", "", "Registry policy file (JSON or YAML)")
-	registryCmd.MarkFlagRequired("registry-policy")
+	if err := registryCmd.MarkFlagRequired("registry-policy"); err != nil {
+		panic(fmt.Sprintf("failed to mark registry-policy flag as required: %v", err))
+	}
 }
 
 func runRegistry(imageName string) error {

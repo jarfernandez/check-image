@@ -1,0 +1,48 @@
+repos:
+  # Standard hooks for file quality
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+
+  # Go-specific hooks
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+      - id: go-fmt
+        args: [-w]
+      - id: go-mod-tidy
+      - id: go-vet-mod
+      - id: golangci-lint-mod
+        args: [--config=.golangci.yml]
+
+  # Security scanning (warning only, does not block commits)
+  - repo: local
+    hooks:
+      - id: gosec
+        name: gosec
+        entry: bash -c 'gosec -fmt=colored -quiet ./... || true'
+        language: system
+        pass_filenames: false
+        verbose: true
+
+  # Go tests (manual stage only - run with: pre-commit run --hook-stage manual)
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+      - id: go-test-mod
+        stages: [manual]
+
+  # Commit message validation
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, chore, refactor, test, style, perf, ci, build, revert]

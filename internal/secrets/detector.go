@@ -112,7 +112,11 @@ func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]FileFinding, e
 	if err != nil {
 		return nil, fmt.Errorf("error uncompressing layer: %w", err)
 	}
-	defer rc.Close()
+	defer func() {
+		if closeErr := rc.Close(); closeErr != nil {
+			log.Warnf("failed to close layer reader: %v", closeErr)
+		}
+	}()
 
 	var findings []FileFinding
 	tarReader := tar.NewReader(rc)

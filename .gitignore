@@ -1,1 +1,4 @@
 /.idea/
+
+# Pre-commit cache
+.pre-commit-cache/

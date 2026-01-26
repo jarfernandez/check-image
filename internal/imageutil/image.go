@@ -30,7 +30,7 @@ func GetLocalImage(imageName string) (cr.Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the local image: %w", err)
 	}
-	
+
 	return image, nil
 }
 

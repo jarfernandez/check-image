@@ -143,6 +143,77 @@ check-image secrets nginx:latest --secrets-policy config/secrets-policy.json
 
 ## Development
 
+### Pre-Commit Hooks
+
+This project uses pre-commit hooks to enforce code quality and formatting standards before each commit. The hooks automatically run `gofmt`, `go vet`, `golangci-lint`, `go mod tidy`, and validate commit messages follow Conventional Commits format.
+
+#### Installation
+
+1. Install pre-commit framework:
+   ```bash
+   # macOS
+   brew install pre-commit
+
+   # Or with pip
+   pip install pre-commit
+   ```
+
+2. Install golangci-lint:
+   ```bash
+   # macOS
+   brew install golangci-lint
+
+   # Or with go
+   go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+   ```
+
+3. (Optional) Install gosec for security scanning:
+   ```bash
+   go install github.com/securego/gosec/v2/cmd/gosec@latest
+   ```
+
+4. Install the pre-commit hooks:
+   ```bash
+   pre-commit install
+   pre-commit install --hook-type commit-msg
+   ```
+
+#### Usage
+
+The hooks run automatically on `git commit`. You can also:
+
+- Run manually on all files:
+  ```bash
+  pre-commit run --all-files
+  ```
+
+- Run tests manually (not run by default):
+  ```bash
+  pre-commit run --hook-stage manual go-test-mod
+  ```
+
+- Skip hooks in emergencies (not recommended):
+  ```bash
+  git commit --no-verify
+  ```
+
+#### What Gets Checked
+
+**Mandatory checks (will block commits):**
+- File quality: trailing whitespace, end-of-file newlines, line endings
+- Config validation: YAML and JSON syntax
+- Go formatting: `gofmt`
+- Go tidying: `go mod tidy`
+- Go analysis: `go vet`
+- Go linting: `golangci-lint` (see `.golangci.yml` for configuration)
+- Commit message: Conventional Commits format validation
+
+**Warning checks (informational only):**
+- Security: `gosec` scans for security issues but doesn't block commits
+
+**Manual checks:**
+- Tests: `go test` (run with `pre-commit run --hook-stage manual`)
+
 ### Project Structure
 
 - `cmd/check-image/main.go`: The entry point of the application that initializes the CLI and executes commands.
