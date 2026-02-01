@@ -15,6 +15,9 @@ Check Image is a Go-based CLI tool designed for validating container images. It 
 
 ## Installation
 
+**Requirements:**
+- Go 1.24 or newer
+
 To build and install the project, run:
 
 ```bash
@@ -30,6 +33,70 @@ After installation, you can run the CLI tool:
 ```bash
 check-image --help
 ```
+
+### Image Reference Syntax
+
+Check Image supports multiple image sources using a transport-based syntax (compatible with Skopeo):
+
+**OCI Layout Directory** (with tag):
+```bash
+check-image age oci:/path/to/layout:latest
+check-image size oci:./nginx-layout:v1.23 --max-size 100
+```
+
+**OCI Layout Directory** (with digest):
+```bash
+check-image age oci:/path/to/layout@sha256:abc123...
+```
+
+**OCI Archive** (tarball):
+```bash
+check-image age oci-archive:/path/to/image.tar:latest
+check-image size oci-archive:./exported-image.tar:v1.0 --max-size 100
+```
+
+**Docker Archive** (saved with `docker save`):
+```bash
+check-image age docker-archive:/path/to/saved.tar:nginx:latest
+check-image size docker-archive:./backup.tar:myapp:v2.0
+```
+
+**Default Behavior** (Docker daemon or remote registry):
+```bash
+check-image age nginx:latest
+check-image size docker.io/nginx:latest --max-size 100
+
+# Tag defaults to 'latest' if not specified
+check-image age nginx
+check-image registry ghcr.io/kubernetes-sigs/kind/node --registry-policy config/registry-policy.json
+```
+
+**Creating Archive Files:**
+
+To create OCI archives:
+```bash
+# Using skopeo
+skopeo copy docker://nginx:latest oci-archive:nginx.tar:latest
+
+# Using podman
+podman save --format oci-archive -o nginx.tar nginx:latest
+```
+
+To create Docker archives:
+```bash
+# Using docker
+docker save -o nginx.tar nginx:latest
+
+# Using podman (Docker-compatible format)
+podman save --format docker-archive -o nginx.tar nginx:latest
+```
+
+**Important Notes:**
+- When using explicit transport prefixes (`oci:`, `oci-archive:`, `docker-archive:`), only that source is attempted (no fallback)
+- Without a transport prefix, Check Image tries the local Docker daemon first, then falls back to remote registry
+- The `registry` command validation is skipped for non-registry transports (e.g., `oci:`)
+- OCI archives are extracted to a temporary directory during processing (automatically cleaned up)
+- Archive extraction includes security checks: path traversal protection and 5GB decompression limit
 
 ## Commands
 
@@ -143,9 +210,27 @@ check-image secrets nginx:latest --secrets-policy config/secrets-policy.json
 
 ## Development
 
+### Building from Source
+
+To build the project from source:
+
+```bash
+git clone https://github.com/jarfernandez/check-image.git
+cd check-image
+go build -o check-image ./cmd/check-image
+```
+
+The binary will be created in the project root directory. You can then move it to a location in your `PATH` or run it directly with `./check-image`.
+
+Alternatively, to install directly to your `GOBIN` directory:
+
+```bash
+go install ./cmd/check-image
+```
+
 ### Pre-Commit Hooks
 
-This project uses pre-commit hooks to enforce code quality and formatting standards before each commit. The hooks automatically run `gofmt`, `go vet`, `golangci-lint`, `go mod tidy`, and validate commit messages follow Conventional Commits format.
+This project uses pre-commit hooks to enforce code quality and formatting standards before each commit. The hooks automatically run `gofmt`, `go vet`, `golangci-lint`, `go mod tidy`, execute tests with `go-test-mod`, and validate commit messages follow Conventional Commits format.
 
 #### Installation
 
@@ -187,9 +272,9 @@ The hooks run automatically on `git commit`. You can also:
   pre-commit run --all-files
   ```
 
-- Run tests manually (not run by default):
+- Run only tests:
   ```bash
-  pre-commit run --hook-stage manual go-test-mod
+  pre-commit run go-test-mod
   ```
 
 - Skip hooks in emergencies (not recommended):
@@ -206,13 +291,11 @@ The hooks run automatically on `git commit`. You can also:
 - Go tidying: `go mod tidy`
 - Go analysis: `go vet`
 - Go linting: `golangci-lint` (see `.golangci.yml` for configuration)
+- Go tests: `go test` via `go-test-mod`
 - Commit message: Conventional Commits format validation
 
 **Warning checks (informational only):**
 - Security: `gosec` scans for security issues but doesn't block commits
-
-**Manual checks:**
-- Tests: `go test` (run with `pre-commit run --hook-stage manual`)
 
 ### Project Structure
 
@@ -234,11 +317,35 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-To run tests, use the following command:
+The project has comprehensive unit tests with 53% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+
+### Running Tests
 
 ```bash
+# Run all tests
 go test ./...
+
+# Run with coverage
+go test ./... -cover
+
+# Run specific package tests
+go test ./internal/imageutil -v
+go test ./internal/secrets -v
+
+# Generate coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
 ```
+
+### Test Coverage
+
+- **internal/registry**: 100% coverage
+- **internal/secrets**: 96.5% coverage
+- **internal/imageutil**: 43.3% coverage (daemon/registry functions are integration tests)
+- **internal/fileutil**: 22.9% coverage
+- **cmd/check-image/commands**: 36.4% coverage
+
+All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
 
 ## Contributing
 
