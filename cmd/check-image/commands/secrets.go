@@ -19,12 +19,20 @@ var secretsCmd = &cobra.Command{
 	Short: "Validate that the image does not contain sensitive data",
 	Long: `Validate that the image does not contain sensitive data (passwords, tokens, keys).
 Scans both environment variables and files across all image layers.
-The 'image' argument should be the name of a container image.`,
+
+The 'image' argument supports multiple formats:
+  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
+  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
+  - OCI tarball: oci-archive:/path/to/image.tar:tag
+  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image secrets nginx:latest
-  check-image secrets ubuntu:latest --secrets-policy secrets-policy.json
-  check-image secrets ubuntu:latest --secrets-policy secrets-policy.yaml
-  check-image secrets alpine:latest --skip-env-vars
-  check-image secrets redis:7.4 --skip-files`,
+  check-image secrets nginx:latest --secrets-policy secrets-policy.json
+  check-image secrets nginx:latest --secrets-policy secrets-policy.yaml
+  check-image secrets nginx:latest --skip-env-vars
+  check-image secrets nginx:latest --skip-files
+  check-image secrets oci:/path/to/layout:v1.0
+  check-image secrets oci-archive:/path/to/image.tar:latest --secrets-policy secrets-policy.json
+  check-image secrets docker-archive:/path/to/image.tar:tag --skip-files`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := runSecrets(args[0]); err != nil {

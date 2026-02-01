@@ -24,10 +24,18 @@ var portsCmd = &cobra.Command{
 	Use:   "ports image",
 	Short: "Validate that the image does not expose unauthorized ports",
 	Long: `Validate that the image does not expose unauthorized ports.
-The 'image' argument should be the name of a container image.`,
+
+The 'image' argument supports multiple formats:
+  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
+  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
+  - OCI tarball: oci-archive:/path/to/image.tar:tag
+  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image ports nginx:latest --allowed-ports 80,443
   check-image ports nginx:latest --allowed-ports @allowed-ports.json
-  check-image ports nginx:latest --allowed-ports @allowed-ports.yaml`,
+  check-image ports nginx:latest --allowed-ports @allowed-ports.yaml
+  check-image ports oci:/path/to/layout:v1.0 --allowed-ports 8080,8443
+  check-image ports oci-archive:/path/to/image.tar:latest --allowed-ports @allowed-ports.json
+  check-image ports docker-archive:/path/to/image.tar:tag --allowed-ports 80,443`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
