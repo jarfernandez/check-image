@@ -39,7 +39,7 @@ func init() {
 func runSize(imageName string) error {
 	fmt.Printf("Checking size and layers of image %s\n", imageName)
 
-	image, err := imageutil.GetRemoteImage(imageName)
+	image, err := imageutil.GetImage(imageName)
 	if err != nil {
 		return err
 	}
