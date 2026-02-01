@@ -32,12 +32,11 @@ repos:
         pass_filenames: false
         verbose: true
 
-  # Go tests (manual stage only - run with: pre-commit run --hook-stage manual)
+  # Go tests
   - repo: https://github.com/tekwizely/pre-commit-golang
     rev: v1.0.0-rc.1
     hooks:
       - id: go-test-mod
-        stages: [manual]
 
   # Commit message validation
   - repo: https://github.com/compilerla/conventional-pre-commit
