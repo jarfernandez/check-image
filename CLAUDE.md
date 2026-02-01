@@ -43,11 +43,31 @@ All validation commands follow a consistent pattern:
 3. Commands should update `Result = ValidationFailed` when validation fails, and `Result = ValidationSucceeded` only when passing (preserving failures from previous checks)
 
 ### Image Retrieval Strategy
-The `imageutil` package implements a fallback strategy:
-- `GetImage()` tries local Docker daemon first, then falls back to remote registry
+The `imageutil` package implements a transport-aware retrieval strategy with fallback support:
+- **Transport Detection**: `ParseReference()` detects transport prefix (e.g., `oci:`, `oci-archive:`, `docker-archive:`)
+- **OCI Layout Support**: `GetOCILayoutImage()` loads images from OCI layout directories (supports both tag and digest references)
+- **OCI Archive Support**: `GetOCIArchiveImage()` loads images from OCI tarball archives
+  - Extracts tarball to temporary directory using `extractOCIArchive()`
+  - Validates paths to prevent path traversal attacks
+  - Enforces 5GB decompression limit to prevent decompression bombs
+  - Supports gzipped (.gz, .tgz) and uncompressed tarballs
+  - Then uses OCI layout loader on extracted content
+- **Docker Archive Support**: `GetDockerArchiveImage()` loads images from Docker tarball archives created with `docker save`
+  - Uses `tarball.ImageFromPath()` from go-containerregistry
+  - Supports tag-based image selection within multi-image archives
+- **Default Behavior** (no transport prefix): `GetImage()` tries local Docker daemon first, then falls back to remote registry
+- **Explicit Transports**: When a transport prefix is specified, only that source is attempted (no fallback)
 - `GetLocalImage()` retrieves from Docker daemon
 - `GetRemoteImage()` fetches from remote registry with keychain authentication
 - All functions use `github.com/google/go-containerregistry` for image operations
+
+**Supported Transport Syntax** (Skopeo-compatible):
+- `oci:/path/to/layout:tag` - OCI layout directory with tag
+- `oci:/path/to/layout@sha256:abc...` - OCI layout directory with digest
+- `oci-archive:/path.tar:tag` - OCI tarball archive with tag
+- `oci-archive:/path.tar@sha256:abc...` - OCI tarball archive with digest
+- `docker-archive:/path.tar:tag` - Docker tarball archive (saved with `docker save`)
+- `nginx:latest` or `docker.io/nginx:latest` - Default behavior (daemon → registry)
 
 ### Validation Commands
 
@@ -158,7 +178,10 @@ In `internal/secrets/`:
 #### Testing
 - Use table-driven tests when appropriate.
 - Test behavior, not implementation.
-- Use the standard `testing` package.
+- Use the standard `testing` package with `testify` for assertions.
+- All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
+- Use in-memory images and temporary directories for testing.
+- Comprehensive unit tests cover all commands and internal packages with 53% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
