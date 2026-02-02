@@ -1,6 +1,8 @@
 package imageutil
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -287,4 +289,98 @@ func TestGetImage_DaemonRegistryFallback(t *testing.T) {
 	// 2. Mocking the registry to return success
 	// This is better suited for integration tests
 	t.Skip("Daemon/registry fallback requires mocking - run as integration test")
+}
+
+// Tests for GetLocalImage error paths
+
+func TestGetLocalImage_InvalidImageName(t *testing.T) {
+	_, err := GetLocalImage("")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing the reference")
+}
+
+func TestGetLocalImage_InvalidReference(t *testing.T) {
+	_, err := GetLocalImage("INVALID@IMAGE@NAME")
+	require.Error(t, err)
+}
+
+// Tests for GetRemoteImage error paths
+
+func TestGetRemoteImage_InvalidImageName(t *testing.T) {
+	_, err := GetRemoteImage("")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing the reference")
+}
+
+func TestGetRemoteImage_InvalidReference(t *testing.T) {
+	_, err := GetRemoteImage("INVALID@IMAGE@NAME")
+	require.Error(t, err)
+}
+
+// Tests for GetDockerArchiveImage
+
+func TestGetDockerArchiveImage_NonExistentFile(t *testing.T) {
+	_, err := GetDockerArchiveImage("/nonexistent/file.tar", "nginx:latest")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error loading docker archive")
+}
+
+func TestGetDockerArchiveImage_InvalidTag(t *testing.T) {
+	tmpDir := t.TempDir()
+	tarPath := filepath.Join(tmpDir, "test.tar")
+
+	// Create an empty tar file
+	file, err := os.Create(tarPath)
+	require.NoError(t, err)
+	err = file.Close()
+	require.NoError(t, err)
+
+	_, err = GetDockerArchiveImage(tarPath, "INVALID TAG WITH SPACES")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing tag")
+}
+
+func TestGetDockerArchiveImage_EmptyTag(t *testing.T) {
+	tmpDir := t.TempDir()
+	tarPath := filepath.Join(tmpDir, "test.tar")
+
+	// Create an empty tar file
+	file, err := os.Create(tarPath)
+	require.NoError(t, err)
+	err = file.Close()
+	require.NoError(t, err)
+
+	// Empty tag should not error in parsing, but will fail to load
+	_, err = GetDockerArchiveImage(tarPath, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error loading docker archive")
+}
+
+// Tests for GetOCIArchiveImage
+
+func TestGetOCIArchiveImage_NonExistentFile(t *testing.T) {
+	_, err := GetOCIArchiveImage("/nonexistent/file.tar", "latest")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error extracting OCI archive")
+}
+
+func TestGetOCIArchiveImage_InvalidTarball(t *testing.T) {
+	tmpDir := t.TempDir()
+	tarPath := filepath.Join(tmpDir, "invalid.tar")
+
+	// Create a file with invalid tar content
+	err := os.WriteFile(tarPath, []byte("not a valid tar file"), 0600)
+	require.NoError(t, err)
+
+	_, err = GetOCIArchiveImage(tarPath, "latest")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error extracting OCI archive")
+}
+
+// Tests for GetImage with different transports
+
+func TestGetImage_InvalidReference(t *testing.T) {
+	// Test with completely invalid reference
+	_, err := GetImage("")
+	require.Error(t, err)
 }

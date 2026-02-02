@@ -208,3 +208,171 @@ func TestPortsCommandFlags(t *testing.T) {
 	assert.NotNil(t, flag)
 	assert.Equal(t, "p", flag.Shorthand)
 }
+
+func TestRunPorts_NoExposedPorts(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443}
+
+	// Create test image with no exposed ports
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: nil,
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationSucceeded, Result)
+}
+
+func TestRunPorts_ExposedPortsWithNoAllowedList(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = nil
+
+	// Create test image with exposed ports
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{
+			"80/tcp":   {},
+			"443/tcp":  {},
+			"8080/tcp": {},
+		},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationFailed, Result, "Should fail when exposed ports exist but no allowed list is provided")
+}
+
+func TestRunPorts_AllPortsAllowed(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443, 8080}
+
+	// Create test image with exposed ports that are all in the allowed list
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{
+			"80/tcp":   {},
+			"443/tcp":  {},
+			"8080/tcp": {},
+		},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationSucceeded, Result, "Should succeed when all exposed ports are in allowed list")
+}
+
+func TestRunPorts_SomePortsNotAllowed(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443}
+
+	// Create test image with some ports not in allowed list
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{
+			"80/tcp":   {},
+			"443/tcp":  {},
+			"8080/tcp": {}, // This one is not allowed
+			"9090/tcp": {}, // This one is not allowed
+		},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationFailed, Result, "Should fail when some exposed ports are not in allowed list")
+}
+
+func TestRunPorts_NoPortsAllowed(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443}
+
+	// Create test image with ports that are all not in allowed list
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{
+			"8080/tcp": {},
+			"9090/tcp": {},
+		},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationFailed, Result, "Should fail when no exposed ports are in allowed list")
+}
+
+func TestRunPorts_PreservesPreviousFailure(t *testing.T) {
+	// Set Result to ValidationFailed to simulate a previous failed check
+	Result = ValidationFailed
+	allowedPortsList = []int{80, 443}
+
+	// Create test image with no exposed ports (would normally succeed)
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: nil,
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationFailed, Result, "Should preserve previous validation failure")
+}
+
+func TestRunPorts_DifferentProtocols(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443, 53}
+
+	// Create test image with different protocol ports
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{
+			"80/tcp":  {},
+			"443/tcp": {},
+			"53/udp":  {}, // UDP port
+		},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationSucceeded, Result, "Should handle different protocols (tcp/udp)")
+}
+
+func TestRunPorts_InvalidImageReference(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443}
+
+	// Use invalid image reference
+	err := runPorts("oci:/nonexistent/path:latest")
+	require.Error(t, err)
+}
+
+func TestRunPorts_SubsetOfAllowedPorts(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443, 8080, 9090, 3000}
+
+	// Create test image exposing only a subset of allowed ports
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{
+			"80/tcp":  {},
+			"443/tcp": {},
+		},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationSucceeded, Result, "Should succeed when exposed ports are a subset of allowed ports")
+}
+
+func TestRunPorts_EmptyExposedPortsMap(t *testing.T) {
+	// Reset global state
+	Result = ValidationSkipped
+	allowedPortsList = []int{80, 443}
+
+	// Create test image with empty exposed ports map
+	imageRef := createTestImage(t, testImageOptions{
+		exposedPorts: map[string]struct{}{},
+	})
+
+	err := runPorts(imageRef)
+	require.NoError(t, err)
+	assert.Equal(t, ValidationSucceeded, Result, "Should succeed when exposed ports map is empty")
+}
