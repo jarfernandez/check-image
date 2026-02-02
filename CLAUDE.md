@@ -102,6 +102,12 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Policy supports `excluded-paths`, `excluded-env-vars`, and custom patterns
 - Works out-of-the-box with sensible defaults when no policy file is provided
 
+**version**: Shows the check-image version
+- No flags
+- Returns the version string from `internal/version.Version`
+- Defaults to "dev" if no version is set
+- Version is injected at build time using ldflags: `-ldflags "-X check-image/internal/version.Version=v0.1.0"`
+
 ### Configuration Files
 Sample configuration files are in `config/`:
 - `allowed-ports.yaml` / `allowed-ports.json`: Allowed ports list
@@ -181,7 +187,7 @@ In `internal/secrets/`:
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 53% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 87.6% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
