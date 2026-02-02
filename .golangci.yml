@@ -1,35 +1,39 @@
+version: "2"
+run:
+  go: "1.24"
 linters:
   enable:
-    - errcheck      # Unchecked errors (enabled by default)
-    - staticcheck   # Static analysis (enabled by default)
-    - ineffassign   # Ineffectual assignments (enabled by default)
-    - unused        # Unused code (enabled by default)
-    - govet         # Go vet (enabled by default)
-    - gocyclo       # Cyclomatic complexity
-    - gocritic      # Comprehensive checks for bugs and style
+    - gocritic
+    - gocyclo
   disable:
-    - godot         # Too strict for internal packages
-    - exhaustive    # Can be noisy
-
-linters-settings:
-  gocyclo:
-    min-complexity: 20  # Temporarily increased to merge CI/CD; will refactor complex functions in follow-up PR
-  gofmt:
-    simplify: true
-  errcheck:
-    check-type-assertions: false
-    check-blank: false
-
-run:
-  timeout: 5m
-  go: '1.24'
-
+    - exhaustive
+    - godot
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+    gocyclo:
+      min-complexity: 20
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+          - gocyclo
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-use-default: false
   max-same-issues: 0
-  # Exclude some linters from running on test files
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
+formatters:
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
