@@ -2,3 +2,4 @@
 
 # Pre-commit cache
 .pre-commit-cache/
+/coverage.out
