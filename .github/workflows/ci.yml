@@ -60,8 +60,13 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-      - name: Run tests
+      - name: Run tests (Unix)
+        if: runner.os != 'Windows'
         run: go test ./... -race -coverprofile=coverage.out -covermode=atomic
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        run: go test ./... -race
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
