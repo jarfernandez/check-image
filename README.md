@@ -361,6 +361,83 @@ go tool cover -html=coverage.out
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
 
+## CI/CD and Release Process
+
+This project uses GitHub Actions for continuous integration and automated releases.
+
+### Continuous Integration
+
+Every pull request and push to `main` automatically runs:
+
+- **Tests**: Full test suite on Linux, macOS, and Windows
+- **Linting**: `golangci-lint` with strict checks
+- **Build Verification**: Cross-compilation for 5 platforms (Linux/macOS/Windows on amd64/arm64)
+- **PR Title Validation**: Enforces Conventional Commits format
+
+All checks must pass before merging to `main`.
+
+### Release Process
+
+Releases are fully automated using [release-please](https://github.com/googleapis/release-please):
+
+1. **Development**: Make changes and commit using [Conventional Commits](https://www.conventionalcommits.org/):
+   ```bash
+   git commit -m "feat: add new validation check"
+   git commit -m "fix: resolve race condition in image loading"
+   ```
+
+2. **Merge to Main**: After PR approval and merge, release-please automatically:
+   - Analyzes commits since the last release
+   - Calculates the next version based on commit types:
+     - `feat:` → minor version bump (0.1.0 → 0.2.0)
+     - `fix:` → patch version bump (0.1.0 → 0.1.1)
+     - `BREAKING CHANGE:` → major version bump (0.1.0 → 1.0.0)
+   - Creates/updates a "Release PR" with updated CHANGELOG.md
+
+3. **Release**: When the Release PR is merged:
+   - Git tag is created (e.g., `v0.2.0`)
+   - GoReleaser builds binaries for all platforms
+   - GitHub Release is created with binaries and changelog
+   - Version is injected into binaries via ldflags
+
+### Supported Platforms
+
+Releases include pre-built binaries for:
+- Linux: amd64, arm64
+- macOS: amd64, arm64
+- Windows: amd64
+
+### Commit Message Format
+
+This project requires [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```
+<type>: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Allowed types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `test`: Test updates
+- `chore`: Maintenance tasks
+- `perf`: Performance improvements
+- `ci`: CI/CD changes
+- `build`: Build system changes
+- `revert`: Revert previous commit
+
+**Examples:**
+```bash
+git commit -m "feat: add support for OCI archives"
+git commit -m "fix: handle missing environment variables"
+git commit -m "docs: update installation instructions"
+```
+
 ## Contributing
 
 Contributions are welcome! Please ensure that:
@@ -370,6 +447,8 @@ Contributions are welcome! Please ensure that:
 - Variable names are meaningful and descriptive.
 - Functions are small and focused on a single responsibility.
 - Table-driven tests are used for functions with multiple input scenarios.
+- Commit messages follow Conventional Commits format.
+- Pre-commit hooks pass before committing.
 
 ## License
 

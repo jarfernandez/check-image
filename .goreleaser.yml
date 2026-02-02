@@ -1,0 +1,92 @@
+# GoReleaser configuration for check-image
+# Documentation: https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: check-image
+    main: ./cmd/check-image
+    binary: check-image
+
+    ldflags:
+      - -s -w
+      - -X check-image/internal/version.Version={{.Version}}
+
+    env:
+      - CGO_ENABLED=0
+
+    goos:
+      - linux
+      - darwin
+      - windows
+
+    goarch:
+      - amd64
+      - arm64
+
+    # Windows ARM64 is not commonly used
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      check-image_{{.Version}}_{{.Os}}_{{.Arch}}
+
+    format_overrides:
+      - goos: windows
+        format: zip
+
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - config/*
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - '^build:'
+  groups:
+    - title: Features
+      regexp: '^feat:'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix:'
+      order: 1
+    - title: Performance Improvements
+      regexp: '^perf:'
+      order: 2
+    - title: Code Refactoring
+      regexp: '^refactor:'
+      order: 3
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: jarfernandez
+    name: check-image
+  draft: false
+  prerelease: auto
+  mode: append
+  header: |
+    ## check-image {{.Version}}
+
+    **Full Changelog**: https://github.com/jarfernandez/check-image/compare/{{.PreviousTag}}...{{.Tag}}
