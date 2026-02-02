@@ -107,10 +107,10 @@ func TestGetOCILayoutImage_WithTag(t *testing.T) {
 	tmpDir := t.TempDir()
 	layoutPath := filepath.Join(tmpDir, "oci-layout")
 
-	_, digest := createOCILayoutWithTag(t, layoutPath, "v1.0")
+	_, digest := createOCILayoutWithTag(t, layoutPath, "1.0")
 
 	// Load image by tag
-	img, err := GetOCILayoutImage(layoutPath, "v1.0")
+	img, err := GetOCILayoutImage(layoutPath, "1.0")
 	require.NoError(t, err)
 	require.NotNil(t, img)
 
@@ -158,10 +158,10 @@ func TestGetOCILayoutImage_TagNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	layoutPath := filepath.Join(tmpDir, "oci-layout")
 
-	createOCILayoutWithTag(t, layoutPath, "v1.0")
+	createOCILayoutWithTag(t, layoutPath, "1.0")
 
 	// Try to load with a tag that doesn't exist
-	_, err := GetOCILayoutImage(layoutPath, "v2.0")
+	_, err := GetOCILayoutImage(layoutPath, "2.0")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found in layout index")
 }
@@ -199,7 +199,7 @@ func TestResolveTagInLayout_MultipleImages(t *testing.T) {
 	layoutPath := filepath.Join(tmpDir, "oci-layout")
 
 	// Create first image with tag
-	_, digest1 := createOCILayoutWithTag(t, layoutPath, "v1.0")
+	_, digest1 := createOCILayoutWithTag(t, layoutPath, "1.0")
 
 	// Append second image with different tag
 	p, err := layout.FromPath(layoutPath)
@@ -226,7 +226,7 @@ func TestResolveTagInLayout_MultipleImages(t *testing.T) {
 			if manifest.Manifests[i].Annotations == nil {
 				manifest.Manifests[i].Annotations = make(map[string]string)
 			}
-			manifest.Manifests[i].Annotations["org.opencontainers.image.ref.name"] = "v2.0"
+			manifest.Manifests[i].Annotations["org.opencontainers.image.ref.name"] = "2.0"
 			break
 		}
 	}
@@ -244,12 +244,12 @@ func TestResolveTagInLayout_MultipleImages(t *testing.T) {
 	require.NoError(t, err)
 
 	// Resolve first tag
-	resolved1, err := resolveTagInLayout(p, "v1.0")
+	resolved1, err := resolveTagInLayout(p, "1.0")
 	require.NoError(t, err)
 	assert.Equal(t, digest1.String(), resolved1)
 
 	// Resolve second tag
-	resolved2, err := resolveTagInLayout(p, "v2.0")
+	resolved2, err := resolveTagInLayout(p, "2.0")
 	require.NoError(t, err)
 	assert.Equal(t, digest2.String(), resolved2)
 

@@ -21,7 +21,7 @@ The 'image' argument supports multiple formats:
   - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image age nginx:latest
   check-image age nginx:latest --max-age 30
-  check-image age oci:/path/to/layout:v1.0
+  check-image age oci:/path/to/layout:1.0
   check-image age oci-archive:/path/to/image.tar:latest
   check-image age docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),

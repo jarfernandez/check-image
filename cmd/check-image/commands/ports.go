@@ -33,7 +33,7 @@ The 'image' argument supports multiple formats:
 	Example: `  check-image ports nginx:latest --allowed-ports 80,443
   check-image ports nginx:latest --allowed-ports @allowed-ports.json
   check-image ports nginx:latest --allowed-ports @allowed-ports.yaml
-  check-image ports oci:/path/to/layout:v1.0 --allowed-ports 8080,8443
+  check-image ports oci:/path/to/layout:1.0 --allowed-ports 8080,8443
   check-image ports oci-archive:/path/to/image.tar:latest --allowed-ports @allowed-ports.json
   check-image ports docker-archive:/path/to/image.tar:tag --allowed-ports 80,443`,
 	Args: cobra.ExactArgs(1),

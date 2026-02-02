@@ -52,13 +52,13 @@ check-image age oci:/path/to/layout@sha256:abc123...
 **OCI Archive** (tarball):
 ```bash
 check-image age oci-archive:/path/to/image.tar:latest
-check-image size oci-archive:./exported-image.tar:v1.0 --max-size 100
+check-image size oci-archive:./exported-image.tar:1.0 --max-size 100
 ```
 
 **Docker Archive** (saved with `docker save`):
 ```bash
 check-image age docker-archive:/path/to/saved.tar:nginx:latest
-check-image size docker-archive:./backup.tar:myapp:v2.0
+check-image size docker-archive:./backup.tar:myapp:2.0
 ```
 
 **Default Behavior** (Docker daemon or remote registry):

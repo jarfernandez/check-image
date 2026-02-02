@@ -17,7 +17,7 @@ The 'image' argument supports multiple formats:
   - OCI tarball: oci-archive:/path/to/image.tar:tag
   - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image root-user nginx:latest
-  check-image root-user oci:/path/to/layout:v1.0
+  check-image root-user oci:/path/to/layout:1.0
   check-image root-user oci-archive:/path/to/image.tar:latest
   check-image root-user docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),

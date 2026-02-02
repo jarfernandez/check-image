@@ -25,7 +25,7 @@ The 'image' argument supports multiple formats:
   - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image size nginx:latest
   check-image size nginx:latest --max-size 300 --max-layers 15
-  check-image size oci:/path/to/layout:v1.0
+  check-image size oci:/path/to/layout:1.0
   check-image size oci-archive:/path/to/image.tar:latest
   check-image size docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),

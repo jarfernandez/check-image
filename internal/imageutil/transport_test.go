@@ -167,9 +167,9 @@ func TestParseTransportReference(t *testing.T) {
 		{
 			name:       "Path with tag",
 			transport:  TransportOCI,
-			remainder:  "/path/to/layout:v1.0",
+			remainder:  "/path/to/layout:1.0",
 			wantPath:   "/path/to/layout",
-			wantTag:    "v1.0",
+			wantTag:    "1.0",
 			wantDigest: "",
 		},
 		{

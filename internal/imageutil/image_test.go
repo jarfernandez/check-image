@@ -41,7 +41,7 @@ func TestGetImageRegistry(t *testing.T) {
 		},
 		{
 			name:      "Quay.io registry",
-			imageName: "quay.io/organization/repo:v1.0",
+			imageName: "quay.io/organization/repo:1.0",
 			want:      "quay.io",
 			wantErr:   false,
 		},
@@ -122,10 +122,10 @@ func TestGetImageAndConfig_OCI(t *testing.T) {
 	tmpDir := t.TempDir()
 	layoutPath := tmpDir + "/oci-layout"
 
-	_, digest := createOCILayoutWithTag(t, layoutPath, "v1.0")
+	_, digest := createOCILayoutWithTag(t, layoutPath, "1.0")
 
 	// Use OCI transport
-	imageName := "oci:" + layoutPath + ":v1.0"
+	imageName := "oci:" + layoutPath + ":1.0"
 
 	img, cfg, err := GetImageAndConfig(imageName)
 	require.NoError(t, err)
