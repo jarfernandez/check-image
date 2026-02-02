@@ -1,5 +1,3 @@
-version: 2
-
 linters:
   enable:
     - errcheck      # Unchecked errors (enabled by default)
