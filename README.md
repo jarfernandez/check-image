@@ -172,6 +172,18 @@ The command scans:
 - Environment variables for sensitive patterns (password, secret, token, key, etc.)
 - Files across all image layers for common secret files (SSH keys, cloud credentials, password files, etc.)
 
+#### `version`
+Shows the check-image version.
+
+```bash
+check-image version
+```
+
+The version can be set at build time using ldflags:
+```bash
+go build -ldflags "-X check-image/internal/version.Version=v0.1.0" ./cmd/check-image
+```
+
 ### Global Flags
 
 All commands support:
@@ -317,7 +329,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 53% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 87.6% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -339,11 +351,13 @@ go tool cover -html=coverage.out
 
 ### Test Coverage
 
+- **internal/version**: 100% coverage
 - **internal/registry**: 100% coverage
 - **internal/secrets**: 96.5% coverage
-- **internal/imageutil**: 43.3% coverage (daemon/registry functions are integration tests)
-- **internal/fileutil**: 22.9% coverage
-- **cmd/check-image/commands**: 36.4% coverage
+- **cmd/check-image/commands**: 86.3% coverage
+- **internal/fileutil**: 82.9% coverage
+- **internal/imageutil**: 73.9% coverage
+- **cmd/check-image**: 63.6% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
 
