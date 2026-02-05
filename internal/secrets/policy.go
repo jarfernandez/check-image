@@ -1,8 +1,9 @@
 package secrets
 
 import (
-	"check-image/internal/fileutil"
 	"fmt"
+
+	"github.com/jarfernandez/check-image/internal/fileutil"
 )
 
 // Policy defines configuration for secrets detection

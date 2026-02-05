@@ -1,10 +1,11 @@
 package commands
 
 import (
-	ver "check-image/internal/version"
 	"fmt"
-	"github.com/spf13/cobra"
 	"strings"
+
+	ver "github.com/jarfernandez/check-image/internal/version"
+	"github.com/spf13/cobra"
 )
 
 var versionCmd = &cobra.Command{

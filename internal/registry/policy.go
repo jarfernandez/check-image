@@ -1,8 +1,9 @@
 package registry
 
 import (
-	"check-image/internal/fileutil"
 	"fmt"
+
+	"github.com/jarfernandez/check-image/internal/fileutil"
 )
 
 // Policy defines a registry allowlist or blocklist.

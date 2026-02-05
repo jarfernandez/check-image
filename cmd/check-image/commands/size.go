@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"check-image/internal/imageutil"
 	"fmt"
 	"math"
 
+	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/spf13/cobra"
 )
 
