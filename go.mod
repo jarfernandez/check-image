@@ -1,4 +1,4 @@
-module check-image
+module github.com/jarfernandez/check-image
 
 go 1.24.0
 
