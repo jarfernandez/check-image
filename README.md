@@ -18,13 +18,27 @@ Check Image is a Go-based CLI tool designed for validating container images. It 
 **Requirements:**
 - Go 1.24 or newer
 
-To build and install the project, run:
+### Install from GitHub
+
+The easiest way to install check-image is directly from GitHub:
+
+```bash
+# Install the latest version
+go install github.com/jarfernandez/check-image/cmd/check-image@latest
+
+# Or install a specific version
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.1.1
+```
+
+This will install the `check-image` binary to your `GOBIN` directory.
+
+### Install from Source
+
+If you've cloned the repository, you can install it locally:
 
 ```bash
 go install ./cmd/check-image
 ```
-
-This will install the `check-image` binary to your `GOBIN` directory.
 
 ## Usage
 
@@ -181,7 +195,7 @@ check-image version
 
 The version can be set at build time using ldflags:
 ```bash
-go build -ldflags "-X check-image/internal/version.Version=v0.1.0" ./cmd/check-image
+go build -ldflags "-X github.com/jarfernandez/check-image/internal/version.Version=v0.1.0" ./cmd/check-image
 ```
 
 ### Global Flags
