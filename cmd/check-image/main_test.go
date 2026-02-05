@@ -2,9 +2,9 @@ package main
 
 import (
 	"bytes"
-	"check-image/cmd/check-image/commands"
 	"testing"
 
+	"github.com/jarfernandez/check-image/cmd/check-image/commands"
 	"github.com/stretchr/testify/assert"
 )
 

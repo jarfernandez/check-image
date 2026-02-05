@@ -1,9 +1,10 @@
 package commands
 
 import (
-	"check-image/internal/imageutil"
-	"check-image/internal/secrets"
 	"fmt"
+
+	"github.com/jarfernandez/check-image/internal/imageutil"
+	"github.com/jarfernandez/check-image/internal/secrets"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

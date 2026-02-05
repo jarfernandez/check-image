@@ -1,10 +1,11 @@
 package main
 
 import (
-	"check-image/cmd/check-image/commands"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/jarfernandez/check-image/cmd/check-image/commands"
 )
 
 // run executes the CLI and returns the exit code

@@ -1,11 +1,11 @@
 package commands
 
 import (
-	"check-image/internal/imageutil"
-	"check-image/internal/registry"
 	"fmt"
 	"strings"
 
+	"github.com/jarfernandez/check-image/internal/imageutil"
+	"github.com/jarfernandez/check-image/internal/registry"
 	"github.com/spf13/cobra"
 )
 

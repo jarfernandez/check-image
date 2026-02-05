@@ -1,12 +1,12 @@
 package commands
 
 import (
-	"check-image/internal/fileutil"
-	"check-image/internal/imageutil"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/jarfernandez/check-image/internal/fileutil"
+	"github.com/jarfernandez/check-image/internal/imageutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

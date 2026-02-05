@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	ver "check-image/internal/version"
+	ver "github.com/jarfernandez/check-image/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
