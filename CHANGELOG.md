@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/jarfernandez/check-image/compare/v0.2.0...v0.2.1) (2026-02-06)
+
+
+### Bug Fixes
+
+* Configure release-please to use simple tag format without component prefix ([#13](https://github.com/jarfernandez/check-image/issues/13)) ([f947711](https://github.com/jarfernandez/check-image/commit/f947711ff053131532a25d8f67ce91f8c259eaac))
+
+
+### Documentation
+
+* Add pre-built binary installation instructions and clarify version behavior ([#11](https://github.com/jarfernandez/check-image/issues/11)) ([c9fa85b](https://github.com/jarfernandez/check-image/commit/c9fa85bfd90db4d6812ea344b9829b6f2cdc17e9))
+
 ## [0.2.0](https://github.com/jarfernandez/check-image/compare/v0.1.1...v0.2.0) (2026-02-06)
 
 
