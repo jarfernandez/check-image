@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/jarfernandez/check-image/compare/v0.2.1...v0.2.2) (2026-02-06)
+
+
+### Documentation
+
+* Fix installation URLs to use version variable and update to v0.2.1 ([#15](https://github.com/jarfernandez/check-image/issues/15)) ([1edd80c](https://github.com/jarfernandez/check-image/commit/1edd80ce1e36089ae6de5151c319d7ba4c4b6ba0))
+
 ## [0.2.1](https://github.com/jarfernandez/check-image/compare/v0.2.0...v0.2.1) (2026-02-06)
 
 
