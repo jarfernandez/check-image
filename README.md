@@ -15,22 +15,48 @@ Check Image is a Go-based CLI tool designed for validating container images. It 
 
 ## Installation
 
-**Requirements:**
-- Go 1.24 or newer
+### Install from Pre-built Binaries (Recommended)
 
-### Install from GitHub
+Download the latest release for your platform from the [releases page](https://github.com/jarfernandez/check-image/releases):
 
-The easiest way to install check-image is directly from GitHub:
+```bash
+# macOS (Apple Silicon)
+curl -sL https://github.com/jarfernandez/check-image/releases/latest/download/check-image_0.2.0_darwin_arm64.tar.gz | tar xz
+sudo mv check-image /usr/local/bin/
+
+# macOS (Intel)
+curl -sL https://github.com/jarfernandez/check-image/releases/latest/download/check-image_0.2.0_darwin_amd64.tar.gz | tar xz
+sudo mv check-image /usr/local/bin/
+
+# Linux (amd64)
+curl -sL https://github.com/jarfernandez/check-image/releases/latest/download/check-image_0.2.0_linux_amd64.tar.gz | tar xz
+sudo mv check-image /usr/local/bin/
+
+# Linux (arm64)
+curl -sL https://github.com/jarfernandez/check-image/releases/latest/download/check-image_0.2.0_linux_arm64.tar.gz | tar xz
+sudo mv check-image /usr/local/bin/
+
+# Windows (amd64)
+# Download check-image_0.2.0_windows_amd64.zip from releases page and extract
+```
+
+Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.2.0`).
+
+### Install with Go
+
+**Requirements:** Go 1.24 or newer
 
 ```bash
 # Install the latest version
 go install github.com/jarfernandez/check-image/cmd/check-image@latest
 
 # Or install a specific version
-go install github.com/jarfernandez/check-image/cmd/check-image@v0.1.1
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.2.0
 ```
 
 This will install the `check-image` binary to your `GOBIN` directory.
+
+**Note:** Binaries installed with `go install` will show version as `dev` when running `check-image version`. This is expected behavior as `go install` compiles from source without version injection. For production use with correct version numbers, use pre-built binaries from releases.
 
 ### Install from Source
 
@@ -39,6 +65,8 @@ If you've cloned the repository, you can install it locally:
 ```bash
 go install ./cmd/check-image
 ```
+
+This is useful for development. The version will show as `dev`.
 
 ## Usage
 
