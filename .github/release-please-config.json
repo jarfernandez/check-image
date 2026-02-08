@@ -18,7 +18,7 @@
         {"type": "ci", "section": "Continuous Integration", "hidden": true},
         {"type": "chore", "section": "Miscellaneous", "hidden": true}
       ],
-      "release-search-depth": 10,
+      "release-search-depth": 100,
       "draft": false,
       "prerelease": false
     }
