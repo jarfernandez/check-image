@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5](https://github.com/jarfernandez/check-image/compare/v0.2.4...v0.2.5) (2026-02-08)
+
+
+### Bug Fixes
+
+* Chain GoReleaser as job within release-please workflow ([#27](https://github.com/jarfernandez/check-image/issues/27)) ([349c469](https://github.com/jarfernandez/check-image/commit/349c469cd5f0edcf67b2689916d14efb6aa4778d))
+* Remove skip-github-release to allow tag and release creation ([#25](https://github.com/jarfernandez/check-image/issues/25)) ([8d9a239](https://github.com/jarfernandez/check-image/commit/8d9a2393f313a862f0cd14e7efb667a429d1f4a7))
+
 ## [0.2.4](https://github.com/jarfernandez/check-image/compare/v0.2.3...v0.2.4) (2026-02-08)
 
 
