@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4](https://github.com/jarfernandez/check-image/compare/v0.2.3...v0.2.4) (2026-02-08)
+
+
+### Bug Fixes
+
+* Configure release-please to skip GitHub releases via workflow parameter ([#21](https://github.com/jarfernandez/check-image/issues/21)) ([c363240](https://github.com/jarfernandez/check-image/commit/c36324065e8606eeeda227c5e792edcb1b99f38d))
+* Pin GoReleaser action version to ~&gt; v2 ([#19](https://github.com/jarfernandez/check-image/issues/19)) ([0dbe91f](https://github.com/jarfernandez/check-image/commit/0dbe91f15513f74776f5a57bd9f0c2c5a327a39b))
+* Reduce release-search-depth to avoid old PR format issues ([#22](https://github.com/jarfernandez/check-image/issues/22)) ([98ec49f](https://github.com/jarfernandez/check-image/commit/98ec49f8451f8675d2199e0507aa95545e52e832))
+* Remove invalid skip-github-release from config file ([#20](https://github.com/jarfernandez/check-image/issues/20)) ([ea36788](https://github.com/jarfernandez/check-image/commit/ea36788481a4f6005a12f33bea4ffc0028a7a486))
+
 ## [0.2.3](https://github.com/jarfernandez/check-image/compare/v0.2.2...v0.2.3) (2026-02-06)
 
 
