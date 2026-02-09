@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Features
 
-* update module path to use full GitHub URL ([#3](https://github.com/jarfernandez/check-image/issues/3)) ([42a9f22](https://github.com/jarfernandez/check-image/commit/42a9f2202d8971634c1004ce79ad94f41aaee1c0))
+* Update module path to use full GitHub URL ([#3](https://github.com/jarfernandez/check-image/issues/3)) ([42a9f22](https://github.com/jarfernandez/check-image/commit/42a9f2202d8971634c1004ce79ad94f41aaee1c0))
 
 
 ### Bug Fixes
@@ -22,7 +22,6 @@ All notable changes to this project will be documented in this file. This projec
 
 * Add pre-built binary installation instructions and clarify version behavior ([12737b3](https://github.com/jarfernandez/check-image/commit/12737b361473e7f278f2d079d3af54a9fa1f875f))
 * Document release pipeline architecture in CLAUDE.md ([f17ffad](https://github.com/jarfernandez/check-image/commit/f17ffad008ec6e8e572ea489940e7ce8dfcfa64a))
-* update CHANGELOG.md with v0.1.1 release ([68a1702](https://github.com/jarfernandez/check-image/commit/68a1702a4dbd026b7083bea50f8b362b25dcd50f))
 * Update installation instructions with GitHub install method ([#4](https://github.com/jarfernandez/check-image/issues/4)) ([434d3ec](https://github.com/jarfernandez/check-image/commit/434d3ec5f1904767b715d5bc94e14e35b2648227))
 
 ## [0.1.1](https://github.com/jarfernandez/check-image/releases/tag/v0.1.1) (2026-02-02)
