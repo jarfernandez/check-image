@@ -10,6 +10,7 @@ Check Image is a Go-based CLI tool designed for validating container images. It 
 - [Configuration Files](#configuration-files)
 - [Development](#development)
 - [Testing](#testing)
+- [CI/CD and Release Process](#cicd-and-release-process)
 - [Contributing](#contributing)
 - [License](#license)
 
