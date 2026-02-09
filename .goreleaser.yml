@@ -15,7 +15,7 @@ builds:
 
     ldflags:
       - -s -w
-      - -X check-image/internal/version.Version=v{{.Version}}
+      - -X github.com/jarfernandez/check-image/internal/version.Version=v{{.Version}}
 
     env:
       - CGO_ENABLED=0
