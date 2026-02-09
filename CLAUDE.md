@@ -137,6 +137,23 @@ In `internal/secrets/`:
 - Colors disabled when not running in a terminal
 - Set level via `--log-level` flag on any command
 
+### Release Pipeline
+Single workflow in `.github/workflows/release-please.yml` with two chained jobs:
+
+1. **release-please job**: Runs on every push to `main`. Creates/updates a release PR with changelog and version bump. When the release PR is merged, creates the git tag and GitHub release. Exports `releases_created` and `tag_name` as outputs.
+2. **goreleaser job**: Depends on the release-please job. Only runs when `releases_created == 'true'`. Checks out the tag, builds binaries for linux/darwin/windows (amd64/arm64), and uploads them to the GitHub release via `mode: append`.
+
+Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
+
+**Configuration files**:
+- `.github/release-please-config.json`: Release-please settings (release type, changelog sections)
+- `.github/release-please-manifest.json`: Tracks the current version
+- `.goreleaser.yml`: GoReleaser build configuration (platforms, archives, changelog)
+
+**Important**: Release-please tracks release PRs by the `autorelease: pending` label, not by title. When a release PR is successfully released, the label changes to `autorelease: tagged`. If this label gets stuck, release-please will abort with "untagged, merged release PRs outstanding".
+
+**Commit types and releases**: Only `feat:`, `fix:`, `perf:`, `refactor:`, and `docs:` commits trigger version bumps. Use `ci:` or `chore:` for CI/config changes to avoid unnecessary releases (these are configured as `hidden: true` in the changelog sections).
+
 ## Go Project Rules
 
 ### GitHub Integration
