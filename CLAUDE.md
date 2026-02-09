@@ -152,7 +152,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 
 **Important**: Release-please tracks release PRs by the `autorelease: pending` label, not by title. When a release PR is successfully released, the label changes to `autorelease: tagged`. If this label gets stuck, release-please will abort with "untagged, merged release PRs outstanding".
 
-**Commit types and releases**: Only `feat:`, `fix:`, `perf:`, `refactor:`, and `docs:` commits trigger version bumps. Use `ci:` or `chore:` for CI/config changes to avoid unnecessary releases (these are configured as `hidden: true` in the changelog sections).
+**Commit types and releases**: Only `feat:`, `fix:`, `perf:`, and `refactor:` commits trigger version bumps. Use `ci:`, `chore:`, or `docs:` for changes that should not trigger releases (these are configured as `hidden: true` in the changelog sections).
 
 ## Go Project Rules
 
