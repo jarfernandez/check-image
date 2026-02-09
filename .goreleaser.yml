@@ -54,30 +54,7 @@ checksum:
   algorithm: sha256
 
 changelog:
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - '^ci:'
-      - '^build:'
-  groups:
-    - title: Features
-      regexp: '^feat:'
-      order: 0
-    - title: Bug Fixes
-      regexp: '^fix:'
-      order: 1
-    - title: Performance Improvements
-      regexp: '^perf:'
-      order: 2
-    - title: Code Refactoring
-      regexp: '^refactor:'
-      order: 3
-    - title: Others
-      order: 999
+  disable: true
 
 release:
   github:
@@ -86,7 +63,3 @@ release:
   draft: false
   prerelease: auto
   mode: append
-  header: |
-    ## check-image {{.Version}}
-
-    **Full Changelog**: https://github.com/jarfernandez/check-image/compare/{{.PreviousTag}}...{{.Tag}}

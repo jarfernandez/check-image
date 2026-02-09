@@ -148,7 +148,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 **Configuration files**:
 - `.github/release-please-config.json`: Release-please settings (release type, changelog sections)
 - `.github/release-please-manifest.json`: Tracks the current version
-- `.goreleaser.yml`: GoReleaser build configuration (platforms, archives, changelog)
+- `.goreleaser.yml`: GoReleaser build configuration (platforms, archives). Changelog is disabled here; release-please handles it.
 
 **Important**: Release-please tracks release PRs by the `autorelease: pending` label, not by title. When a release PR is successfully released, the label changes to `autorelease: tagged`. If this label gets stuck, release-please will abort with "untagged, merged release PRs outstanding".
 
