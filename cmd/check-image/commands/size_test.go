@@ -30,7 +30,7 @@ func TestSizeCommandFlags(t *testing.T) {
 	// Test that max-size flag exists
 	flag := sizeCmd.Flags().Lookup("max-size")
 	assert.NotNil(t, flag)
-	assert.Equal(t, "s", flag.Shorthand)
+	assert.Equal(t, "m", flag.Shorthand)
 	assert.Equal(t, "500", flag.DefValue)
 
 	// Test that max-layers flag exists

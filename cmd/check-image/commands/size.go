@@ -40,7 +40,7 @@ The 'image' argument supports multiple formats:
 
 func init() {
 	rootCmd.AddCommand(sizeCmd)
-	sizeCmd.Flags().UintVarP(&maxSize, "max-size", "s", 500, "Maximum size in megabytes (optional)")
+	sizeCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
 	sizeCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
 }
 

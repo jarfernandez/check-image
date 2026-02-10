@@ -219,6 +219,49 @@ The command scans:
 - Environment variables for sensitive patterns (password, secret, token, key, etc.)
 - Files across all image layers for common secret files (SSH keys, cloud credentials, password files, etc.)
 
+#### `all`
+Runs all validation checks on a container image at once.
+
+```bash
+check-image all <image> [flags]
+```
+
+Options:
+- `--config`, `-c`: Path to configuration file (JSON or YAML)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets)
+- `--max-age`, `-a`: Maximum age in days (default: 90)
+- `--max-size`, `-m`: Maximum size in MB (default: 500)
+- `--max-layers`, `-y`: Maximum number of layers (default: 20)
+- `--allowed-ports`, `-p`: Comma-separated list of allowed ports or `@<file>`
+- `--registry-policy`, `-r`: Registry policy file (JSON or YAML)
+- `--secrets-policy`, `-s`: Secrets policy file (JSON or YAML)
+- `--skip-env-vars`: Skip environment variable checks in secrets detection
+- `--skip-files`: Skip file system checks in secrets detection
+
+Precedence rules:
+1. Without `--config`: all 6 checks run with defaults, except those in `--skip`
+2. With `--config`: only checks present in the config file run, except those in `--skip`
+3. CLI flags override config file values
+4. `--skip` always takes precedence over the config file
+
+Examples:
+```bash
+# Run all checks with defaults
+check-image all nginx:latest
+
+# Run all checks with custom limits
+check-image all nginx:latest --max-age 30 --max-size 200
+
+# Skip specific checks
+check-image all nginx:latest --skip registry,secrets
+
+# Use a configuration file
+check-image all nginx:latest -c config/config.yaml
+
+# Config file with CLI overrides and skip
+check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
+```
+
 #### `version`
 Shows the check-image version.
 
@@ -265,6 +308,17 @@ check-image registry nginx:latest --registry-policy config/registry-policy.json
 Example usage:
 ```bash
 check-image secrets nginx:latest --secrets-policy config/secrets-policy.json
+```
+
+### All Checks Configuration Files
+- `config/config.json` - Sample configuration for the `all` command in JSON format
+- `config/config.yaml` - Sample configuration for the `all` command in YAML format
+
+These files define which checks to run and their parameters. Only checks present in the file are executed.
+
+Example usage:
+```bash
+check-image all nginx:latest -c config/config.yaml
 ```
 
 ## Development
