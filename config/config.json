@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "age": {
+      "max-age": 90
+    },
+    "size": {
+      "max-size": 500,
+      "max-layers": 20
+    },
+    "ports": {
+      "allowed-ports": [80, 443]
+    },
+    "registry": {
+      "registry-policy": "registry-policy.json"
+    },
+    "root-user": {},
+    "secrets": {
+      "secrets-policy": "secrets-policy.json",
+      "skip-env-vars": false,
+      "skip-files": false
+    }
+  }
+}

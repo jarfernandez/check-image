@@ -31,7 +31,7 @@ func TestSecretsCommandFlags(t *testing.T) {
 	// Test that secrets-policy flag exists
 	flag := secretsCmd.Flags().Lookup("secrets-policy")
 	assert.NotNil(t, flag)
-	assert.Equal(t, "p", flag.Shorthand)
+	assert.Equal(t, "s", flag.Shorthand)
 
 	// Test that skip-env-vars flag exists
 	flag = secretsCmd.Flags().Lookup("skip-env-vars")

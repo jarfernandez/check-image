@@ -102,6 +102,15 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Policy supports `excluded-paths`, `excluded-env-vars`, and custom patterns
 - Works out-of-the-box with sensible defaults when no policy file is provided
 
+**all**: Runs all validation checks on a container image at once
+- Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
+- Precedence: CLI flags > config file values > defaults; `--skip` always wins
+- Without `--config`: runs all 6 checks with defaults (except skipped)
+- With `--config`: only runs checks present in the config file (except skipped)
+- Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
+- Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runRegistryForAll()` skips gracefully when no `--registry-policy` is provided
+- Continue-on-error: if a check returns an error, logs it, sets `Result = ValidationFailed`, and continues with the next check
+
 **version**: Shows the check-image version
 - No flags
 - Returns the version string from `internal/version.Version`
@@ -112,6 +121,7 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 Sample configuration files are in `config/`:
 - `allowed-ports.yaml` / `allowed-ports.json`: Allowed ports list
 - `registry-policy.yaml` / `registry-policy.json`: Trusted registries list
+- `config.yaml` / `config.json`: All-checks configuration (defines which checks to run and their parameters for the `all` command)
 - `secrets-policy.yaml` / `secrets-policy.json`: Secrets detection policy with exclusions
 
 Both JSON and YAML formats are supported throughout the tool. Format detection is by file extension (`.yaml`, `.yml` for YAML, otherwise JSON).
