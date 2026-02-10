@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/jarfernandez/check-image/compare/v0.2.0...v0.3.0) (2026-02-10)
+
+
+### Features
+
+* add `all` command to run all validation checks at once ([#41](https://github.com/jarfernandez/check-image/issues/41)) ([8fac20e](https://github.com/jarfernandez/check-image/commit/8fac20e26aae87e4d76cf4d06d27b51a36d64a3e))
+
 ## [0.2.0](https://github.com/jarfernandez/check-image/compare/v0.1.1...v0.2.0) (2026-02-09)
 
 
