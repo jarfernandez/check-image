@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/jarfernandez/check-image/compare/v0.3.0...v0.4.0) (2026-02-11)
+
+
+### Features
+
+* add `--fail-fast` flag to `all` command ([#43](https://github.com/jarfernandez/check-image/issues/43)) ([52e4863](https://github.com/jarfernandez/check-image/commit/52e4863afb5d95509d132e73c2c3f1c938e51aa1))
+
 ## [0.3.0](https://github.com/jarfernandez/check-image/compare/v0.2.0...v0.3.0) (2026-02-10)
 
 
