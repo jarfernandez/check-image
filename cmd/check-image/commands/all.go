@@ -59,6 +59,7 @@ type checkRunner struct {
 
 var configFile string
 var skipChecks string
+var failFast bool
 
 var allCmd = &cobra.Command{
 	Use:   "all image",
@@ -68,6 +69,7 @@ var allCmd = &cobra.Command{
 By default, runs all checks (age, size, ports, registry, root-user, secrets).
 Use --config to specify which checks to run and their parameters.
 Use --skip to skip specific checks.
+Use --fail-fast to stop on the first check failure.
 
 The 'image' argument supports multiple formats:
   - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
@@ -86,7 +88,8 @@ Precedence rules:
   check-image all nginx:latest --config config/config.json
   check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
   check-image all oci:/path/to/layout:1.0
-  check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry`,
+  check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry
+  check-image all nginx:latest --fail-fast --skip registry`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := runAll(cmd, args[0]); err != nil {
@@ -110,6 +113,7 @@ func init() {
 	allCmd.Flags().StringVarP(&secretsPolicy, "secrets-policy", "s", "", "Path to secrets policy file (JSON or YAML) (optional)")
 	allCmd.Flags().BoolVar(&skipEnvVars, "skip-env-vars", false, "Skip environment variable checks in secrets detection (optional)")
 	allCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks in secrets detection (optional)")
+	allCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first check failure (optional)")
 }
 
 func parseSkipList(skip string) (map[string]bool, error) {
@@ -316,6 +320,10 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		}
 
 		fmt.Println()
+
+		if failFast && Result == ValidationFailed {
+			break
+		}
 	}
 
 	return nil

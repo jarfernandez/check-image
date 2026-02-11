@@ -103,13 +103,14 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Works out-of-the-box with sensible defaults when no policy file is provided
 
 **all**: Runs all validation checks on a container image at once
-- Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
+- Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
 - Precedence: CLI flags > config file values > defaults; `--skip` always wins
 - Without `--config`: runs all 6 checks with defaults (except skipped)
 - With `--config`: only runs checks present in the config file (except skipped)
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
 - Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runRegistryForAll()` skips gracefully when no `--registry-policy` is provided
-- Continue-on-error: if a check returns an error, logs it, sets `Result = ValidationFailed`, and continues with the next check
+- Continue-on-error (default): if a check returns an error, logs it, sets `Result = ValidationFailed`, and continues with the next check
+- Fail-fast (`--fail-fast`): stops execution on the first check that fails (validation failure or execution error)
 
 **version**: Shows the check-image version
 - No flags
@@ -214,7 +215,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 87.6% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 89.4% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.

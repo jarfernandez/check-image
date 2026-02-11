@@ -469,6 +469,7 @@ func resetAllGlobals() {
 	skipFiles = false
 	configFile = ""
 	skipChecks = ""
+	failFast = false
 }
 
 // captureStdout captures stdout output during fn execution.
@@ -766,4 +767,87 @@ func TestRunAll_InvalidSkipList(t *testing.T) {
 	err := runAll(allCmd, imageRef)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown check name")
+}
+
+func TestAllCommandFailFastFlag(t *testing.T) {
+	flag := allCmd.Flags().Lookup("fail-fast")
+	assert.NotNil(t, flag)
+	assert.Equal(t, "false", flag.DefValue)
+}
+
+func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry" // skip registry (requires policy file)
+	failFast = true
+
+	// Image runs as root -> root-user check fails
+	// age and size run before root-user, secrets runs after
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "root",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	output := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	// root-user should have run and failed
+	assert.Contains(t, output, "=== root-user ===")
+	// secrets comes after root-user, should NOT have run
+	assert.NotContains(t, output, "=== secrets ===")
+}
+
+func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry" // skip registry (requires policy file)
+	failFast = true
+
+	// Provide invalid allowed-ports to cause an execution error in ports check
+	allowedPorts = "invalid-port"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	output := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	// ports should have run (and errored)
+	assert.Contains(t, output, "=== ports ===")
+	// root-user and secrets come after ports, should NOT have run
+	assert.NotContains(t, output, "=== root-user ===")
+	assert.NotContains(t, output, "=== secrets ===")
+}
+
+func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry" // skip registry (requires policy file)
+	failFast = false
+
+	// Image runs as root -> root-user check fails
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "root",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	output := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	// All checks should have run despite root-user failure
+	assert.Contains(t, output, "=== age ===")
+	assert.Contains(t, output, "=== size ===")
+	assert.Contains(t, output, "=== root-user ===")
+	assert.Contains(t, output, "=== secrets ===")
 }
