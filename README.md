@@ -237,6 +237,7 @@ Options:
 - `--secrets-policy`, `-s`: Secrets policy file (JSON or YAML)
 - `--skip-env-vars`: Skip environment variable checks in secrets detection
 - `--skip-files`: Skip file system checks in secrets detection
+- `--fail-fast`: Stop on first check failure (default: false)
 
 Precedence rules:
 1. Without `--config`: all 6 checks run with defaults, except those in `--skip`
@@ -256,10 +257,13 @@ check-image all nginx:latest --max-age 30 --max-size 200
 check-image all nginx:latest --skip registry,secrets
 
 # Use a configuration file
-check-image all nginx:latest -c config/config.yaml
+check-image all nginx:latest --config config/config.json
 
 # Config file with CLI overrides and skip
 check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
+
+# Stop on first check failure
+check-image all nginx:latest --fail-fast --skip registry
 ```
 
 #### `version`
@@ -430,7 +434,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 87.6% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 89.4% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -455,7 +459,7 @@ go tool cover -html=coverage.out
 - **internal/version**: 100% coverage
 - **internal/registry**: 100% coverage
 - **internal/secrets**: 96.5% coverage
-- **cmd/check-image/commands**: 86.3% coverage
+- **cmd/check-image/commands**: 89.6% coverage
 - **internal/fileutil**: 82.9% coverage
 - **internal/imageutil**: 73.9% coverage
 - **cmd/check-image**: 63.6% coverage
