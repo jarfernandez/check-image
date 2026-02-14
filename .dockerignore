@@ -1,0 +1,16 @@
+.git
+.gitignore
+.github
+.idea
+.pre-commit-config.yaml
+.golangci.yml
+.goreleaser.yml
+README.md
+LICENSE
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CLAUDE.md
+config/
+coverage.out
+check-image
+check-image.exe
