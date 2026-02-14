@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/jarfernandez/check-image/compare/v0.5.1...v0.6.0) (2026-02-14)
+
+
+### Features
+
+* Add granular exit codes to distinguish validation failures from execution errors ([#49](https://github.com/jarfernandez/check-image/issues/49)) ([052b655](https://github.com/jarfernandez/check-image/commit/052b655861b5ed08ef3b8c98f7e47946cd80c5ad))
+
 ## [0.5.1](https://github.com/jarfernandez/check-image/compare/v0.5.0...v0.5.1) (2026-02-14)
 
 
