@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/jarfernandez/check-image/compare/v0.4.0...v0.5.0) (2026-02-14)
+
+
+### Features
+
+* Add `--output`/`-o` flag with JSON support ([#45](https://github.com/jarfernandez/check-image/issues/45)) ([436389b](https://github.com/jarfernandez/check-image/commit/436389b62d673df874b0400987a2f173b7a5607d))
+
 ## [0.4.0](https://github.com/jarfernandez/check-image/compare/v0.3.0...v0.4.0) (2026-02-11)
 
 
