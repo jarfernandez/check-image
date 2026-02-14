@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const maxStdinSize = 10 * 1024 * 1024 // 10MB limit
+
 // ReadSecureFile reads a file securely using os.OpenRoot to prevent directory traversal
 func ReadSecureFile(path string) ([]byte, error) {
 	// Clean the path to remove any .. or . elements
@@ -62,4 +64,28 @@ func ReadSecureFile(path string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// ReadStdin reads data from stdin with a size limit
+func ReadStdin() ([]byte, error) {
+	limitedReader := io.LimitReader(os.Stdin, maxStdinSize+1)
+	data, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, fmt.Errorf("error reading from stdin: %w", err)
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("stdin is empty, expected JSON or YAML policy data")
+	}
+	if len(data) > maxStdinSize {
+		return nil, fmt.Errorf("stdin exceeds maximum size of %d bytes", maxStdinSize)
+	}
+	return data, nil
+}
+
+// ReadFileOrStdin reads from file path or stdin if path is "-"
+func ReadFileOrStdin(path string) ([]byte, error) {
+	if path == "-" {
+		return ReadStdin()
+	}
+	return ReadSecureFile(path)
 }

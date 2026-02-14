@@ -334,3 +334,81 @@ func TestRunPorts_EmptyExposedPortsMap(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when exposed ports map is empty")
 }
+
+func TestParseAllowedPorts_FromStdin(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErr     bool
+		errContains string
+		want        []int
+	}{
+		{
+			name:    "JSON from stdin",
+			input:   `{"allowed-ports": [80, 443, 8080]}`,
+			wantErr: false,
+			want:    []int{80, 443, 8080},
+		},
+		{
+			name: "YAML from stdin",
+			input: `allowed-ports:
+  - 80
+  - 443`,
+			wantErr: false,
+			want:    []int{80, 443},
+		},
+		{
+			name:        "Invalid JSON from stdin",
+			input:       `{invalid}`,
+			wantErr:     true,
+			errContains: "invalid JSON",
+		},
+		{
+			name:        "Empty stdin",
+			input:       "",
+			wantErr:     true,
+			errContains: "stdin is empty",
+		},
+		{
+			name:    "Empty allowed-ports array from stdin",
+			input:   `{"allowed-ports": []}`,
+			wantErr: false,
+			want:    []int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original stdin
+			oldStdin := os.Stdin
+			defer func() { os.Stdin = oldStdin }()
+
+			// Create pipe to mock stdin
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stdin = r
+
+			// Write test data
+			go func() {
+				_, _ = w.Write([]byte(tt.input))
+				w.Close()
+			}()
+
+			// Set the global variable to use stdin
+			allowedPorts = "@-"
+
+			got, err := parseAllowedPorts()
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

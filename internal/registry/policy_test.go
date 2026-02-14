@@ -162,7 +162,7 @@ func TestLoadRegistryPolicy_FileErrors(t *testing.T) {
 	t.Run("Nonexistent file", func(t *testing.T) {
 		_, err := LoadRegistryPolicy("/nonexistent/path/policy.json")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error reading registry policy file")
+		assert.Contains(t, err.Error(), "error reading registry policy")
 	})
 
 	t.Run("Directory instead of file", func(t *testing.T) {
@@ -269,4 +269,156 @@ func TestIsRegistryAllowed_EmptyPolicy(t *testing.T) {
 
 	got := policy.IsRegistryAllowed("docker.io")
 	assert.False(t, got, "Empty policy should deny all registries")
+}
+
+func TestLoadRegistryPolicy_Stdin(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, p *Policy)
+	}{
+		{
+			name:    "JSON from stdin",
+			input:   `{"trusted-registries": ["docker.io", "ghcr.io"]}`,
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.Len(t, p.TrustedRegistries, 2)
+				assert.Contains(t, p.TrustedRegistries, "docker.io")
+				assert.Contains(t, p.TrustedRegistries, "ghcr.io")
+			},
+		},
+		{
+			name: "YAML from stdin",
+			input: `trusted-registries:
+  - docker.io
+  - gcr.io`,
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.Len(t, p.TrustedRegistries, 2)
+				assert.Contains(t, p.TrustedRegistries, "docker.io")
+			},
+		},
+		{
+			name:        "Invalid JSON from stdin",
+			input:       `{invalid}`,
+			wantErr:     true,
+			errContains: "invalid JSON",
+		},
+		{
+			name:        "Empty stdin",
+			input:       "",
+			wantErr:     true,
+			errContains: "stdin is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original stdin
+			oldStdin := os.Stdin
+			defer func() { os.Stdin = oldStdin }()
+
+			// Create pipe to mock stdin
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stdin = r
+
+			// Write test data
+			go func() {
+				_, _ = w.Write([]byte(tt.input))
+				w.Close()
+			}()
+
+			policy, err := LoadRegistryPolicy("-")
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, policy)
+			if tt.validate != nil {
+				tt.validate(t, policy)
+			}
+		})
+	}
+}
+
+func TestLoadRegistryPolicyFromObject(t *testing.T) {
+	tests := []struct {
+		name        string
+		obj         interface{}
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, p *Policy)
+	}{
+		{
+			name: "Valid allowlist object",
+			obj: map[string]any{
+				"trusted-registries": []any{"docker.io", "ghcr.io"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.Len(t, p.TrustedRegistries, 2)
+				assert.Contains(t, p.TrustedRegistries, "docker.io")
+				assert.Contains(t, p.TrustedRegistries, "ghcr.io")
+			},
+		},
+		{
+			name: "Valid blocklist object",
+			obj: map[string]any{
+				"excluded-registries": []any{"bad-registry.com"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.Len(t, p.ExcludedRegistries, 1)
+				assert.Contains(t, p.ExcludedRegistries, "bad-registry.com")
+			},
+		},
+		{
+			name: "Both allowlist and blocklist",
+			obj: map[string]any{
+				"trusted-registries":  []any{"docker.io"},
+				"excluded-registries": []any{"bad.com"},
+			},
+			wantErr:     true,
+			errContains: "not both",
+		},
+		{
+			name:        "Empty object",
+			obj:         map[string]any{},
+			wantErr:     true,
+			errContains: "must specify either",
+		},
+		{
+			name:        "Invalid object type",
+			obj:         "not an object",
+			wantErr:     true,
+			errContains: "invalid policy object",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			policy, err := LoadRegistryPolicyFromObject(tt.obj)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, policy)
+			if tt.validate != nil {
+				tt.validate(t, policy)
+			}
+		})
+	}
 }

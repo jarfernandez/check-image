@@ -405,6 +405,124 @@ Example usage:
 check-image all nginx:latest -c config/config.yaml
 ```
 
+### Reading Configuration from Stdin
+
+All policy and configuration files support reading from standard input using the `-` syntax. This enables dynamic configuration from pipelines and scripts.
+
+**Format Auto-detection:**
+- When reading from stdin, the format (JSON or YAML) is automatically detected based on content
+- JSON content starts with `{` or `[`
+- Everything else is treated as YAML
+- Maximum size limit: 10MB
+
+**Supported commands:**
+
+**Registry policy from stdin:**
+```bash
+echo '{"trusted-registries": ["docker.io", "ghcr.io"]}' | \
+  check-image registry nginx:latest --registry-policy -
+
+# Or with YAML
+echo 'trusted-registries:
+  - docker.io
+  - ghcr.io' | \
+  check-image registry nginx:latest --registry-policy -
+```
+
+**Secrets policy from stdin:**
+```bash
+cat secrets-policy.yaml | \
+  check-image secrets nginx:latest --secrets-policy -
+```
+
+**Allowed ports from stdin:**
+```bash
+echo '{"allowed-ports": [80, 443]}' | \
+  check-image ports nginx:latest --allowed-ports @-
+```
+
+**All command config from stdin:**
+```bash
+cat config/config.json | \
+  check-image all nginx:latest --config -
+```
+
+**Pipeline examples:**
+```bash
+# Generate config dynamically and validate
+jq -n '{"trusted-registries": ["docker.io"]}' | \
+  check-image registry nginx:latest --registry-policy -
+
+# Use environment-based configuration
+envsubst < config-template.yaml | \
+  check-image all nginx:latest --config -
+```
+
+### Inline Configuration
+
+The `all` command configuration files support **inline policy embedding**, allowing you to define `registry-policy` and `secrets-policy` as objects directly in the config file instead of referencing separate files. This simplifies deployment by consolidating all configuration into a single file.
+
+**Example files:**
+- `config/config-inline.json` - Complete configuration with inline policies (JSON)
+- `config/config-inline.yaml` - Complete configuration with inline policies (YAML)
+
+**Inline vs File Reference:**
+
+File-based approach (separate policy files):
+```json
+{
+  "checks": {
+    "registry": {
+      "registry-policy": "config/registry-policy.json"
+    },
+    "secrets": {
+      "secrets-policy": "config/secrets-policy.json"
+    }
+  }
+}
+```
+
+Inline approach (embedded policies):
+```json
+{
+  "checks": {
+    "registry": {
+      "registry-policy": {
+        "trusted-registries": ["docker.io", "ghcr.io", "gcr.io"]
+      }
+    },
+    "secrets": {
+      "secrets-policy": {
+        "check-env-vars": true,
+        "check-files": true,
+        "excluded-env-vars": ["PUBLIC_KEY"],
+        "excluded-paths": ["/usr/share/**"]
+      }
+    }
+  }
+}
+```
+
+**Benefits:**
+- **Simpler deployment**: Single file contains all configuration
+- **Version control**: Easier to track policy changes alongside check parameters
+- **Portability**: No need to manage multiple policy files
+- **Flexibility**: Mix inline and file references in the same config
+
+**Usage:**
+```bash
+# Use inline configuration
+check-image all nginx:latest --config config/config-inline.yaml
+
+# Inline config with CLI overrides
+check-image all nginx:latest --config config/config-inline.json --max-age 30
+
+# Mix with stdin
+cat config/config-inline.yaml | check-image all nginx:latest --config -
+```
+
+**Note:** Both file paths (strings) and inline objects are supported. You can mix both approaches in the same configuration file based on your needs.
+
 ## Development
 
 ### Building from Source
@@ -514,7 +632,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 84.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 84.2% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -537,12 +655,12 @@ go tool cover -html=coverage.out
 ### Test Coverage
 
 - **internal/version**: 100.0% coverage
-- **internal/registry**: 100.0% coverage
 - **internal/output**: 100.0% coverage
-- **internal/secrets**: 96.5% coverage
-- **internal/fileutil**: 82.9% coverage
+- **internal/registry**: 97.3% coverage
+- **internal/secrets**: 95.9% coverage
+- **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 75.4% coverage
-- **cmd/check-image/commands**: 74.2% coverage
+- **cmd/check-image/commands**: 73.8% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

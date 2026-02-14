@@ -79,16 +79,16 @@ func parseAllowedPorts() ([]int, error) {
 	if strings.HasPrefix(allowedPorts, "@") {
 		path := strings.TrimPrefix(allowedPorts, "@")
 
-		// Read file securely
-		data, err := fileutil.ReadSecureFile(path)
+		// Read file or stdin
+		data, err := fileutil.ReadFileOrStdin(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read ports file: %w", err)
 		}
 
 		var portsFromFile allowedPortsFile
 
-		// Unmarshal config file (JSON or YAML)
-		if err := fileutil.UnmarshalConfigFile(data, &portsFromFile, path); err != nil {
+		// Unmarshal config data (JSON or YAML)
+		if err := fileutil.UnmarshalConfigData(data, &portsFromFile, path); err != nil {
 			return nil, err
 		}
 

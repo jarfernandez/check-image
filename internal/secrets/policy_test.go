@@ -169,7 +169,7 @@ func TestLoadSecretsPolicy_FileErrors(t *testing.T) {
 	t.Run("Nonexistent file", func(t *testing.T) {
 		_, err := LoadSecretsPolicy("/nonexistent/policy.json")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error reading secrets policy file")
+		assert.Contains(t, err.Error(), "error reading secrets policy")
 	})
 }
 
@@ -256,4 +256,158 @@ func TestDefaultExcludedEnvVars(t *testing.T) {
 	// Public keys should be in the default exclusion list
 	assert.Contains(t, DefaultExcludedEnvVars, "PUBLIC_KEY")
 	assert.Contains(t, DefaultExcludedEnvVars, "SSH_PUBLIC_KEY")
+}
+
+func TestLoadSecretsPolicy_Stdin(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, p *Policy)
+	}{
+		{
+			name: "JSON from stdin",
+			input: `{
+				"check-env-vars": true,
+				"check-files": false,
+				"excluded-paths": ["/usr/share/**"]
+			}`,
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.True(t, p.CheckEnvVars)
+				assert.False(t, p.CheckFiles)
+				assert.Len(t, p.ExcludedPaths, 1)
+				assert.Contains(t, p.ExcludedPaths, "/usr/share/**")
+			},
+		},
+		{
+			name: "YAML from stdin",
+			input: `check-env-vars: false
+check-files: true
+excluded-env-vars:
+  - PUBLIC_KEY
+  - TEST_VAR`,
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.False(t, p.CheckEnvVars)
+				assert.True(t, p.CheckFiles)
+				assert.Len(t, p.ExcludedEnvVars, 2)
+			},
+		},
+		{
+			name:        "Invalid JSON from stdin",
+			input:       `{invalid}`,
+			wantErr:     true,
+			errContains: "invalid JSON",
+		},
+		{
+			name:        "Empty stdin",
+			input:       "",
+			wantErr:     true,
+			errContains: "stdin is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original stdin
+			oldStdin := os.Stdin
+			defer func() { os.Stdin = oldStdin }()
+
+			// Create pipe to mock stdin
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stdin = r
+
+			// Write test data
+			go func() {
+				_, _ = w.Write([]byte(tt.input))
+				w.Close()
+			}()
+
+			policy, err := LoadSecretsPolicy("-")
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, policy)
+			if tt.validate != nil {
+				tt.validate(t, policy)
+			}
+		})
+	}
+}
+
+func TestLoadSecretsPolicyFromObject(t *testing.T) {
+	tests := []struct {
+		name     string
+		obj      interface{}
+		wantErr  bool
+		validate func(t *testing.T, p *Policy)
+	}{
+		{
+			name: "Valid policy object",
+			obj: map[string]any{
+				"check-env-vars": true,
+				"check-files":    false,
+				"excluded-paths": []any{"/usr/share/**", "/tmp/**"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.True(t, p.CheckEnvVars)
+				assert.False(t, p.CheckFiles)
+				assert.Len(t, p.ExcludedPaths, 2)
+			},
+		},
+		{
+			name: "Policy with custom patterns",
+			obj: map[string]any{
+				"check-env-vars":       true,
+				"custom-env-patterns":  []any{"my_secret", "my_key"},
+				"custom-file-patterns": []any{"*.custom"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				assert.True(t, p.CheckEnvVars)
+				assert.Len(t, p.CustomEnvPatterns, 2)
+				assert.Len(t, p.CustomFilePatterns, 1)
+			},
+		},
+		{
+			name:    "Empty object uses defaults",
+			obj:     map[string]any{},
+			wantErr: false,
+			validate: func(t *testing.T, p *Policy) {
+				// Should use default excluded env vars
+				assert.Equal(t, DefaultExcludedEnvVars, p.ExcludedEnvVars)
+			},
+		},
+		{
+			name:    "Invalid object type",
+			obj:     "not an object",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			policy, err := LoadSecretsPolicyFromObject(tt.obj)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, policy)
+			if tt.validate != nil {
+				tt.validate(t, policy)
+			}
+		})
+	}
 }

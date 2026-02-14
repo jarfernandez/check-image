@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -42,15 +43,15 @@ type portsCheckConfig struct {
 }
 
 type registryCheckConfig struct {
-	RegistryPolicy *string `json:"registry-policy,omitempty" yaml:"registry-policy,omitempty"`
+	RegistryPolicy any `json:"registry-policy,omitempty" yaml:"registry-policy,omitempty"`
 }
 
 type rootUserCheckConfig struct{}
 
 type secretsCheckConfig struct {
-	SecretsPolicy *string `json:"secrets-policy,omitempty" yaml:"secrets-policy,omitempty"`
-	SkipEnvVars   *bool   `json:"skip-env-vars,omitempty"  yaml:"skip-env-vars,omitempty"`
-	SkipFiles     *bool   `json:"skip-files,omitempty"     yaml:"skip-files,omitempty"`
+	SecretsPolicy any   `json:"secrets-policy,omitempty" yaml:"secrets-policy,omitempty"`
+	SkipEnvVars   *bool `json:"skip-env-vars,omitempty"  yaml:"skip-env-vars,omitempty"`
+	SkipFiles     *bool `json:"skip-files,omitempty"     yaml:"skip-files,omitempty"`
 }
 
 // checkRunner represents a single check to be executed.
@@ -144,13 +145,13 @@ func parseSkipList(skip string) (map[string]bool, error) {
 }
 
 func loadAllConfig(path string) (*allConfig, error) {
-	data, err := fileutil.ReadSecureFile(path)
+	data, err := fileutil.ReadFileOrStdin(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var cfg allConfig
-	if err := fileutil.UnmarshalConfigFile(data, &cfg, path); err != nil {
+	if err := fileutil.UnmarshalConfigData(data, &cfg, path); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
@@ -193,7 +194,12 @@ func applyPortsConfig(cmd *cobra.Command, cfg *portsCheckConfig) {
 
 func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) {
 	if cfg != nil && cfg.RegistryPolicy != nil && !cmd.Flags().Changed("registry-policy") {
-		registryPolicy = *cfg.RegistryPolicy
+		formatted, err := formatRegistryPolicy(cfg.RegistryPolicy)
+		if err != nil {
+			log.Errorf("Failed to format registry policy: %v", err)
+			return
+		}
+		registryPolicy = formatted
 	}
 }
 
@@ -202,7 +208,12 @@ func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) {
 		return
 	}
 	if cfg.SecretsPolicy != nil && !cmd.Flags().Changed("secrets-policy") {
-		secretsPolicy = *cfg.SecretsPolicy
+		formatted, err := formatSecretsPolicy(cfg.SecretsPolicy)
+		if err != nil {
+			log.Errorf("Failed to format secrets policy: %v", err)
+			return
+		}
+		secretsPolicy = formatted
 	}
 	if cfg.SkipEnvVars != nil && !cmd.Flags().Changed("skip-env-vars") {
 		skipEnvVars = *cfg.SkipEnvVars
@@ -225,6 +236,70 @@ func formatAllowedPorts(v any) string {
 		return ports
 	default:
 		return fmt.Sprintf("%v", v)
+	}
+}
+
+// formatRegistryPolicy converts inline policy object to temp file path
+func formatRegistryPolicy(v any) (string, error) {
+	switch policy := v.(type) {
+	case string:
+		return policy, nil // Already a file path
+	case map[string]any:
+		// Marshal to JSON and create temp file
+		data, err := json.Marshal(policy)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal inline registry policy: %w", err)
+		}
+
+		tmpFile, err := os.CreateTemp("", "registry-policy-*.json")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temp file for inline policy: %w", err)
+		}
+		defer func() {
+			if closeErr := tmpFile.Close(); closeErr != nil {
+				log.Warnf("failed to close temp file: %v", closeErr)
+			}
+		}()
+
+		if _, err := tmpFile.Write(data); err != nil {
+			return "", fmt.Errorf("failed to write inline policy to temp file: %w", err)
+		}
+
+		return tmpFile.Name(), nil
+	default:
+		return "", fmt.Errorf("registry-policy must be either a string (file path) or an object (inline policy), got %T", v)
+	}
+}
+
+// formatSecretsPolicy converts inline policy object to temp file path
+func formatSecretsPolicy(v any) (string, error) {
+	switch policy := v.(type) {
+	case string:
+		return policy, nil // Already a file path
+	case map[string]any:
+		// Marshal to JSON and create temp file
+		data, err := json.Marshal(policy)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal inline secrets policy: %w", err)
+		}
+
+		tmpFile, err := os.CreateTemp("", "secrets-policy-*.json")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temp file for inline policy: %w", err)
+		}
+		defer func() {
+			if closeErr := tmpFile.Close(); closeErr != nil {
+				log.Warnf("failed to close temp file: %v", closeErr)
+			}
+		}()
+
+		if _, err := tmpFile.Write(data); err != nil {
+			return "", fmt.Errorf("failed to write inline policy to temp file: %w", err)
+		}
+
+		return tmpFile.Name(), nil
+	default:
+		return "", fmt.Errorf("secrets-policy must be either a string (file path) or an object (inline policy), got %T", v)
 	}
 }
 
