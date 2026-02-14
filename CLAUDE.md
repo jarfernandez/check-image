@@ -215,13 +215,26 @@ In `internal/secrets/`:
 - Colors disabled when not running in a terminal
 - Set level via `--log-level` flag on any command
 
+### Docker Image
+- **Dockerfile**: Multi-stage build in `Dockerfile` (root of repo)
+- **Base image**: `gcr.io/distroless/static-debian12:nonroot` (provides CA certs for registry TLS, timezone data, non-root user UID 65532)
+- **Build**: `CGO_ENABLED=0`, static binary, `-s -w` stripped, version injection via `ARG VERSION`
+- **Registry**: `ghcr.io/jarfernandez/check-image`
+- **Platforms**: linux/amd64, linux/arm64
+- **Security**: Non-root user, no shell, no package manager, read-only filesystem compatible
+- **Local build**: `docker build --build-arg VERSION=dev -t check-image .`
+- **Container behavior**: Without Docker socket, `GetLocalImage()` fails silently and falls back to remote registry. This is the expected and recommended mode. Docker socket mounting is possible but grants host-level daemon access.
+
 ### Release Pipeline
-Single workflow in `.github/workflows/release-please.yml` with two chained jobs:
+Single workflow in `.github/workflows/release-please.yml` with three chained jobs:
 
 1. **release-please job**: Runs on every push to `main`. Creates/updates a release PR with changelog and version bump. When the release PR is merged, creates the git tag and GitHub release. Exports `releases_created` and `tag_name` as outputs.
 2. **goreleaser job**: Depends on the release-please job. Only runs when `releases_created == 'true'`. Checks out the tag, builds binaries for linux/darwin/windows (amd64/arm64), and uploads them to the GitHub release via `mode: append`.
+3. **docker job**: Depends on the release-please job. Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
 
-Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
+All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
+
+**Permissions**: `contents: write`, `pull-requests: write`, `packages: write` (packages required for GHCR push).
 
 **Configuration files**:
 - `.github/release-please-config.json`: Release-please settings (release type, changelog sections)

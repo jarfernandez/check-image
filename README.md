@@ -5,6 +5,7 @@ Check Image is a Go-based CLI tool designed for validating container images. It 
 ## Table of Contents
 
 - [Installation](#installation)
+- [Docker](#docker)
 - [Usage](#usage)
 - [Commands](#commands)
 - [Configuration Files](#configuration-files)
@@ -72,6 +73,64 @@ go install ./cmd/check-image
 ```
 
 This is useful for development. The version will show as `dev`.
+
+### Docker
+
+Check Image is available as a multi-arch Docker image (linux/amd64, linux/arm64) from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/jarfernandez/check-image:latest
+```
+
+**Basic usage (validates remote registry images):**
+
+```bash
+# Check image age
+docker run --rm ghcr.io/jarfernandez/check-image age nginx:latest --max-age 30
+
+# Check image size
+docker run --rm ghcr.io/jarfernandez/check-image size nginx:latest --max-size 100
+
+# Check for root user
+docker run --rm ghcr.io/jarfernandez/check-image root-user nginx:latest
+
+# Run all checks with JSON output
+docker run --rm ghcr.io/jarfernandez/check-image all nginx:latest -o json
+```
+
+**Using policy files via volume mounts:**
+
+```bash
+# Mount a local config directory
+docker run --rm \
+  -v "$(pwd)/config:/config:ro" \
+  ghcr.io/jarfernandez/check-image registry nginx:latest \
+  --registry-policy /config/registry-policy.json
+
+# Run all checks with a config file
+docker run --rm \
+  -v "$(pwd)/config:/config:ro" \
+  ghcr.io/jarfernandez/check-image all nginx:latest \
+  --config /config/config.yaml
+```
+
+**Using with Docker socket (advanced):**
+
+> **Warning:** Mounting the Docker socket grants the container full access to the Docker daemon, which is equivalent to root access on the host. Only use this in trusted environments.
+
+```bash
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  ghcr.io/jarfernandez/check-image age my-local-image:latest
+```
+
+Without the Docker socket mounted (the default), check-image automatically uses the remote registry to fetch image metadata. This is the recommended approach for CI/CD pipelines.
+
+**Using a specific version:**
+
+```bash
+docker pull ghcr.io/jarfernandez/check-image:0.7.0
+```
 
 ## Usage
 
