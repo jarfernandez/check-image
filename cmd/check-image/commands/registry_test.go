@@ -5,17 +5,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRegistryCommand(t *testing.T) {
-	// Test that registry command exists and has correct properties
 	assert.NotNil(t, registryCmd)
 	assert.Equal(t, "registry image", registryCmd.Use)
 	assert.Contains(t, registryCmd.Short, "registry")
 
-	// Test that it requires exactly 1 argument
 	assert.NotNil(t, registryCmd.Args)
 	err := registryCmd.Args(registryCmd, []string{})
 	assert.Error(t, err)
@@ -28,48 +27,20 @@ func TestRegistryCommand(t *testing.T) {
 }
 
 func TestRegistryCommandFlags(t *testing.T) {
-	// Test that registry-policy flag exists and is required
 	flag := registryCmd.Flags().Lookup("registry-policy")
 	assert.NotNil(t, flag)
 	assert.Equal(t, "r", flag.Shorthand)
-
-	// The flag is marked as required via MarkFlagRequired in init()
-	// We can verify it's a required flag by checking the command's annotations
-	// Note: Cobra stores this information internally
 }
 
 func TestRegistryCommand_MissingPolicy(t *testing.T) {
-	// Reset the registryPolicy variable
 	registryPolicy = ""
 
-	// Try to run without policy - should fail in RunE
 	err := registryCmd.RunE(registryCmd, []string{"nginx:latest"})
 	require.Error(t, err)
-	// The error message may vary depending on how the empty path is interpreted
 	assert.NotNil(t, err)
 }
 
-func TestRegistryCommand_NonRegistryTransport(t *testing.T) {
-	// Create a dummy policy file
-	tmpDir := t.TempDir()
-	policyFile := filepath.Join(tmpDir, "policy.json")
-	policyContent := `{"trusted-registries": ["docker.io"]}`
-	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
-	require.NoError(t, err)
-
-	registryPolicy = policyFile
-
-	// Test with OCI transport (should skip validation)
-	// Note: This would require creating an actual OCI layout
-	// For now, we just test the command structure
-}
-
 func TestRunRegistry_TrustedRegistry(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file with trusted registries
-	// Note: nginx:latest resolves to index.docker.io, not docker.io
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["index.docker.io", "gcr.io"]}`
@@ -78,20 +49,14 @@ func TestRunRegistry_TrustedRegistry(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with trusted registry
-	err = runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSucceeded, Result, "Should succeed for trusted registry")
+	assert.True(t, result.Passed, "Should succeed for trusted registry")
 
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_UntrustedRegistry(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file with trusted registries (not including the test registry)
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["gcr.io", "quay.io"]}`
@@ -100,21 +65,14 @@ func TestRunRegistry_UntrustedRegistry(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with untrusted registry (docker.io is not in the list)
-	err = runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationFailed, Result, "Should fail for untrusted registry")
+	assert.False(t, result.Passed, "Should fail for untrusted registry")
 
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_ExplicitRegistryName(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file
-	// Note: docker.io images resolve to index.docker.io
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["index.docker.io"]}`
@@ -123,12 +81,10 @@ func TestRunRegistry_ExplicitRegistryName(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with explicit registry name
-	err = runRegistry("docker.io/library/nginx:latest")
+	result, err := runRegistry("docker.io/library/nginx:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSucceeded, Result, "Should succeed for explicitly trusted registry")
+	assert.True(t, result.Passed, "Should succeed for explicitly trusted registry")
 
-	// Reset
 	registryPolicy = ""
 }
 
@@ -142,7 +98,7 @@ func TestRunRegistry_DifferentRegistries(t *testing.T) {
 		{
 			name:          "Docker Hub trusted",
 			imageName:     "nginx:latest",
-			trustedRegs:   []string{"index.docker.io"}, // Docker Hub resolves to index.docker.io
+			trustedRegs:   []string{"index.docker.io"},
 			expectSuccess: true,
 		},
 		{
@@ -179,10 +135,6 @@ func TestRunRegistry_DifferentRegistries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset global state
-			Result = ValidationSkipped
-
-			// Create policy file
 			tmpDir := t.TempDir()
 			policyFile := filepath.Join(tmpDir, "policy.json")
 			policyContent := `{"trusted-registries": [`
@@ -198,26 +150,21 @@ func TestRunRegistry_DifferentRegistries(t *testing.T) {
 
 			registryPolicy = policyFile
 
-			err = runRegistry(tt.imageName)
+			result, err := runRegistry(tt.imageName)
 			require.NoError(t, err)
 
 			if tt.expectSuccess {
-				assert.Equal(t, ValidationSucceeded, Result, "Expected validation to succeed")
+				assert.True(t, result.Passed, "Expected validation to succeed")
 			} else {
-				assert.Equal(t, ValidationFailed, Result, "Expected validation to fail")
+				assert.False(t, result.Passed, "Expected validation to fail")
 			}
 
-			// Reset
 			registryPolicy = ""
 		})
 	}
 }
 
 func TestRunRegistry_ExcludedRegistries(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file with excluded registries
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"excluded-registries": ["untrusted.io", "malicious.com"]}`
@@ -226,20 +173,14 @@ func TestRunRegistry_ExcludedRegistries(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with non-excluded registry (should succeed)
-	err = runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSucceeded, Result, "Should succeed for non-excluded registry")
+	assert.True(t, result.Passed, "Should succeed for non-excluded registry")
 
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_ExcludedRegistryBlocked(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file with excluded registries
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"excluded-registries": ["index.docker.io"]}`
@@ -248,20 +189,14 @@ func TestRunRegistry_ExcludedRegistryBlocked(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with excluded registry (should fail)
-	err = runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationFailed, Result, "Should fail for excluded registry")
+	assert.False(t, result.Passed, "Should fail for excluded registry")
 
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_OCITransportSkipped(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file (won't be used because OCI transport skips validation)
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["docker.io"]}`
@@ -270,20 +205,17 @@ func TestRunRegistry_OCITransportSkipped(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with OCI transport - should skip validation
-	err = runRegistry("oci:/path/to/layout:latest")
+	result, err := runRegistry("oci:/path/to/layout:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSkipped, Result, "Should skip validation for OCI transport")
 
-	// Reset
+	details, ok := result.Details.(output.RegistryDetails)
+	require.True(t, ok)
+	assert.True(t, details.Skipped, "Should skip validation for OCI transport")
+
 	registryPolicy = ""
 }
 
 func TestRunRegistry_OCIArchiveTransportSkipped(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["docker.io"]}`
@@ -292,20 +224,17 @@ func TestRunRegistry_OCIArchiveTransportSkipped(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with OCI archive transport - should skip validation
-	err = runRegistry("oci-archive:/path/to/image.tar:latest")
+	result, err := runRegistry("oci-archive:/path/to/image.tar:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSkipped, Result, "Should skip validation for OCI archive transport")
 
-	// Reset
+	details, ok := result.Details.(output.RegistryDetails)
+	require.True(t, ok)
+	assert.True(t, details.Skipped, "Should skip validation for OCI archive transport")
+
 	registryPolicy = ""
 }
 
 func TestRunRegistry_DockerArchiveTransportSkipped(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["docker.io"]}`
@@ -314,35 +243,27 @@ func TestRunRegistry_DockerArchiveTransportSkipped(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with Docker archive transport - should skip validation
-	err = runRegistry("docker-archive:/path/to/image.tar:nginx")
+	result, err := runRegistry("docker-archive:/path/to/image.tar:nginx")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSkipped, Result, "Should skip validation for docker-archive transport")
 
-	// Reset
+	details, ok := result.Details.(output.RegistryDetails)
+	require.True(t, ok)
+	assert.True(t, details.Skipped, "Should skip validation for docker-archive transport")
+
 	registryPolicy = ""
 }
 
 func TestRunRegistry_InvalidPolicyFile(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Set non-existent policy file
 	registryPolicy = "/nonexistent/policy.json"
 
-	err := runRegistry("nginx:latest")
+	_, err := runRegistry("nginx:latest")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to load registry policy")
 
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_InvalidPolicyContent(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create invalid policy file
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{invalid json}`
@@ -351,19 +272,14 @@ func TestRunRegistry_InvalidPolicyContent(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	err = runRegistry("nginx:latest")
+	_, err = runRegistry("nginx:latest")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to load registry policy")
 
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_YAMLPolicyFile(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create YAML policy file
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.yaml")
 	policyContent := `trusted-registries:
@@ -375,42 +291,14 @@ func TestRunRegistry_YAMLPolicyFile(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with YAML policy
-	err = runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest")
 	require.NoError(t, err)
-	assert.Equal(t, ValidationSucceeded, Result, "Should work with YAML policy file")
+	assert.True(t, result.Passed, "Should work with YAML policy file")
 
-	// Reset
-	registryPolicy = ""
-}
-
-func TestRunRegistry_PreservesPreviousFailure(t *testing.T) {
-	// Set Result to ValidationFailed to simulate a previous failed check
-	Result = ValidationFailed
-
-	// Create policy file
-	tmpDir := t.TempDir()
-	policyFile := filepath.Join(tmpDir, "policy.json")
-	policyContent := `{"trusted-registries": ["index.docker.io"]}`
-	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
-	require.NoError(t, err)
-
-	registryPolicy = policyFile
-
-	// Test with trusted registry (would normally succeed)
-	err = runRegistry("nginx:latest")
-	require.NoError(t, err)
-	assert.Equal(t, ValidationFailed, Result, "Should preserve previous validation failure")
-
-	// Reset
 	registryPolicy = ""
 }
 
 func TestRunRegistry_InvalidImageName(t *testing.T) {
-	// Reset global state
-	Result = ValidationSkipped
-
-	// Create policy file
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "policy.json")
 	policyContent := `{"trusted-registries": ["index.docker.io"]}`
@@ -419,10 +307,8 @@ func TestRunRegistry_InvalidImageName(t *testing.T) {
 
 	registryPolicy = policyFile
 
-	// Test with invalid image name
-	err = runRegistry("")
+	_, err = runRegistry("")
 	require.Error(t, err)
 
-	// Reset
 	registryPolicy = ""
 }

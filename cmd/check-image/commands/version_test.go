@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	ver "github.com/jarfernandez/check-image/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,9 @@ func TestVersionCommand_Execute(t *testing.T) {
 
 			// Set the version value
 			ver.Version = tt.versionValue
+
+			// Set text output mode
+			OutputFmt = output.FormatText
 
 			// Capture stdout
 			old := os.Stdout
@@ -86,6 +90,7 @@ func TestVersionCommand_RunE(t *testing.T) {
 
 	// Set a test version
 	ver.Version = "v1.0.0"
+	OutputFmt = output.FormatText
 
 	// Capture stdout
 	old := os.Stdout
@@ -115,6 +120,7 @@ func TestRunVersion_EmptyVersion(t *testing.T) {
 
 	// Test behavior with empty version string
 	ver.Version = ""
+	OutputFmt = output.FormatText
 
 	// Capture stdout
 	old := os.Stdout
@@ -135,4 +141,29 @@ func TestRunVersion_EmptyVersion(t *testing.T) {
 	// Assert
 	require.NoError(t, err, "runVersion should not return an error with empty version")
 	assert.Equal(t, "dev\n", buf.String(), "Output should be a newline for empty version")
+}
+
+func TestRunVersion_JSONFormat(t *testing.T) {
+	// Preserve original version
+	originalVersion := ver.Version
+	defer func() { ver.Version = originalVersion }()
+
+	ver.Version = "v1.2.3"
+	OutputFmt = output.FormatJSON
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runVersion()
+
+	_ = w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), `"version": "v1.2.3"`)
 }

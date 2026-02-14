@@ -2,9 +2,11 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
+	"github.com/jarfernandez/check-image/internal/output"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -54,7 +56,7 @@ type secretsCheckConfig struct {
 // checkRunner represents a single check to be executed.
 type checkRunner struct {
 	name string
-	run  func(imageName string) error
+	run  func(imageName string) (*output.CheckResult, error)
 }
 
 var configFile string
@@ -233,7 +235,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 	type checkDef struct {
 		name    string
 		enabled bool
-		runFunc func(string) error
+		runFunc func(string) (*output.CheckResult, error)
 	}
 
 	var defs []checkDef
@@ -270,11 +272,11 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 }
 
 // runPortsForAll wraps runPorts to parse allowed ports first.
-func runPortsForAll(imageName string) error {
+func runPortsForAll(imageName string) (*output.CheckResult, error) {
 	var err error
 	allowedPortsList, err = parseAllowedPorts()
 	if err != nil {
-		return fmt.Errorf("invalid allowed ports: %w", err)
+		return nil, fmt.Errorf("invalid allowed ports: %w", err)
 	}
 	return runPorts(imageName)
 }
@@ -304,27 +306,130 @@ func runAll(cmd *cobra.Command, imageName string) error {
 	}
 
 	if len(checks) == 0 {
+		if OutputFmt == output.FormatJSON {
+			skipped := skippedCheckNames(skipMap)
+			allResult := output.AllResult{
+				Image:  imageName,
+				Passed: true,
+				Checks: []output.CheckResult{},
+				Summary: output.Summary{
+					Total:   0,
+					Skipped: skipped,
+				},
+			}
+			return output.RenderJSON(os.Stdout, allResult)
+		}
 		fmt.Println("No checks to run")
 		return nil
 	}
 
-	fmt.Printf("Running %d checks on image %s\n\n", len(checks), imageName)
+	if OutputFmt == output.FormatText {
+		fmt.Printf("Running %d checks on image %s\n\n", len(checks), imageName)
+	}
+
+	results := executeChecks(checks, imageName)
+
+	if OutputFmt == output.FormatJSON {
+		return renderAllJSON(imageName, results, skipMap)
+	}
+
+	return nil
+}
+
+// executeChecks runs each check, collects results, and updates the global Result.
+func executeChecks(checks []checkRunner, imageName string) []output.CheckResult {
+	var results []output.CheckResult
 
 	for _, check := range checks {
 		log.Debugf("Running check: %s", check.name)
-		fmt.Printf("=== %s ===\n", check.name)
 
-		if err := check.run(imageName); err != nil {
-			log.Errorf("Check %s failed with error: %v", check.name, err)
-			Result = ValidationFailed
+		if OutputFmt == output.FormatText {
+			fmt.Printf("=== %s ===\n", check.name)
 		}
 
-		fmt.Println()
+		result, err := check.run(imageName)
+		if err != nil {
+			log.Errorf("Check %s failed with error: %v", check.name, err)
+			Result = ValidationFailed
+
+			errResult := output.CheckResult{
+				Check:   check.name,
+				Image:   imageName,
+				Passed:  false,
+				Message: fmt.Sprintf("check failed with error: %v", err),
+				Error:   err.Error(),
+			}
+			results = append(results, errResult)
+		} else {
+			results = append(results, *result)
+
+			if OutputFmt == output.FormatText {
+				if renderErr := renderResult(result); renderErr != nil {
+					log.Errorf("Failed to render result for %s: %v", check.name, renderErr)
+				}
+			}
+
+			if result.Passed {
+				if Result != ValidationFailed {
+					Result = ValidationSucceeded
+				}
+			} else {
+				Result = ValidationFailed
+			}
+		}
+
+		if OutputFmt == output.FormatText {
+			fmt.Println()
+		}
 
 		if failFast && Result == ValidationFailed {
 			break
 		}
 	}
 
-	return nil
+	return results
+}
+
+// renderAllJSON renders the aggregated results as a single JSON object.
+func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[string]bool) error {
+	skipped := skippedCheckNames(skipMap)
+	var passed, failed, errored int
+	for _, r := range results {
+		switch {
+		case r.Error != "":
+			errored++
+		case r.Passed:
+			passed++
+		default:
+			failed++
+		}
+	}
+
+	allResult := output.AllResult{
+		Image:  imageName,
+		Passed: Result != ValidationFailed,
+		Checks: results,
+		Summary: output.Summary{
+			Total:   len(results),
+			Passed:  passed,
+			Failed:  failed,
+			Errored: errored,
+			Skipped: skipped,
+		},
+	}
+	return output.RenderJSON(os.Stdout, allResult)
+}
+
+// skippedCheckNames returns the list of skipped check names from the skip map.
+func skippedCheckNames(skipMap map[string]bool) []string {
+	if len(skipMap) == 0 {
+		return nil
+	}
+	var names []string
+	for _, name := range validCheckNames {
+		if skipMap[name] {
+			names = append(names, name)
+		}
+	}
+	return names
 }

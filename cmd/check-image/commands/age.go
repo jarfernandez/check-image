@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -27,8 +28,21 @@ The 'image' argument supports multiple formats:
   check-image age docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := runAge(args[0]); err != nil {
+		result, err := runAge(args[0])
+		if err != nil {
 			return fmt.Errorf("check age operation failed: %w", err)
+		}
+
+		if err := renderResult(result); err != nil {
+			return err
+		}
+
+		if result.Passed {
+			if Result != ValidationFailed {
+				Result = ValidationSucceeded
+			}
+		} else {
+			Result = ValidationFailed
 		}
 
 		return nil
@@ -40,28 +54,35 @@ func init() {
 	ageCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
 }
 
-func runAge(imageName string) error {
-	fmt.Printf("Checking age of image %s\n", imageName)
-
+func runAge(imageName string) (*output.CheckResult, error) {
 	_, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if config.Created.IsZero() {
-		return fmt.Errorf("image creation date is not set")
+		return nil, fmt.Errorf("image creation date is not set")
 	}
 
 	age := time.Since(config.Created.Time).Hours() / 24
+	passed := age <= float64(maxAge)
 
-	fmt.Printf("Image creation date: %s\n", config.Created.Format(time.RFC3339))
-	fmt.Printf("Image age: %.0f days\n", age)
+	var msg string
+	if passed {
+		msg = fmt.Sprintf("Image is less than %d days old", maxAge)
+	} else {
+		msg = fmt.Sprintf("Image is older than %d days", maxAge)
+	}
 
-	SetValidationResult(
-		age <= float64(maxAge),
-		fmt.Sprintf("Image is less than %d days old", maxAge),
-		fmt.Sprintf("Image is older than %d days", maxAge),
-	)
-
-	return nil
+	return &output.CheckResult{
+		Check:   "age",
+		Image:   imageName,
+		Passed:  passed,
+		Message: msg,
+		Details: output.AgeDetails{
+			CreatedAt: config.Created.Format(time.RFC3339),
+			AgeDays:   age,
+			MaxAge:    maxAge,
+		},
+	}, nil
 }

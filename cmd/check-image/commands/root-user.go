@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -23,8 +24,21 @@ The 'image' argument supports multiple formats:
   check-image root-user docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := runRootUser(args[0]); err != nil {
+		result, err := runRootUser(args[0])
+		if err != nil {
 			return fmt.Errorf("check root-user operation failed: %w", err)
+		}
+
+		if err := renderResult(result); err != nil {
+			return err
+		}
+
+		if result.Passed {
+			if Result != ValidationFailed {
+				Result = ValidationSucceeded
+			}
+		} else {
+			Result = ValidationFailed
 		}
 
 		return nil
@@ -35,20 +49,28 @@ func init() {
 	rootCmd.AddCommand(rootUserCmd)
 }
 
-func runRootUser(imageName string) error {
-	fmt.Printf("Checking if image %s is configured to run as a non-root user\n", imageName)
-
+func runRootUser(imageName string) (*output.CheckResult, error) {
 	_, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	isNonRoot := config.Config.User != "root" && config.Config.User != ""
-	SetValidationResult(
-		isNonRoot,
-		"Image is configured to run as a non-root user",
-		"Image is not configured to run as a non-root user",
-	)
 
-	return nil
+	var msg string
+	if isNonRoot {
+		msg = "Image is configured to run as a non-root user"
+	} else {
+		msg = "Image is not configured to run as a non-root user"
+	}
+
+	return &output.CheckResult{
+		Check:   "root-user",
+		Image:   imageName,
+		Passed:  isNonRoot,
+		Message: msg,
+		Details: output.RootUserDetails{
+			User: config.Config.User,
+		},
+	}, nil
 }

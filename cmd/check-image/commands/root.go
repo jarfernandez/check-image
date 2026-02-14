@@ -2,10 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"os"
+
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/mattn/go-isatty"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type ValidationResult int
@@ -19,6 +21,10 @@ const (
 var Result = ValidationSkipped
 
 var logLevel string
+var outputFormat string
+
+// OutputFmt holds the parsed output format after PersistentPreRunE.
+var OutputFmt output.Format
 
 var rootCmd = &cobra.Command{
 	Use:          "check-image",
@@ -32,6 +38,12 @@ var rootCmd = &cobra.Command{
 		}
 		log.SetLevel(level)
 		log.Debugln("Log level set to", level.String())
+
+		f, err := output.ParseFormat(outputFormat)
+		if err != nil {
+			return err
+		}
+		OutputFmt = f
 
 		return nil
 	},
@@ -50,24 +62,11 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "info", "Sets the log level (trace, debug, info, warn, error, fatal, panic) (optional)")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "text", "Output format: text, json (optional)")
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("Error executing check-image: %v", err)
-	}
-}
-
-// SetValidationResult updates the global validation result based on whether
-// validation passed or failed, and prints the appropriate message.
-func SetValidationResult(passed bool, successMsg, failureMsg string) {
-	if passed {
-		fmt.Println(successMsg)
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-	} else {
-		fmt.Println(failureMsg)
-		Result = ValidationFailed
 	}
 }

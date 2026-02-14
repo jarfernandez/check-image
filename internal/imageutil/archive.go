@@ -82,6 +82,7 @@ func extractOCIArchive(tarballPath string) (string, error) {
 		switch header.Typeflag {
 		case tar.TypeDir:
 			// Create directory with secure permissions
+			// #nosec G703 -- target validated against path traversal above (HasPrefix check)
 			if err := os.MkdirAll(target, 0750); err != nil {
 				_ = os.RemoveAll(tempDir) // Best effort cleanup
 				return "", fmt.Errorf("error creating directory %s: %w", target, err)
@@ -89,6 +90,7 @@ func extractOCIArchive(tarballPath string) (string, error) {
 
 		case tar.TypeReg:
 			// Create parent directories if needed
+			// #nosec G703 -- target validated against path traversal above (HasPrefix check)
 			if err := os.MkdirAll(filepath.Dir(target), 0750); err != nil {
 				_ = os.RemoveAll(tempDir) // Best effort cleanup
 				return "", fmt.Errorf("error creating parent directory for %s: %w", target, err)
@@ -97,7 +99,7 @@ func extractOCIArchive(tarballPath string) (string, error) {
 			// Use safe file mode (limit to standard file permissions)
 			// #nosec G115 -- Mode masked to 0777 ensures safe conversion
 			fileMode := os.FileMode(header.Mode) & 0777
-			// #nosec G304 -- target path validated above for traversal
+			// #nosec G304,G703 -- target path validated above for traversal (HasPrefix check)
 			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, fileMode)
 			if err != nil {
 				_ = os.RemoveAll(tempDir) // Best effort cleanup

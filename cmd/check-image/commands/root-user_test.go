@@ -1,12 +1,10 @@
 package commands
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,40 +29,40 @@ func TestRootUserCommand(t *testing.T) {
 
 func TestRunRootUser(t *testing.T) {
 	tests := []struct {
-		name           string
-		user           string
-		expectedResult ValidationResult
-		expectedOutput string
+		name         string
+		user         string
+		expectedPass bool
+		expectedMsg  string
 	}{
 		{
-			name:           "Non-root user (UID)",
-			user:           "1000",
-			expectedResult: ValidationSucceeded,
-			expectedOutput: "Image is configured to run as a non-root user",
+			name:         "Non-root user (UID)",
+			user:         "1000",
+			expectedPass: true,
+			expectedMsg:  "Image is configured to run as a non-root user",
 		},
 		{
-			name:           "Non-root user (username)",
-			user:           "appuser",
-			expectedResult: ValidationSucceeded,
-			expectedOutput: "Image is configured to run as a non-root user",
+			name:         "Non-root user (username)",
+			user:         "appuser",
+			expectedPass: true,
+			expectedMsg:  "Image is configured to run as a non-root user",
 		},
 		{
-			name:           "Non-root user (UID:GID)",
-			user:           "1000:1000",
-			expectedResult: ValidationSucceeded,
-			expectedOutput: "Image is configured to run as a non-root user",
+			name:         "Non-root user (UID:GID)",
+			user:         "1000:1000",
+			expectedPass: true,
+			expectedMsg:  "Image is configured to run as a non-root user",
 		},
 		{
-			name:           "Root user",
-			user:           "root",
-			expectedResult: ValidationFailed,
-			expectedOutput: "Image is not configured to run as a non-root user",
+			name:         "Root user",
+			user:         "root",
+			expectedPass: false,
+			expectedMsg:  "Image is not configured to run as a non-root user",
 		},
 		{
-			name:           "Empty user (defaults to root)",
-			user:           "",
-			expectedResult: ValidationFailed,
-			expectedOutput: "Image is not configured to run as a non-root user",
+			name:         "Empty user (defaults to root)",
+			user:         "",
+			expectedPass: false,
+			expectedMsg:  "Image is not configured to run as a non-root user",
 		},
 	}
 
@@ -76,35 +74,25 @@ func TestRunRootUser(t *testing.T) {
 				created: time.Now(),
 			})
 
-			// Capture stdout
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			// Reset Result
-			Result = ValidationSkipped
-
 			// Run command
-			err := runRootUser(imageRef)
+			result, err := runRootUser(imageRef)
 			require.NoError(t, err)
 
-			// Restore stdout
-			_ = w.Close()
-			os.Stdout = old
+			// Assert on struct
+			assert.Equal(t, "root-user", result.Check)
+			assert.Equal(t, imageRef, result.Image)
+			assert.Equal(t, tt.expectedPass, result.Passed)
+			assert.Equal(t, tt.expectedMsg, result.Message)
 
-			// Read captured output
-			var buf bytes.Buffer
-			_, _ = io.Copy(&buf, r)
-
-			// Assert
-			assert.Equal(t, tt.expectedResult, Result)
-			assert.Contains(t, buf.String(), tt.expectedOutput)
+			details, ok := result.Details.(output.RootUserDetails)
+			require.True(t, ok)
+			assert.Equal(t, tt.user, details.User)
 		})
 	}
 }
 
 func TestRunRootUser_InvalidImage(t *testing.T) {
 	// Test with invalid image reference
-	err := runRootUser("nonexistent:image")
+	_, err := runRootUser("nonexistent:image")
 	require.Error(t, err)
 }

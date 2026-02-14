@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -458,6 +459,7 @@ func TestFormatAllowedPorts(t *testing.T) {
 // resetAllGlobals resets all package-level variables used by commands to their defaults.
 func resetAllGlobals() {
 	Result = ValidationSkipped
+	OutputFmt = output.FormatText
 	maxAge = 90
 	maxSize = 500
 	maxLayers = 20
