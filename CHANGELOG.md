@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/jarfernandez/check-image/compare/v0.7.0...v0.8.0) (2026-02-14)
+
+
+### Features
+
+* Add Docker support with multi-arch images and GHCR publishing ([#54](https://github.com/jarfernandez/check-image/issues/54)) ([0551aca](https://github.com/jarfernandez/check-image/commit/0551aca68ed08c746f51ff78b753ea85831a9663))
+
 ## [0.7.0](https://github.com/jarfernandez/check-image/compare/v0.6.0...v0.7.0) (2026-02-14)
 
 
