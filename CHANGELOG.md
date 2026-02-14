@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/jarfernandez/check-image/compare/v0.6.0...v0.7.0) (2026-02-14)
+
+
+### Features
+
+* Add stdin support and inline configuration for policies ([#51](https://github.com/jarfernandez/check-image/issues/51)) ([e3c5df8](https://github.com/jarfernandez/check-image/commit/e3c5df8e18f8aece1600d0d8c3e56ca7eb23e995))
+
 ## [0.6.0](https://github.com/jarfernandez/check-image/compare/v0.5.1...v0.6.0) (2026-02-14)
 
 
