@@ -22,22 +22,22 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Set the version you want to install (or use 'latest' tag from releases page)
-VERSION=0.2.0
+VERSION=0.7.0
 
 # macOS (Apple Silicon)
-curl -sL https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_arm64.tar.gz | tar xz
+curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_arm64.tar.gz" | tar xz
 sudo mv check-image /usr/local/bin/
 
 # macOS (Intel)
-curl -sL https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_amd64.tar.gz | tar xz
+curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_amd64.tar.gz" | tar xz
 sudo mv check-image /usr/local/bin/
 
 # Linux (amd64)
-curl -sL https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_linux_amd64.tar.gz | tar xz
+curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_linux_amd64.tar.gz" | tar xz
 sudo mv check-image /usr/local/bin/
 
 # Linux (arm64)
-curl -sL https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_linux_arm64.tar.gz | tar xz
+curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_linux_arm64.tar.gz" | tar xz
 sudo mv check-image /usr/local/bin/
 
 # Windows (amd64)
@@ -45,7 +45,7 @@ sudo mv check-image /usr/local/bin/
 # and extract to a directory in your PATH
 ```
 
-Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.2.0`).
+Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.7.0`).
 
 ### Install with Go
 
@@ -56,7 +56,7 @@ Pre-built binaries include the correct version number (e.g., `check-image versio
 go install github.com/jarfernandez/check-image/cmd/check-image@latest
 
 # Or install a specific version
-go install github.com/jarfernandez/check-image/cmd/check-image@v0.2.0
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.7.0
 ```
 
 This will install the `check-image` binary to your `GOBIN` directory.
