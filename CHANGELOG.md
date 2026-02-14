@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1](https://github.com/jarfernandez/check-image/compare/v0.5.0...v0.5.1) (2026-02-14)
+
+
+### Code Refactoring
+
+* Reduce gocyclo min-complexity and fix extractOCIArchive ([#47](https://github.com/jarfernandez/check-image/issues/47)) ([bc8a446](https://github.com/jarfernandez/check-image/commit/bc8a44618089e4a143b8ca7e5f66d0e73447b23f))
+
 ## [0.5.0](https://github.com/jarfernandez/check-image/compare/v0.4.0...v0.5.0) (2026-02-14)
 
 
@@ -14,14 +21,14 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Features
 
-* add `--fail-fast` flag to `all` command ([#43](https://github.com/jarfernandez/check-image/issues/43)) ([52e4863](https://github.com/jarfernandez/check-image/commit/52e4863afb5d95509d132e73c2c3f1c938e51aa1))
+* Add `--fail-fast` flag to `all` command ([#43](https://github.com/jarfernandez/check-image/issues/43)) ([52e4863](https://github.com/jarfernandez/check-image/commit/52e4863afb5d95509d132e73c2c3f1c938e51aa1))
 
 ## [0.3.0](https://github.com/jarfernandez/check-image/compare/v0.2.0...v0.3.0) (2026-02-10)
 
 
 ### Features
 
-* add `all` command to run all validation checks at once ([#41](https://github.com/jarfernandez/check-image/issues/41)) ([8fac20e](https://github.com/jarfernandez/check-image/commit/8fac20e26aae87e4d76cf4d06d27b51a36d64a3e))
+* Add `all` command to run all validation checks at once ([#41](https://github.com/jarfernandez/check-image/issues/41)) ([8fac20e](https://github.com/jarfernandez/check-image/commit/8fac20e26aae87e4d76cf4d06d27b51a36d64a3e))
 
 ## [0.2.0](https://github.com/jarfernandez/check-image/compare/v0.1.1...v0.2.0) (2026-02-09)
 
