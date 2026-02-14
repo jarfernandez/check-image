@@ -235,21 +235,21 @@ func TestLoadAllConfig(t *testing.T) {
 }
 
 func TestDetermineChecks(t *testing.T) {
-	t.Run("no config no skip runs all 6 checks", func(t *testing.T) {
+	t.Run("no config no skip runs all 7 checks", func(t *testing.T) {
 		checks := determineChecks(nil, nil)
-		assert.Len(t, checks, 6)
+		assert.Len(t, checks, 7)
 
 		names := make([]string, len(checks))
 		for i, c := range checks {
 			names[i] = c.name
 		}
-		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets"}, names)
+		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "labels"}, names)
 	})
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
 		checks := determineChecks(nil, skipMap)
-		assert.Len(t, checks, 4)
+		assert.Len(t, checks, 5)
 
 		for _, c := range checks {
 			assert.NotEqual(t, "registry", c.name)
@@ -288,7 +288,7 @@ func TestDetermineChecks(t *testing.T) {
 	t.Run("skip all gives 0 checks", func(t *testing.T) {
 		skipMap := map[string]bool{
 			"age": true, "size": true, "ports": true,
-			"registry": true, "root-user": true, "secrets": true,
+			"registry": true, "root-user": true, "secrets": true, "labels": true,
 		}
 		checks := determineChecks(nil, skipMap)
 		assert.Len(t, checks, 0)
@@ -491,7 +491,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 func TestRunAll_AllChecksPass(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
+	skipChecks = "registry,labels" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -514,7 +514,7 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 
 func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
+	skipChecks = "registry,labels" // skip checks that require policy files
 
 	// Image runs as root -> root-user check fails
 	imageRef := createTestImage(t, testImageOptions{
@@ -538,7 +538,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "root-user,registry" // skip root-user (would fail) and registry (requires policy)
+	skipChecks = "root-user,registry,labels" // skip root-user (would fail) and checks that require policy files
 
 	// Image runs as root but we skip root-user check
 	imageRef := createTestImage(t, testImageOptions{
@@ -668,8 +668,8 @@ func TestRunAll_CLIOverridesConfig(t *testing.T) {
 
 func TestRunAll_WithoutConfig_FlagsWork(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
-	maxAge = 1              // Very strict: 1 day
+	skipChecks = "registry,labels" // skip checks that require policy files
+	maxAge = 1                     // Very strict: 1 day
 
 	// Image is 10 days old -> should fail age check
 	imageRef := createTestImage(t, testImageOptions{
@@ -704,7 +704,7 @@ func TestRunAll_RegistryRequiresPolicy(t *testing.T) {
 
 func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
+	skipChecks = "registry,labels" // skip checks that require policy files
 
 	// Image exposes ports but no allowed-ports provided -> ports check fails
 	imageRef := createTestImage(t, testImageOptions{
@@ -725,7 +725,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 
 func TestRunAll_SkipAll(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "age,size,ports,registry,root-user,secrets"
+	skipChecks = "age,size,ports,registry,root-user,secrets,labels"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000",
@@ -777,7 +777,7 @@ func TestAllCommandFailFastFlag(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
+	skipChecks = "registry,labels" // skip checks that require policy files
 	failFast = true
 
 	// Image runs as root -> root-user check fails
@@ -802,7 +802,7 @@ func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
+	skipChecks = "registry,labels" // skip checks that require policy files
 	failFast = true
 
 	// Provide invalid allowed-ports to cause an execution error in ports check
@@ -829,7 +829,7 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 
 func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry (requires policy file)
+	skipChecks = "registry,labels" // skip checks that require policy files
 	failFast = false
 
 	// Image runs as root -> root-user check fails

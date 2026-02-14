@@ -13,7 +13,7 @@ import (
 )
 
 // validCheckNames lists all check names recognized by the all command.
-var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets"}
+var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "labels"}
 
 // allConfig represents the configuration file structure for the all command.
 type allConfig struct {
@@ -27,6 +27,7 @@ type allChecksConfig struct {
 	Registry *registryCheckConfig `json:"registry,omitempty"  yaml:"registry,omitempty"`
 	RootUser *rootUserCheckConfig `json:"root-user,omitempty" yaml:"root-user,omitempty"`
 	Secrets  *secretsCheckConfig  `json:"secrets,omitempty"   yaml:"secrets,omitempty"`
+	Labels   *labelsCheckConfig   `json:"labels,omitempty"    yaml:"labels,omitempty"`
 }
 
 type ageCheckConfig struct {
@@ -52,6 +53,10 @@ type secretsCheckConfig struct {
 	SecretsPolicy any   `json:"secrets-policy,omitempty" yaml:"secrets-policy,omitempty"`
 	SkipEnvVars   *bool `json:"skip-env-vars,omitempty"  yaml:"skip-env-vars,omitempty"`
 	SkipFiles     *bool `json:"skip-files,omitempty"     yaml:"skip-files,omitempty"`
+}
+
+type labelsCheckConfig struct {
+	LabelsPolicy any `json:"labels-policy,omitempty" yaml:"labels-policy,omitempty"`
 }
 
 // checkRunner represents a single check to be executed.
@@ -107,7 +112,7 @@ func init() {
 	rootCmd.AddCommand(allCmd)
 
 	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to configuration file (JSON or YAML) (optional)")
-	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets) (optional)")
+	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, labels) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
@@ -116,6 +121,7 @@ func init() {
 	allCmd.Flags().StringVarP(&secretsPolicy, "secrets-policy", "s", "", "Path to secrets policy file (JSON or YAML) (optional)")
 	allCmd.Flags().BoolVar(&skipEnvVars, "skip-env-vars", false, "Skip environment variable checks in secrets detection (optional)")
 	allCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks in secrets detection (optional)")
+	allCmd.Flags().StringVar(&labelsPolicy, "labels-policy", "", "Labels policy file (JSON or YAML) (optional)")
 	allCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first check failure (optional)")
 }
 
@@ -166,6 +172,7 @@ func applyConfigValues(cmd *cobra.Command, cfg *allConfig) {
 	applyPortsConfig(cmd, cfg.Checks.Ports)
 	applyRegistryConfig(cmd, cfg.Checks.Registry)
 	applySecretsConfig(cmd, cfg.Checks.Secrets)
+	applyLabelsConfig(cmd, cfg.Checks.Labels)
 }
 
 func applyAgeConfig(cmd *cobra.Command, cfg *ageCheckConfig) {
@@ -303,6 +310,48 @@ func formatSecretsPolicy(v any) (string, error) {
 	}
 }
 
+func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) {
+	if cfg != nil && cfg.LabelsPolicy != nil && !cmd.Flags().Changed("labels-policy") {
+		formatted, err := formatLabelsPolicy(cfg.LabelsPolicy)
+		if err != nil {
+			log.Errorf("Failed to format labels policy: %v", err)
+			return
+		}
+		labelsPolicy = formatted
+	}
+}
+
+func formatLabelsPolicy(v any) (string, error) {
+	switch policy := v.(type) {
+	case string:
+		return policy, nil // Already a file path
+	case map[string]any:
+		// Marshal to JSON and create temp file
+		data, err := json.Marshal(policy)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal inline labels policy: %w", err)
+		}
+
+		tmpFile, err := os.CreateTemp("", "labels-policy-*.json")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temp file for inline policy: %w", err)
+		}
+		defer func() {
+			if closeErr := tmpFile.Close(); closeErr != nil {
+				log.Warnf("failed to close temp file: %v", closeErr)
+			}
+		}()
+
+		if _, err := tmpFile.Write(data); err != nil {
+			return "", fmt.Errorf("failed to write inline policy to temp file: %w", err)
+		}
+
+		return tmpFile.Name(), nil
+	default:
+		return "", fmt.Errorf("labels-policy must be either a string (file path) or an object (inline policy), got %T", v)
+	}
+}
+
 // determineChecks decides which checks to run based on config and skip list.
 func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 	var checks []checkRunner
@@ -324,6 +373,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 			{"registry", cfg.Checks.Registry != nil, runRegistry},
 			{"root-user", cfg.Checks.RootUser != nil, runRootUser},
 			{"secrets", cfg.Checks.Secrets != nil, runSecrets},
+			{"labels", cfg.Checks.Labels != nil, runLabels},
 		}
 	} else {
 		// Without config: run all checks
@@ -334,6 +384,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 			{"registry", true, runRegistry},
 			{"root-user", true, runRootUser},
 			{"secrets", true, runSecrets},
+			{"labels", true, runLabels},
 		}
 	}
 
@@ -373,10 +424,13 @@ func runAll(cmd *cobra.Command, imageName string) error {
 
 	checks := determineChecks(cfg, skipMap)
 
-	// Validate that registry-policy is provided when registry check will run
+	// Validate that required flags are provided when checks will run
 	for _, c := range checks {
 		if c.name == "registry" && registryPolicy == "" {
 			return fmt.Errorf("--registry-policy is required when the registry check is enabled")
+		}
+		if c.name == "labels" && labelsPolicy == "" {
+			return fmt.Errorf("--labels-policy is required when the labels check is enabled")
 		}
 	}
 

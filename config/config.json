@@ -18,6 +18,9 @@
       "secrets-policy": "config/secrets-policy.json",
       "skip-env-vars": false,
       "skip-files": false
+    },
+    "labels": {
+      "labels-policy": "config/labels-policy.json"
     }
   }
 }
