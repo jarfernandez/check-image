@@ -89,42 +89,9 @@ func extractOCIArchive(tarballPath string) (string, error) {
 			}
 
 		case tar.TypeReg:
-			// Create parent directories if needed
-			// #nosec G703 -- target validated against path traversal above (HasPrefix check)
-			if err := os.MkdirAll(filepath.Dir(target), 0750); err != nil {
+			if err := extractRegularFile(tarReader, target, header); err != nil {
 				_ = os.RemoveAll(tempDir) // Best effort cleanup
-				return "", fmt.Errorf("error creating parent directory for %s: %w", target, err)
-			}
-
-			// Use safe file mode (limit to standard file permissions)
-			// #nosec G115 -- Mode masked to 0777 ensures safe conversion
-			fileMode := os.FileMode(header.Mode) & 0777
-			// #nosec G304,G703 -- target path validated above for traversal (HasPrefix check)
-			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, fileMode)
-			if err != nil {
-				_ = os.RemoveAll(tempDir) // Best effort cleanup
-				return "", fmt.Errorf("error creating file %s: %w", target, err)
-			}
-
-			// Copy file contents with size limit
-			// #nosec G110 -- Size limit enforced above via totalSize tracking
-			written, err := io.Copy(outFile, tarReader)
-			if err != nil {
-				_ = outFile.Close()       // Best effort cleanup
-				_ = os.RemoveAll(tempDir) // Best effort cleanup
-				return "", fmt.Errorf("error writing file %s: %w", target, err)
-			}
-
-			// Verify written size matches header
-			if written != header.Size {
-				_ = outFile.Close()       // Best effort cleanup
-				_ = os.RemoveAll(tempDir) // Best effort cleanup
-				return "", fmt.Errorf("size mismatch for %s: expected %d, got %d", target, header.Size, written)
-			}
-
-			if err := outFile.Close(); err != nil {
-				_ = os.RemoveAll(tempDir) // Best effort cleanup
-				return "", fmt.Errorf("error closing file %s: %w", target, err)
+				return "", err
 			}
 
 		default:
@@ -134,4 +101,42 @@ func extractOCIArchive(tarballPath string) (string, error) {
 	}
 
 	return tempDir, nil
+}
+
+// extractRegularFile extracts a single regular file from a tar archive
+func extractRegularFile(tarReader *tar.Reader, target string, header *tar.Header) error {
+	// Create parent directories if needed
+	// #nosec G703 -- target validated against path traversal by caller (HasPrefix check)
+	if err := os.MkdirAll(filepath.Dir(target), 0750); err != nil {
+		return fmt.Errorf("error creating parent directory for %s: %w", target, err)
+	}
+
+	// Use safe file mode (limit to standard file permissions)
+	// #nosec G115 -- Mode masked to 0777 ensures safe conversion
+	fileMode := os.FileMode(header.Mode) & 0777
+	// #nosec G304,G703 -- target path validated by caller for traversal (HasPrefix check)
+	outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, fileMode)
+	if err != nil {
+		return fmt.Errorf("error creating file %s: %w", target, err)
+	}
+
+	// Copy file contents with size limit
+	// #nosec G110 -- Size limit enforced by caller via totalSize tracking
+	written, err := io.Copy(outFile, tarReader)
+	if err != nil {
+		_ = outFile.Close() // Best effort cleanup
+		return fmt.Errorf("error writing file %s: %w", target, err)
+	}
+
+	// Verify written size matches header
+	if written != header.Size {
+		_ = outFile.Close() // Best effort cleanup
+		return fmt.Errorf("size mismatch for %s: expected %d, got %d", target, header.Size, written)
+	}
+
+	if err := outFile.Close(); err != nil {
+		return fmt.Errorf("error closing file %s: %w", target, err)
+	}
+
+	return nil
 }
