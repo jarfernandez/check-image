@@ -145,6 +145,55 @@ Sample configuration files are in `config/`:
 
 Both JSON and YAML formats are supported throughout the tool. Format detection is by file extension (`.yaml`, `.yml` for YAML, otherwise JSON).
 
+#### Stdin Support
+All file arguments support reading from stdin using `-` as the path, enabling dynamic configuration from pipelines:
+- `--registry-policy -` - Read registry policy from stdin
+- `--secrets-policy -` - Read secrets policy from stdin
+- `--allowed-ports @-` - Read allowed ports from stdin
+- `--config -` - Read all-checks config from stdin
+
+When reading from stdin, format is auto-detected by content (JSON starts with `{` or `[`, otherwise treated as YAML). The 10MB size limit prevents memory exhaustion.
+
+Example usage:
+```bash
+# Registry policy from stdin
+echo '{"trusted-registries": ["docker.io", "ghcr.io"]}' | \
+  check-image registry nginx:latest --registry-policy -
+
+# Secrets policy from pipeline
+cat secrets-policy.yaml | check-image secrets nginx:latest --secrets-policy -
+
+# All config from stdin
+cat config.json | check-image all nginx:latest --config -
+```
+
+#### Inline Config
+The `all` command config file supports embedding policies directly as objects instead of file paths:
+
+```json
+{
+  "checks": {
+    "registry": {
+      "registry-policy": {
+        "trusted-registries": ["docker.io", "ghcr.io"]
+      }
+    },
+    "secrets": {
+      "secrets-policy": {
+        "check-env-vars": true,
+        "check-files": false,
+        "excluded-paths": ["/usr/share/**"]
+      }
+    },
+    "ports": {
+      "allowed-ports": [80, 443]
+    }
+  }
+}
+```
+
+Both file paths (strings) and inline objects are supported. Inline objects are converted to temporary JSON files internally before being loaded by the policy loaders.
+
 ### Registry Policy Logic
 In `internal/registry/policy.go`:
 - Policy must specify either `trusted-registries` or `excluded-registries`, not both
@@ -234,7 +283,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 84.3% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 84.2% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.

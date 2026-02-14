@@ -337,3 +337,87 @@ func TestUnmarshalConfigFile_Integration(t *testing.T) {
 		assert.True(t, cfg.Enabled)
 	})
 }
+
+func TestUnmarshalConfigData(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        []byte
+		path        string
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, cfg *testConfig)
+	}{
+		{
+			name:    "JSON content with stdin path",
+			data:    []byte(`{"name": "stdin-json", "enabled": true}`),
+			path:    "-",
+			wantErr: false,
+			validate: func(t *testing.T, cfg *testConfig) {
+				assert.Equal(t, "stdin-json", cfg.Name)
+				assert.True(t, cfg.Enabled)
+			},
+		},
+		{
+			name:    "YAML content with stdin path",
+			data:    []byte("name: stdin-yaml\nenabled: false"),
+			path:    "-",
+			wantErr: false,
+			validate: func(t *testing.T, cfg *testConfig) {
+				assert.Equal(t, "stdin-yaml", cfg.Name)
+				assert.False(t, cfg.Enabled)
+			},
+		},
+		{
+			name:    "JSON content with file path",
+			data:    []byte(`{"name": "file-json"}`),
+			path:    "config.json",
+			wantErr: false,
+			validate: func(t *testing.T, cfg *testConfig) {
+				assert.Equal(t, "file-json", cfg.Name)
+			},
+		},
+		{
+			name:    "YAML content with file path",
+			data:    []byte("name: file-yaml"),
+			path:    "config.yaml",
+			wantErr: false,
+			validate: func(t *testing.T, cfg *testConfig) {
+				assert.Equal(t, "file-yaml", cfg.Name)
+			},
+		},
+		{
+			name:        "Invalid JSON with stdin path",
+			data:        []byte(`{invalid}`),
+			path:        "-",
+			wantErr:     true,
+			errContains: "invalid JSON",
+		},
+		{
+			name:        "Invalid YAML with stdin path",
+			data:        []byte("key: [unclosed"),
+			path:        "-",
+			wantErr:     true,
+			errContains: "invalid YAML",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg testConfig
+			err := UnmarshalConfigData(tt.data, &cfg, tt.path)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.validate != nil {
+				tt.validate(t, &cfg)
+			}
+		})
+	}
+}

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
@@ -15,24 +16,52 @@ type Policy struct {
 	ExcludedRegistries []string `yaml:"excluded-registries,omitempty" json:"excluded-registries,omitempty"`
 }
 
-// LoadRegistryPolicy loads a registry policy from a file, which can be in
-// either YAML or JSON format, and returns the parsed Policy object.
+// LoadRegistryPolicy loads a registry policy from a file or stdin (if path is "-"),
+// which can be in either YAML or JSON format, and returns the parsed Policy object.
 // The policy must specify either trusted-registries or excluded-registries, but not both.
 func LoadRegistryPolicy(path string) (*Policy, error) {
-	// Read file securely
-	data, err := fileutil.ReadSecureFile(path)
+	// Read file or stdin
+	data, err := fileutil.ReadFileOrStdin(path)
 	if err != nil {
-		return nil, fmt.Errorf("error reading registry policy file: %w", err)
+		return nil, fmt.Errorf("error reading registry policy: %w", err)
 	}
 
 	var policy Policy
 
-	// Unmarshal config file (JSON or YAML)
-	if err := fileutil.UnmarshalConfigFile(data, &policy, path); err != nil {
+	// Unmarshal config data (JSON or YAML)
+	if err := fileutil.UnmarshalConfigData(data, &policy, path); err != nil {
 		return nil, err
 	}
 
 	// Validate that only one mode is specified
+	hasTrusted := len(policy.TrustedRegistries) > 0
+	hasExcluded := len(policy.ExcludedRegistries) > 0
+
+	if hasTrusted && hasExcluded {
+		return nil, fmt.Errorf("policy must specify either trusted-registries or excluded-registries, not both")
+	}
+
+	if !hasTrusted && !hasExcluded {
+		return nil, fmt.Errorf("policy must specify either trusted-registries or excluded-registries")
+	}
+
+	return &policy, nil
+}
+
+// LoadRegistryPolicyFromObject creates a Policy from an inline config object
+func LoadRegistryPolicyFromObject(obj interface{}) (*Policy, error) {
+	// Marshal to JSON then unmarshal to Policy for type conversion
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal policy object: %w", err)
+	}
+
+	var policy Policy
+	if err := json.Unmarshal(data, &policy); err != nil {
+		return nil, fmt.Errorf("invalid policy object: %w", err)
+	}
+
+	// Same validation as LoadRegistryPolicy
 	hasTrusted := len(policy.TrustedRegistries) > 0
 	hasExcluded := len(policy.ExcludedRegistries) > 0
 

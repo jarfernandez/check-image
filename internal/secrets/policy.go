@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
@@ -70,8 +71,9 @@ var (
 	}
 )
 
-// LoadSecretsPolicy loads a secrets policy from a file (JSON or YAML)
-// If path is empty, returns a default policy
+// LoadSecretsPolicy loads a secrets policy from a file or stdin (if path is "-")
+// which can be in either YAML or JSON format.
+// If path is empty, returns a default policy.
 func LoadSecretsPolicy(path string) (*Policy, error) {
 	// Return default policy if no path provided
 	if path == "" {
@@ -84,17 +86,38 @@ func LoadSecretsPolicy(path string) (*Policy, error) {
 		}, nil
 	}
 
-	// Read file securely
-	data, err := fileutil.ReadSecureFile(path)
+	// Read file or stdin
+	data, err := fileutil.ReadFileOrStdin(path)
 	if err != nil {
-		return nil, fmt.Errorf("error reading secrets policy file: %w", err)
+		return nil, fmt.Errorf("error reading secrets policy: %w", err)
 	}
 
 	var policy Policy
 
-	// Unmarshal config file (JSON or YAML)
-	if err := fileutil.UnmarshalConfigFile(data, &policy, path); err != nil {
+	// Unmarshal config data (JSON or YAML)
+	if err := fileutil.UnmarshalConfigData(data, &policy, path); err != nil {
 		return nil, err
+	}
+
+	// Set defaults for excluded env vars if not specified
+	if len(policy.ExcludedEnvVars) == 0 {
+		policy.ExcludedEnvVars = DefaultExcludedEnvVars
+	}
+
+	return &policy, nil
+}
+
+// LoadSecretsPolicyFromObject creates a Policy from an inline config object
+func LoadSecretsPolicyFromObject(obj interface{}) (*Policy, error) {
+	// Marshal to JSON then unmarshal to Policy for type conversion
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal policy object: %w", err)
+	}
+
+	var policy Policy
+	if err := json.Unmarshal(data, &policy); err != nil {
+		return nil, fmt.Errorf("invalid policy object: %w", err)
 	}
 
 	// Set defaults for excluded env vars if not specified

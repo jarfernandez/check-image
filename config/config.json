@@ -8,14 +8,14 @@
       "max-layers": 20
     },
     "ports": {
-      "allowed-ports": [80, 443]
+      "allowed-ports": "@config/allowed-ports.json"
     },
     "registry": {
-      "registry-policy": "registry-policy.json"
+      "registry-policy": "config/registry-policy.json"
     },
     "root-user": {},
     "secrets": {
-      "secrets-policy": "secrets-policy.json",
+      "secrets-policy": "config/secrets-policy.json",
       "skip-env-vars": false,
       "skip-files": false
     }

@@ -1,0 +1,28 @@
+{
+  "checks": {
+    "age": {
+      "max-age": 90
+    },
+    "size": {
+      "max-size": 500,
+      "max-layers": 20
+    },
+    "ports": {
+      "allowed-ports": [80, 443, 8080, 8443]
+    },
+    "registry": {
+      "registry-policy": {
+        "trusted-registries": ["index.docker.io", "docker.io", "ghcr.io", "gcr.io", "quay.io"]
+      }
+    },
+    "root-user": {},
+    "secrets": {
+      "secrets-policy": {
+        "check-env-vars": true,
+        "check-files": true,
+        "excluded-env-vars": ["PUBLIC_KEY", "SSH_PUBLIC_KEY"],
+        "excluded-paths": ["/usr/share/**", "/var/log/**"]
+      }
+    }
+  }
+}

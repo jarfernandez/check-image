@@ -330,8 +330,6 @@ func TestApplyConfigValues(t *testing.T) {
 		age := uint(30)
 		ms := uint(200)
 		ml := uint(10)
-		rp := "registry-policy.yaml"
-		sp := "secrets-policy.yaml"
 		sev := true
 		sf := true
 
@@ -340,8 +338,8 @@ func TestApplyConfigValues(t *testing.T) {
 				Age:      &ageCheckConfig{MaxAge: &age},
 				Size:     &sizeCheckConfig{MaxSize: &ms, MaxLayers: &ml},
 				Ports:    &portsCheckConfig{AllowedPorts: []any{float64(80), float64(443)}},
-				Registry: &registryCheckConfig{RegistryPolicy: &rp},
-				Secrets:  &secretsCheckConfig{SecretsPolicy: &sp, SkipEnvVars: &sev, SkipFiles: &sf},
+				Registry: &registryCheckConfig{RegistryPolicy: "registry-policy.yaml"},
+				Secrets:  &secretsCheckConfig{SecretsPolicy: "secrets-policy.yaml", SkipEnvVars: &sev, SkipFiles: &sf},
 			},
 		}
 
@@ -852,4 +850,260 @@ func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	assert.Contains(t, output, "=== size ===")
 	assert.Contains(t, output, "=== root-user ===")
 	assert.Contains(t, output, "=== secrets ===")
+}
+
+func TestFormatRegistryPolicy(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       any
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, result string)
+	}{
+		{
+			name:    "String file path",
+			input:   "config/registry-policy.json",
+			wantErr: false,
+			validate: func(t *testing.T, result string) {
+				assert.Equal(t, "config/registry-policy.json", result)
+			},
+		},
+		{
+			name: "Inline object",
+			input: map[string]any{
+				"trusted-registries": []any{"docker.io", "ghcr.io"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result string) {
+				// Should create a temp file
+				assert.Contains(t, result, "registry-policy-")
+				assert.Contains(t, result, ".json")
+				// Verify file exists and contains the policy
+				data, err := os.ReadFile(result)
+				require.NoError(t, err)
+				assert.Contains(t, string(data), "trusted-registries")
+				// Cleanup temp file
+				os.Remove(result)
+			},
+		},
+		{
+			name:        "Invalid type",
+			input:       123,
+			wantErr:     true,
+			errContains: "must be either a string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := formatRegistryPolicy(tt.input)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.validate != nil {
+				tt.validate(t, result)
+			}
+		})
+	}
+}
+
+func TestFormatSecretsPolicy(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       any
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, result string)
+	}{
+		{
+			name:    "String file path",
+			input:   "config/secrets-policy.json",
+			wantErr: false,
+			validate: func(t *testing.T, result string) {
+				assert.Equal(t, "config/secrets-policy.json", result)
+			},
+		},
+		{
+			name: "Inline object",
+			input: map[string]any{
+				"check-env-vars": true,
+				"check-files":    false,
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result string) {
+				// Should create a temp file
+				assert.Contains(t, result, "secrets-policy-")
+				assert.Contains(t, result, ".json")
+				// Verify file exists and contains the policy
+				data, err := os.ReadFile(result)
+				require.NoError(t, err)
+				assert.Contains(t, string(data), "check-env-vars")
+				// Cleanup temp file
+				os.Remove(result)
+			},
+		},
+		{
+			name:        "Invalid type",
+			input:       []string{"not", "valid"},
+			wantErr:     true,
+			errContains: "must be either a string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := formatSecretsPolicy(tt.input)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.validate != nil {
+				tt.validate(t, result)
+			}
+		})
+	}
+}
+
+func TestLoadAllConfig_Stdin(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, cfg *allConfig)
+	}{
+		{
+			name: "JSON from stdin",
+			input: `{
+				"checks": {
+					"age": {"max-age": 30},
+					"size": {"max-size": 200}
+				}
+			}`,
+			wantErr: false,
+			validate: func(t *testing.T, cfg *allConfig) {
+				require.NotNil(t, cfg.Checks.Age)
+				assert.Equal(t, uint(30), *cfg.Checks.Age.MaxAge)
+				require.NotNil(t, cfg.Checks.Size)
+				assert.Equal(t, uint(200), *cfg.Checks.Size.MaxSize)
+			},
+		},
+		{
+			name: "YAML from stdin",
+			input: `checks:
+  age:
+    max-age: 45
+  registry:
+    registry-policy: policy.json`,
+			wantErr: false,
+			validate: func(t *testing.T, cfg *allConfig) {
+				require.NotNil(t, cfg.Checks.Age)
+				assert.Equal(t, uint(45), *cfg.Checks.Age.MaxAge)
+				require.NotNil(t, cfg.Checks.Registry)
+			},
+		},
+		{
+			name:        "Invalid JSON from stdin",
+			input:       `{invalid}`,
+			wantErr:     true,
+			errContains: "invalid JSON",
+		},
+		{
+			name:        "Empty stdin",
+			input:       "",
+			wantErr:     true,
+			errContains: "stdin is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original stdin
+			oldStdin := os.Stdin
+			defer func() { os.Stdin = oldStdin }()
+
+			// Create pipe to mock stdin
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stdin = r
+
+			// Write test data
+			go func() {
+				_, _ = w.Write([]byte(tt.input))
+				w.Close()
+			}()
+
+			cfg, err := loadAllConfig("-")
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+			if tt.validate != nil {
+				tt.validate(t, cfg)
+			}
+		})
+	}
+}
+
+func TestLoadAllConfig_InlinePolicy(t *testing.T) {
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, "inline-config.json")
+
+	// Config with inline registry policy
+	content := `{
+		"checks": {
+			"registry": {
+				"registry-policy": {
+					"trusted-registries": ["docker.io", "ghcr.io"]
+				}
+			},
+			"secrets": {
+				"secrets-policy": {
+					"check-env-vars": true,
+					"excluded-paths": ["/usr/share/**"]
+				}
+			}
+		}
+	}`
+
+	err := os.WriteFile(configFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	cfg, err := loadAllConfig(configFile)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify registry policy is loaded as object
+	require.NotNil(t, cfg.Checks.Registry)
+	require.NotNil(t, cfg.Checks.Registry.RegistryPolicy)
+	policyObj, ok := cfg.Checks.Registry.RegistryPolicy.(map[string]any)
+	require.True(t, ok, "registry-policy should be a map")
+	assert.Contains(t, policyObj, "trusted-registries")
+
+	// Verify secrets policy is loaded as object
+	require.NotNil(t, cfg.Checks.Secrets)
+	require.NotNil(t, cfg.Checks.Secrets.SecretsPolicy)
+	secretsObj, ok := cfg.Checks.Secrets.SecretsPolicy.(map[string]any)
+	require.True(t, ok, "secrets-policy should be a map")
+	assert.Contains(t, secretsObj, "check-env-vars")
 }

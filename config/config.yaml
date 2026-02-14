@@ -5,11 +5,11 @@ checks:
     max-size: 500
     max-layers: 20
   ports:
-    allowed-ports: [80, 443]
+    allowed-ports: "@config/allowed-ports.yaml"
   registry:
-    registry-policy: registry-policy.yaml
+    registry-policy: config/registry-policy.yaml
   root-user: {}
   secrets:
-    secrets-policy: secrets-policy.yaml
+    secrets-policy: config/secrets-policy.yaml
     skip-env-vars: false
     skip-files: false
