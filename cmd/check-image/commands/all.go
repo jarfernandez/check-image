@@ -350,7 +350,7 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 		result, err := check.run(imageName)
 		if err != nil {
 			log.Errorf("Check %s failed with error: %v", check.name, err)
-			Result = ValidationFailed
+			UpdateResult(ExecutionError)
 
 			errResult := output.CheckResult{
 				Check:   check.name,
@@ -370,11 +370,9 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 			}
 
 			if result.Passed {
-				if Result != ValidationFailed {
-					Result = ValidationSucceeded
-				}
+				UpdateResult(ValidationSucceeded)
 			} else {
-				Result = ValidationFailed
+				UpdateResult(ValidationFailed)
 			}
 		}
 
@@ -382,7 +380,7 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 			fmt.Println()
 		}
 
-		if failFast && Result == ValidationFailed {
+		if failFast && (Result == ValidationFailed || Result == ExecutionError) {
 			break
 		}
 	}
@@ -407,7 +405,7 @@ func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[s
 
 	allResult := output.AllResult{
 		Image:  imageName,
-		Passed: Result != ValidationFailed,
+		Passed: Result != ValidationFailed && Result != ExecutionError,
 		Checks: results,
 		Summary: output.Summary{
 			Total:   len(results),

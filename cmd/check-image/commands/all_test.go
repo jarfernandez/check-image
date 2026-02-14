@@ -821,7 +821,7 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	assert.Equal(t, ValidationFailed, Result)
+	assert.Equal(t, ExecutionError, Result)
 	// ports should have run (and errored)
 	assert.Contains(t, output, "=== ports ===")
 	// root-user and secrets come after ports, should NOT have run

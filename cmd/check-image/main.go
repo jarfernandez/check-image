@@ -14,6 +14,17 @@ import (
 func run(stdout io.Writer) int {
 	commands.Execute()
 
+	// Execution error has the highest priority — exit code 2.
+	// The detailed error message is already logged to stderr by Execute().
+	if commands.Result == commands.ExecutionError {
+		if commands.OutputFmt != output.FormatJSON {
+			if _, err := fmt.Fprintln(stdout, "Execution error"); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
+			}
+		}
+		return 2
+	}
+
 	// In JSON mode, suppress the final text message (already in JSON)
 	if commands.OutputFmt == output.FormatJSON {
 		if commands.Result == commands.ValidationFailed {
