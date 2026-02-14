@@ -7,6 +7,7 @@ import (
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
 	"github.com/jarfernandez/check-image/internal/imageutil"
+	"github.com/jarfernandez/check-image/internal/output"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -46,8 +47,21 @@ The 'image' argument supports multiple formats:
 
 		log.Debugln("Allowed ports:", allowedPortsList)
 
-		if err := runPorts(args[0]); err != nil {
+		result, err := runPorts(args[0])
+		if err != nil {
 			return fmt.Errorf("check ports operation failed: %w", err)
+		}
+
+		if err := renderResult(result); err != nil {
+			return err
+		}
+
+		if result.Passed {
+			if Result != ValidationFailed {
+				Result = ValidationSucceeded
+			}
+		} else {
+			Result = ValidationFailed
 		}
 
 		return nil
@@ -100,12 +114,10 @@ func parseAllowedPorts() ([]int, error) {
 	return ports, nil
 }
 
-func runPorts(imageName string) error {
-	fmt.Printf("Checking ports of image %s\n", imageName)
-
+func runPorts(imageName string) (*output.CheckResult, error) {
 	_, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Extract exposed ports from the image config
@@ -116,30 +128,36 @@ func runPorts(imageName string) error {
 		if len(parts) > 0 {
 			port, err := strconv.Atoi(parts[0])
 			if err != nil {
-				return fmt.Errorf("error parsing port number '%s': %w", parts[0], err)
+				return nil, fmt.Errorf("error parsing port number '%s': %w", parts[0], err)
 			}
 			exposedPorts = append(exposedPorts, port)
 		}
 	}
 
-	if len(exposedPorts) == 0 {
-		fmt.Println("No ports are exposed in this image")
-		if Result != ValidationFailed {
-			Result = ValidationSucceeded
-		}
-		return nil
+	details := output.PortsDetails{
+		ExposedPorts:      exposedPorts,
+		AllowedPorts:      allowedPortsList,
+		UnauthorizedPorts: nil,
 	}
 
-	// Display exposed ports
-	fmt.Println("Exposed ports:")
-	for _, port := range exposedPorts {
-		fmt.Printf("  - %d\n", port)
+	if len(exposedPorts) == 0 {
+		return &output.CheckResult{
+			Check:   "ports",
+			Image:   imageName,
+			Passed:  true,
+			Message: "No ports are exposed in this image",
+			Details: details,
+		}, nil
 	}
 
 	if len(allowedPortsList) == 0 {
-		fmt.Println("No allowed ports were provided")
-		Result = ValidationFailed
-		return nil
+		return &output.CheckResult{
+			Check:   "ports",
+			Image:   imageName,
+			Passed:  false,
+			Message: "No allowed ports were provided",
+			Details: details,
+		}, nil
 	}
 
 	// Check if all exposed ports are in the allowed list
@@ -157,18 +175,19 @@ func runPorts(imageName string) error {
 		}
 	}
 
-	if len(unauthorizedPorts) > 0 {
-		fmt.Println("The following ports are not in the allowed list:")
-		for _, port := range unauthorizedPorts {
-			fmt.Printf("  - %d\n", port)
-		}
+	details.UnauthorizedPorts = unauthorizedPorts
+	passed := len(unauthorizedPorts) == 0
+
+	var msg string
+	if passed {
+		msg = "All exposed ports are in the allowed list"
 	}
 
-	SetValidationResult(
-		len(unauthorizedPorts) == 0,
-		"All exposed ports are in the allowed list",
-		"", // Empty because we already printed the unauthorized ports above
-	)
-
-	return nil
+	return &output.CheckResult{
+		Check:   "ports",
+		Image:   imageName,
+		Passed:  passed,
+		Message: msg,
+		Details: details,
+	}, nil
 }

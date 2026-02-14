@@ -36,8 +36,9 @@ var (
 		"SSH_PUBLIC_KEY",
 	}
 
-	// DefaultFilePatterns maps file patterns to their descriptions
-	// This is the single source of truth for file pattern detection
+	// DefaultFilePatterns maps file patterns to their descriptions.
+	// This is the single source of truth for file pattern detection.
+	// #nosec G101 -- These are pattern names for detecting secrets, not actual credentials
 	DefaultFilePatterns = map[string]string{
 		// SSH keys
 		"id_rsa":     "SSH private key",

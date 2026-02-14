@@ -1,12 +1,10 @@
 package commands
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,53 +37,46 @@ func TestAgeCommandFlags(t *testing.T) {
 
 func TestRunAge(t *testing.T) {
 	tests := []struct {
-		name           string
-		imageAge       time.Duration
-		maxAge         uint
-		expectedResult ValidationResult
-		expectedPass   bool
+		name         string
+		imageAge     time.Duration
+		maxAge       uint
+		expectedPass bool
 	}{
 		{
-			name:           "Recent image within limit",
-			imageAge:       10 * 24 * time.Hour, // 10 days
-			maxAge:         90,
-			expectedResult: ValidationSucceeded,
-			expectedPass:   true,
+			name:         "Recent image within limit",
+			imageAge:     10 * 24 * time.Hour, // 10 days
+			maxAge:       90,
+			expectedPass: true,
 		},
 		{
-			name:           "Image just under limit",
-			imageAge:       89 * 24 * time.Hour, // 89 days
-			maxAge:         90,
-			expectedResult: ValidationSucceeded,
-			expectedPass:   true,
+			name:         "Image just under limit",
+			imageAge:     89 * 24 * time.Hour, // 89 days
+			maxAge:       90,
+			expectedPass: true,
 		},
 		{
-			name:           "Old image beyond limit",
-			imageAge:       100 * 24 * time.Hour, // 100 days
-			maxAge:         90,
-			expectedResult: ValidationFailed,
-			expectedPass:   false,
+			name:         "Old image beyond limit",
+			imageAge:     100 * 24 * time.Hour, // 100 days
+			maxAge:       90,
+			expectedPass: false,
 		},
 		{
-			name:           "Very old image",
-			imageAge:       365 * 24 * time.Hour, // 1 year
-			maxAge:         90,
-			expectedResult: ValidationFailed,
-			expectedPass:   false,
+			name:         "Very old image",
+			imageAge:     365 * 24 * time.Hour, // 1 year
+			maxAge:       90,
+			expectedPass: false,
 		},
 		{
-			name:           "Brand new image",
-			imageAge:       1 * time.Hour,
-			maxAge:         90,
-			expectedResult: ValidationSucceeded,
-			expectedPass:   true,
+			name:         "Brand new image",
+			imageAge:     1 * time.Hour,
+			maxAge:       90,
+			expectedPass: true,
 		},
 		{
-			name:           "Image with strict limit",
-			imageAge:       5 * 24 * time.Hour, // 5 days
-			maxAge:         1,                  // 1 day limit
-			expectedResult: ValidationFailed,
-			expectedPass:   false,
+			name:         "Image with strict limit",
+			imageAge:     5 * 24 * time.Hour, // 5 days
+			maxAge:       1,                  // 1 day limit
+			expectedPass: false,
 		},
 	}
 
@@ -101,34 +92,23 @@ func TestRunAge(t *testing.T) {
 			// Set max age
 			maxAge = tt.maxAge
 
-			// Capture stdout
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			// Reset Result
-			Result = ValidationSkipped
-
 			// Run command
-			err := runAge(imageRef)
+			result, err := runAge(imageRef)
 			require.NoError(t, err)
 
-			// Restore stdout
-			_ = w.Close()
-			os.Stdout = old
+			// Assert on struct
+			assert.Equal(t, "age", result.Check)
+			assert.Equal(t, imageRef, result.Image)
+			assert.Equal(t, tt.expectedPass, result.Passed)
 
-			// Read captured output
-			var buf bytes.Buffer
-			_, _ = io.Copy(&buf, r)
-			output := buf.String()
-
-			// Assert
-			assert.Equal(t, tt.expectedResult, Result)
+			details, ok := result.Details.(output.AgeDetails)
+			require.True(t, ok)
+			assert.Equal(t, tt.maxAge, details.MaxAge)
 
 			if tt.expectedPass {
-				assert.Contains(t, output, "less than")
+				assert.Contains(t, result.Message, "less than")
 			} else {
-				assert.Contains(t, output, "older than")
+				assert.Contains(t, result.Message, "older than")
 			}
 		})
 	}
@@ -136,6 +116,6 @@ func TestRunAge(t *testing.T) {
 
 func TestRunAge_InvalidImage(t *testing.T) {
 	// Test with invalid image reference
-	err := runAge("nonexistent:image")
+	_, err := runAge("nonexistent:image")
 	require.Error(t, err)
 }

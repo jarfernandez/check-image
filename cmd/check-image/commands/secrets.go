@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/jarfernandez/check-image/internal/secrets"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -36,8 +37,21 @@ The 'image' argument supports multiple formats:
   check-image secrets docker-archive:/path/to/image.tar:tag --skip-files`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := runSecrets(args[0]); err != nil {
+		result, err := runSecrets(args[0])
+		if err != nil {
 			return fmt.Errorf("check secrets operation failed: %w", err)
+		}
+
+		if err := renderResult(result); err != nil {
+			return err
+		}
+
+		if result.Passed {
+			if Result != ValidationFailed {
+				Result = ValidationSucceeded
+			}
+		} else {
+			Result = ValidationFailed
 		}
 
 		return nil
@@ -51,13 +65,11 @@ func init() {
 	secretsCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks (optional)")
 }
 
-func runSecrets(imageName string) error {
-	fmt.Printf("Checking secrets in image %s\n", imageName)
-
+func runSecrets(imageName string) (*output.CheckResult, error) {
 	// Load policy from file or use defaults
 	policy, err := secrets.LoadSecretsPolicy(secretsPolicy)
 	if err != nil {
-		return fmt.Errorf("unable to load secrets policy: %w", err)
+		return nil, fmt.Errorf("unable to load secrets policy: %w", err)
 	}
 
 	// Override policy based on command-line flags
@@ -71,70 +83,65 @@ func runSecrets(imageName string) error {
 	// Get image and config
 	image, config, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var envCount, fileCount int
+	var envFindings []output.EnvVarFinding
+	var fileFindings []output.FileFinding
 
 	// Check environment variables
 	if policy.CheckEnvVars {
 		log.Debug("Checking environment variables for secrets")
-		envFindings := secrets.CheckEnvironmentVariables(config.Config.Env, policy)
-		envCount = len(envFindings)
-
-		if len(envFindings) > 0 {
-			fmt.Println("\nEnvironment Variables:")
-			for _, finding := range envFindings {
-				fmt.Printf("  - %s (%s)\n", finding.Name, finding.Description)
-			}
+		rawEnvFindings := secrets.CheckEnvironmentVariables(config.Config.Env, policy)
+		for _, f := range rawEnvFindings {
+			envFindings = append(envFindings, output.EnvVarFinding{
+				Name:        f.Name,
+				Description: f.Description,
+			})
 		}
 	}
 
 	// Check files in layers
 	if policy.CheckFiles {
 		log.Debug("Checking files in layers for secrets")
-		fileFindings, err := secrets.CheckFilesInLayers(image, policy)
+		rawFileFindings, err := secrets.CheckFilesInLayers(image, policy)
 		if err != nil {
-			return fmt.Errorf("error scanning files: %w", err)
+			return nil, fmt.Errorf("error scanning files: %w", err)
 		}
-		fileCount = len(fileFindings)
-
-		if len(fileFindings) > 0 {
-			fmt.Println("\nFiles with Sensitive Patterns:")
-
-			// Group findings by layer for better readability
-			layerMap := make(map[int][]secrets.FileFinding)
-			for _, finding := range fileFindings {
-				layerMap[finding.LayerIndex] = append(layerMap[finding.LayerIndex], finding)
-			}
-
-			// Display findings grouped by layer
-			for layerIdx := 0; layerIdx < len(layerMap)+10; layerIdx++ { // +10 to ensure we get all layers
-				if findings, ok := layerMap[layerIdx]; ok {
-					fmt.Printf("  Layer %d:\n", layerIdx+1)
-					for _, finding := range findings {
-						fmt.Printf("    - %s (%s)\n", finding.Path, finding.Description)
-					}
-				}
-			}
+		for _, f := range rawFileFindings {
+			fileFindings = append(fileFindings, output.FileFinding{
+				Path:        f.Path,
+				LayerIndex:  f.LayerIndex,
+				Description: f.Description,
+			})
 		}
 	}
 
-	// Display summary
+	envCount := len(envFindings)
+	fileCount := len(fileFindings)
 	totalFindings := envCount + fileCount
-	fmt.Printf("\nTotal findings: %d", totalFindings)
-	if policy.CheckEnvVars && policy.CheckFiles {
-		fmt.Printf(" (%d environment variables, %d files)\n", envCount, fileCount)
+	passed := totalFindings == 0
+
+	var msg string
+	if passed {
+		msg = "No secrets detected"
 	} else {
-		fmt.Println()
+		msg = "Secrets detected"
 	}
 
-	// Set validation result
-	SetValidationResult(
-		totalFindings == 0,
-		"No secrets detected",
-		"Secrets detected",
-	)
+	details := output.SecretsDetails{
+		EnvVarFindings: envFindings,
+		FileFindings:   fileFindings,
+		TotalFindings:  totalFindings,
+		EnvVarCount:    envCount,
+		FileCount:      fileCount,
+	}
 
-	return nil
+	return &output.CheckResult{
+		Check:   "secrets",
+		Image:   imageName,
+		Passed:  passed,
+		Message: msg,
+		Details: details,
+	}, nil
 }

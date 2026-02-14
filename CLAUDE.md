@@ -39,8 +39,16 @@ go test ./internal/secrets
 ### Command Pattern
 All validation commands follow a consistent pattern:
 1. Commands are in `cmd/check-image/commands/` and use Cobra framework
-2. Each command sets a global `Result` variable (`ValidationFailed`, `ValidationSucceeded`, or `ValidationSkipped`) defined in `root.go`
-3. Commands should update `Result = ValidationFailed` when validation fails, and `Result = ValidationSucceeded` only when passing (preserving failures from previous checks)
+2. Each `runX()` function returns `(*output.CheckResult, error)` — it never prints directly
+3. The `RunE` handler in each command calls `renderResult()` to output text or JSON, then updates the global `Result` variable based on `result.Passed`
+4. `Result` (`ValidationFailed`, `ValidationSucceeded`, or `ValidationSkipped`) is defined in `root.go` and drives the exit code in `main.go`
+
+### Output Format
+- Controlled by the `--output`/`-o` global flag (values: `text` default, `json`)
+- `internal/output/format.go`: Defines `Format` type, `ParseFormat()`, and `RenderJSON()` helper
+- `internal/output/results.go`: Result structs (`CheckResult`, `AgeDetails`, `SizeDetails`, `PortsDetails`, `RegistryDetails`, `RootUserDetails`, `SecretsDetails`, `AllResult`, `Summary`, `VersionResult`)
+- `cmd/check-image/commands/render.go`: Text renderers for each check; `renderResult()` dispatches to JSON or text based on `OutputFmt`
+- In JSON mode, `main.go` suppresses the final "Validation succeeded/failed" text message (it's already in the JSON)
 
 ### Image Retrieval Strategy
 The `imageutil` package implements a transport-aware retrieval strategy with fallback support:
@@ -113,9 +121,10 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Fail-fast (`--fail-fast`): stops execution on the first check that fails (validation failure or execution error)
 
 **version**: Shows the check-image version
-- No flags
+- No flags (uses global `--output` flag for JSON support)
 - Returns the version string from `internal/version.Version`
 - Defaults to "dev" if no version is set
+- In JSON mode: outputs `{"version": "v0.4.0"}`
 - Version is injected at build time using ldflags: `-ldflags "-X check-image/internal/version.Version=v0.1.0"`
 
 ### Configuration Files
@@ -215,7 +224,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 89.4% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 84.1% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.

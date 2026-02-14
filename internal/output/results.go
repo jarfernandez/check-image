@@ -1,0 +1,96 @@
+package output
+
+// CheckResult is the common envelope for every validation check.
+type CheckResult struct {
+	Check   string `json:"check"`
+	Image   string `json:"image"`
+	Passed  bool   `json:"passed"`
+	Message string `json:"message"`
+	Details any    `json:"details,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+// AgeDetails holds details for the age check.
+type AgeDetails struct {
+	CreatedAt string  `json:"created-at"`
+	AgeDays   float64 `json:"age-days"`
+	MaxAge    uint    `json:"max-age"`
+}
+
+// SizeDetails holds details for the size check.
+type SizeDetails struct {
+	TotalBytes int64       `json:"total-bytes"`
+	TotalMB    float64     `json:"total-mb"`
+	MaxSizeMB  uint        `json:"max-size-mb"`
+	LayerCount int         `json:"layer-count"`
+	MaxLayers  uint        `json:"max-layers"`
+	Layers     []LayerInfo `json:"layers"`
+}
+
+// LayerInfo holds size information for a single layer.
+type LayerInfo struct {
+	Index int   `json:"index"`
+	Bytes int64 `json:"bytes"`
+}
+
+// PortsDetails holds details for the ports check.
+type PortsDetails struct {
+	ExposedPorts      []int `json:"exposed-ports"`
+	AllowedPorts      []int `json:"allowed-ports,omitempty"`
+	UnauthorizedPorts []int `json:"unauthorized-ports,omitempty"`
+}
+
+// RegistryDetails holds details for the registry check.
+type RegistryDetails struct {
+	Registry string `json:"registry"`
+	Skipped  bool   `json:"skipped,omitempty"`
+}
+
+// RootUserDetails holds details for the root-user check.
+type RootUserDetails struct {
+	User string `json:"user"`
+}
+
+// SecretsDetails holds details for the secrets check.
+type SecretsDetails struct {
+	EnvVarFindings []EnvVarFinding `json:"env-var-findings,omitempty"`
+	FileFindings   []FileFinding   `json:"file-findings,omitempty"`
+	TotalFindings  int             `json:"total-findings"`
+	EnvVarCount    int             `json:"env-var-count"`
+	FileCount      int             `json:"file-count"`
+}
+
+// EnvVarFinding represents a sensitive environment variable finding.
+type EnvVarFinding struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// FileFinding represents a sensitive file finding.
+type FileFinding struct {
+	Path        string `json:"path"`
+	LayerIndex  int    `json:"layer-index"`
+	Description string `json:"description"`
+}
+
+// AllResult is the aggregated result for the "all" command.
+type AllResult struct {
+	Image   string        `json:"image"`
+	Passed  bool          `json:"passed"`
+	Checks  []CheckResult `json:"checks"`
+	Summary Summary       `json:"summary"`
+}
+
+// Summary holds counts for the "all" command.
+type Summary struct {
+	Total   int      `json:"total"`
+	Passed  int      `json:"passed"`
+	Failed  int      `json:"failed"`
+	Errored int      `json:"errored"`
+	Skipped []string `json:"skipped,omitempty"`
+}
+
+// VersionResult holds the version output for JSON mode.
+type VersionResult struct {
+	Version string `json:"version"`
+}

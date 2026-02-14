@@ -2,8 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	ver "github.com/jarfernandez/check-image/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +34,11 @@ func runVersion() error {
 	if version == "" {
 		version = "dev"
 	}
+
+	if OutputFmt == output.FormatJSON {
+		return output.RenderJSON(os.Stdout, output.VersionResult{Version: version})
+	}
+
 	fmt.Printf("%s\n", version)
 	return nil
 }

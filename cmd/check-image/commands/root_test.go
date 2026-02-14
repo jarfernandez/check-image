@@ -1,99 +1,12 @@
 package commands
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"testing"
 
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestSetValidationResult(t *testing.T) {
-	tests := []struct {
-		name           string
-		initialResult  ValidationResult
-		passed         bool
-		successMsg     string
-		failureMsg     string
-		expectedResult ValidationResult
-		expectedOutput string
-	}{
-		{
-			name:           "Pass when initial state is skipped",
-			initialResult:  ValidationSkipped,
-			passed:         true,
-			successMsg:     "Validation passed",
-			failureMsg:     "Validation failed",
-			expectedResult: ValidationSucceeded,
-			expectedOutput: "Validation passed\n",
-		},
-		{
-			name:           "Fail when initial state is skipped",
-			initialResult:  ValidationSkipped,
-			passed:         false,
-			successMsg:     "Validation passed",
-			failureMsg:     "Validation failed",
-			expectedResult: ValidationFailed,
-			expectedOutput: "Validation failed\n",
-		},
-		{
-			name:           "Pass preserves previous failure",
-			initialResult:  ValidationFailed,
-			passed:         true,
-			successMsg:     "Validation passed",
-			failureMsg:     "Validation failed",
-			expectedResult: ValidationFailed,
-			expectedOutput: "Validation passed\n",
-		},
-		{
-			name:           "Fail overrides succeeded",
-			initialResult:  ValidationSucceeded,
-			passed:         false,
-			successMsg:     "Validation passed",
-			failureMsg:     "Validation failed",
-			expectedResult: ValidationFailed,
-			expectedOutput: "Validation failed\n",
-		},
-		{
-			name:           "Pass when already succeeded",
-			initialResult:  ValidationSucceeded,
-			passed:         true,
-			successMsg:     "Validation passed",
-			failureMsg:     "Validation failed",
-			expectedResult: ValidationSucceeded,
-			expectedOutput: "Validation passed\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Capture stdout
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			// Set initial result
-			Result = tt.initialResult
-
-			// Call function
-			SetValidationResult(tt.passed, tt.successMsg, tt.failureMsg)
-
-			// Restore stdout
-			_ = w.Close()
-			os.Stdout = old
-
-			// Read captured output
-			var buf bytes.Buffer
-			_, _ = io.Copy(&buf, r)
-
-			// Assert
-			assert.Equal(t, tt.expectedResult, Result)
-			assert.Equal(t, tt.expectedOutput, buf.String())
-		})
-	}
-}
 
 func TestValidationResultConstants(t *testing.T) {
 	// Ensure the constants have expected values
@@ -153,6 +66,11 @@ func TestRootCommandLogLevel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore
+			origFormat := outputFormat
+			defer func() { outputFormat = origFormat }()
+			outputFormat = "text"
+
 			// Set log level
 			logLevel = tt.level
 
@@ -164,6 +82,62 @@ func TestRootCommandLogLevel(t *testing.T) {
 				assert.Contains(t, err.Error(), "invalid log level")
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRootCommandOutputFlag(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("output")
+	assert.NotNil(t, flag)
+	assert.Equal(t, "o", flag.Shorthand)
+	assert.Equal(t, "text", flag.DefValue)
+}
+
+func TestRootCommandOutputFormat(t *testing.T) {
+	tests := []struct {
+		name       string
+		format     string
+		wantErr    bool
+		wantFormat output.Format
+	}{
+		{
+			name:       "text format",
+			format:     "text",
+			wantFormat: output.FormatText,
+		},
+		{
+			name:       "json format",
+			format:     "json",
+			wantFormat: output.FormatJSON,
+		},
+		{
+			name:    "invalid format",
+			format:  "xml",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origFormat := outputFormat
+			origLogLevel := logLevel
+			defer func() {
+				outputFormat = origFormat
+				logLevel = origLogLevel
+			}()
+
+			logLevel = "info"
+			outputFormat = tt.format
+
+			err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "unsupported output format")
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantFormat, OutputFmt)
 			}
 		})
 	}

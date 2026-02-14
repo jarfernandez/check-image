@@ -281,7 +281,67 @@ go build -ldflags "-X github.com/jarfernandez/check-image/internal/version.Versi
 ### Global Flags
 
 All commands support:
+- `--output`, `-o`: Output format: `text` (default), `json`
 - `--log-level`: Set log level (trace, debug, info, warn, error, fatal, panic)
+
+### JSON Output
+
+All commands support JSON output with `--output json` (or `-o json`). This is useful for scripting and CI/CD pipelines.
+
+**Individual command:**
+```bash
+check-image age nginx:latest -o json
+```
+```json
+{
+  "check": "age",
+  "image": "nginx:latest",
+  "passed": true,
+  "message": "Image is less than 90 days old",
+  "details": {
+    "created-at": "2025-12-01T00:00:00Z",
+    "age-days": 75,
+    "max-age": 90
+  }
+}
+```
+
+**All command:**
+```bash
+check-image all nginx:latest --skip registry -o json
+```
+```json
+{
+  "image": "nginx:latest",
+  "passed": false,
+  "checks": [
+    {
+      "check": "age",
+      "image": "nginx:latest",
+      "passed": true,
+      "message": "Image is less than 90 days old",
+      "details": { "created-at": "...", "age-days": 75, "max-age": 90 }
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
+    "errored": 0,
+    "skipped": ["registry"]
+  }
+}
+```
+
+**Version command:**
+```bash
+check-image version -o json
+```
+```json
+{
+  "version": "v0.4.0"
+}
+```
 
 ## Configuration Files
 
@@ -434,7 +494,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 89.4% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 84.1% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -456,13 +516,14 @@ go tool cover -html=coverage.out
 
 ### Test Coverage
 
-- **internal/version**: 100% coverage
-- **internal/registry**: 100% coverage
+- **internal/version**: 100.0% coverage
+- **internal/registry**: 100.0% coverage
+- **internal/output**: 100.0% coverage
 - **internal/secrets**: 96.5% coverage
-- **cmd/check-image/commands**: 89.6% coverage
 - **internal/fileutil**: 82.9% coverage
 - **internal/imageutil**: 73.9% coverage
-- **cmd/check-image**: 63.6% coverage
+- **cmd/check-image/commands**: 73.2% coverage
+- **cmd/check-image**: 53.3% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
 
