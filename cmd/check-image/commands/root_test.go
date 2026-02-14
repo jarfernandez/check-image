@@ -9,10 +9,71 @@ import (
 )
 
 func TestValidationResultConstants(t *testing.T) {
-	// Ensure the constants have expected values
-	assert.Equal(t, ValidationResult(0), ValidationFailed)
+	// Ensure the constants have expected values (ordered by priority)
+	assert.Equal(t, ValidationResult(0), ValidationSkipped)
 	assert.Equal(t, ValidationResult(1), ValidationSucceeded)
-	assert.Equal(t, ValidationResult(2), ValidationSkipped)
+	assert.Equal(t, ValidationResult(2), ValidationFailed)
+	assert.Equal(t, ValidationResult(3), ExecutionError)
+}
+
+func TestUpdateResult(t *testing.T) {
+	tests := []struct {
+		name     string
+		initial  ValidationResult
+		update   ValidationResult
+		expected ValidationResult
+	}{
+		{
+			name:     "Skipped to Succeeded",
+			initial:  ValidationSkipped,
+			update:   ValidationSucceeded,
+			expected: ValidationSucceeded,
+		},
+		{
+			name:     "Succeeded to Failed",
+			initial:  ValidationSucceeded,
+			update:   ValidationFailed,
+			expected: ValidationFailed,
+		},
+		{
+			name:     "Failed to ExecutionError",
+			initial:  ValidationFailed,
+			update:   ExecutionError,
+			expected: ExecutionError,
+		},
+		{
+			name:     "ExecutionError stays over Succeeded",
+			initial:  ExecutionError,
+			update:   ValidationSucceeded,
+			expected: ExecutionError,
+		},
+		{
+			name:     "ExecutionError stays over Failed",
+			initial:  ExecutionError,
+			update:   ValidationFailed,
+			expected: ExecutionError,
+		},
+		{
+			name:     "Failed stays over Succeeded",
+			initial:  ValidationFailed,
+			update:   ValidationSucceeded,
+			expected: ValidationFailed,
+		},
+		{
+			name:     "Skipped stays when updating with Skipped",
+			initial:  ValidationSkipped,
+			update:   ValidationSkipped,
+			expected: ValidationSkipped,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Result = tt.initial
+			UpdateResult(tt.update)
+			assert.Equal(t, tt.expected, Result)
+		})
+	}
 }
 
 func TestRootCommand(t *testing.T) {

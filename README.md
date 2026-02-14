@@ -343,6 +343,26 @@ check-image version -o json
 }
 ```
 
+### Exit Codes
+
+| Exit Code | Meaning | Example |
+|-----------|---------|---------|
+| 0 | Validation succeeded or no checks ran | Image passes all checks |
+| 1 | Validation failed | Image is too old, runs as root, exposes unauthorized ports |
+| 2 | Execution error | Invalid config file, image not found, invalid arguments |
+
+In the `all` command, if some checks fail validation and others have execution errors, exit code 2 (execution error) takes precedence over exit code 1 (validation failure).
+
+Usage in scripts:
+```bash
+check-image age nginx:latest --max-age 30
+case $? in
+  0) echo "Image passed validation" ;;
+  1) echo "Image failed validation" ;;
+  2) echo "Tool encountered an error" ;;
+esac
+```
+
 ## Configuration Files
 
 The `config/` directory contains sample configuration files that can be used as templates:
@@ -494,7 +514,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 84.1% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 84.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -521,9 +541,9 @@ go tool cover -html=coverage.out
 - **internal/output**: 100.0% coverage
 - **internal/secrets**: 96.5% coverage
 - **internal/fileutil**: 82.9% coverage
-- **internal/imageutil**: 73.9% coverage
-- **cmd/check-image/commands**: 73.2% coverage
-- **cmd/check-image**: 53.3% coverage
+- **internal/imageutil**: 75.4% coverage
+- **cmd/check-image/commands**: 74.2% coverage
+- **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
 

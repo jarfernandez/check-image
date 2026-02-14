@@ -39,16 +39,13 @@ Note: Registry validation is only applicable for registry images and will be ski
 
 		// Check if skipped (non-registry transport)
 		if d, ok := result.Details.(output.RegistryDetails); ok && d.Skipped {
-			Result = ValidationSkipped
 			return nil
 		}
 
 		if result.Passed {
-			if Result != ValidationFailed {
-				Result = ValidationSucceeded
-			}
+			UpdateResult(ValidationSucceeded)
 		} else {
-			Result = ValidationFailed
+			UpdateResult(ValidationFailed)
 		}
 
 		return nil

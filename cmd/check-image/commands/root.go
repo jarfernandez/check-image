@@ -13,9 +13,10 @@ import (
 type ValidationResult int
 
 const (
-	ValidationFailed ValidationResult = iota
-	ValidationSucceeded
-	ValidationSkipped
+	ValidationSkipped   ValidationResult = iota // 0 - no checks ran
+	ValidationSucceeded                         // 1 - all checks passed
+	ValidationFailed                            // 2 - one or more checks failed
+	ExecutionError                              // 3 - tool could not run properly
 )
 
 var Result = ValidationSkipped
@@ -27,10 +28,11 @@ var outputFormat string
 var OutputFmt output.Format
 
 var rootCmd = &cobra.Command{
-	Use:          "check-image",
-	Short:        "Validation of container images",
-	Long:         `Validation of container images to ensure they meet certain standards (size, age, ports, security configurations, etc.).`,
-	SilenceUsage: true,
+	Use:           "check-image",
+	Short:         "Validation of container images",
+	Long:          `Validation of container images to ensure they meet certain standards (size, age, ports, security configurations, etc.).`,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		level, err := log.ParseLevel(logLevel)
 		if err != nil {
@@ -65,8 +67,17 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "text", "Output format: text, json (optional)")
 }
 
+// UpdateResult updates the global Result with proper precedence.
+// Priority ordering: ValidationSkipped(0) < ValidationSucceeded(1) < ValidationFailed(2) < ExecutionError(3).
+func UpdateResult(new ValidationResult) {
+	if new > Result {
+		Result = new
+	}
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("Error executing check-image: %v", err)
+		log.Errorf("Error executing check-image: %v", err)
+		Result = ExecutionError
 	}
 }

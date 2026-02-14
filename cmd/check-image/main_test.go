@@ -39,6 +39,16 @@ func TestRun_ValidationSkipped(t *testing.T) {
 	assert.NotContains(t, buf.String(), "Validation failed", "Should not print failure message")
 }
 
+func TestRun_ExecutionError(t *testing.T) {
+	commands.Result = commands.ExecutionError
+	var buf bytes.Buffer
+
+	exitCode := run(&buf)
+
+	assert.Equal(t, 2, exitCode, "Should return exit code 2 for execution error")
+	assert.Contains(t, buf.String(), "Execution error", "Should print execution error message")
+}
+
 func TestRun_OutputFormat(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -67,6 +77,13 @@ func TestRun_OutputFormat(t *testing.T) {
 			expectedExit:   0,
 			expectedOutput: "",
 			shouldContain:  false,
+		},
+		{
+			name:           "Execution error prints to stdout",
+			result:         commands.ExecutionError,
+			expectedExit:   2,
+			expectedOutput: "Execution error\n",
+			shouldContain:  true,
 		},
 	}
 

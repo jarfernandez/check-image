@@ -34,11 +34,9 @@ The 'image' argument supports multiple formats:
 		}
 
 		if result.Passed {
-			if Result != ValidationFailed {
-				Result = ValidationSucceeded
-			}
+			UpdateResult(ValidationSucceeded)
 		} else {
-			Result = ValidationFailed
+			UpdateResult(ValidationFailed)
 		}
 
 		return nil

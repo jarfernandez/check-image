@@ -41,7 +41,16 @@ All validation commands follow a consistent pattern:
 1. Commands are in `cmd/check-image/commands/` and use Cobra framework
 2. Each `runX()` function returns `(*output.CheckResult, error)` — it never prints directly
 3. The `RunE` handler in each command calls `renderResult()` to output text or JSON, then updates the global `Result` variable based on `result.Passed`
-4. `Result` (`ValidationFailed`, `ValidationSucceeded`, or `ValidationSkipped`) is defined in `root.go` and drives the exit code in `main.go`
+4. `Result` (`ValidationSkipped`, `ValidationSucceeded`, `ValidationFailed`, or `ExecutionError`) is defined in `root.go` and drives the exit code in `main.go`
+
+### Exit Codes
+- **Exit 0**: Validation succeeded (`ValidationSucceeded`) or no checks ran (`ValidationSkipped`)
+- **Exit 1**: Validation failed (`ValidationFailed`) — the image did not pass one or more checks
+- **Exit 2**: Execution error (`ExecutionError`) — the tool could not run properly (bad config, image not found, invalid arguments, etc.)
+
+Priority ordering: `ExecutionError` > `ValidationFailed` > `ValidationSucceeded` > `ValidationSkipped`. If multiple results occur (e.g., in the `all` command), the highest-priority result determines the exit code.
+
+The `UpdateResult()` helper in `root.go` enforces this precedence. The iota ordering of `ValidationResult` constants matches the priority ordering (higher value = higher priority).
 
 ### Output Format
 - Controlled by the `--output`/`-o` global flag (values: `text` default, `json`)
@@ -178,6 +187,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 
 ### GitHub Integration
 - Use the GitHub CLI (`gh`) for all interactions with GitHub (issues, pull requests, comments).
+- Always create a feature branch for new changes. Never commit directly to `main`.
 - Use Conventional Commits format for all commit messages (e.g., `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
 - Do not add Claude as a co-author in commits (no `Co-Authored-By: Claude` lines).
 
@@ -224,7 +234,7 @@ Both jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 84.1% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 84.3% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
