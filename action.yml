@@ -69,7 +69,7 @@ inputs:
   version:
     description: 'Version of check-image to use'
     required: false
-    default: '0.10.0' # x-release-please-version
+    default: '0.11.0' # x-release-please-version
 
 outputs:
   result:

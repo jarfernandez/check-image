@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0](https://github.com/jarfernandez/check-image/compare/v0.10.0...v0.11.0) (2026-02-15)
+
+
+### Features
+
+* Add GitHub Action for container image validation ([#64](https://github.com/jarfernandez/check-image/issues/64)) ([35d719e](https://github.com/jarfernandez/check-image/commit/35d719ed57463048dd463a7ba80dfe0bc69ab57e))
+
 ## [0.10.0](https://github.com/jarfernandez/check-image/compare/v0.9.1...v0.10.0) (2026-02-15)
 
 
