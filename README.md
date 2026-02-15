@@ -246,7 +246,7 @@ The action also generates a **Step Summary** visible in the GitHub Actions UI wi
 
 ### Requirements
 
-The action requires Docker to be available on the runner. This is satisfied by default on `ubuntu-latest` runners. Self-hosted runners must have Docker installed.
+The action downloads the check-image binary from GitHub Releases, so no additional dependencies are needed for validating remote registry images. To validate local Docker images (e.g., after `docker build`), Docker must be available on the runner — this is satisfied by default on `ubuntu-latest` runners.
 
 ## Usage
 

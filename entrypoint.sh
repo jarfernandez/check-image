@@ -2,32 +2,82 @@
 set -euo pipefail
 
 # GitHub Action entrypoint for check-image.
-# Maps action inputs (INPUT_* env vars) to docker run arguments
-# and generates structured outputs and step summaries.
+# Downloads the check-image binary from GitHub Releases and runs it
+# directly on the runner (like Trivy), giving native Docker daemon access.
 
-readonly REGISTRY="ghcr.io/jarfernandez/check-image"
-readonly WORKSPACE="/github/workspace"
+readonly REPO="jarfernandez/check-image"
 readonly ALL_CHECKS=("age" "size" "ports" "registry" "root-user" "healthcheck" "secrets" "labels")
 
-# --- Build Docker image reference ---
-readonly IMAGE_REF="${REGISTRY}:${INPUT_VERSION}"
+# --- Map runner OS/arch to goreleaser archive names ---
+map_os() {
+  case "${RUNNER_OS}" in
+    Linux)   echo "linux" ;;
+    macOS)   echo "darwin" ;;
+    Windows) echo "windows" ;;
+    *)
+      echo "::error::Unsupported OS: ${RUNNER_OS}"
+      exit 2
+      ;;
+  esac
+}
+
+map_arch() {
+  case "${RUNNER_ARCH}" in
+    X64)   echo "amd64" ;;
+    ARM64) echo "arm64" ;;
+    *)
+      echo "::error::Unsupported architecture: ${RUNNER_ARCH}"
+      exit 2
+      ;;
+  esac
+}
+
+# --- Install check-image binary ---
+install_check_image() {
+  local version="$1"
+  local os
+  local arch
+  os="$(map_os)"
+  arch="$(map_arch)"
+
+  local install_dir="${RUNNER_TEMP}/check-image"
+  mkdir -p "${install_dir}"
+
+  local archive_name="check-image_${version}_${os}_${arch}"
+  local url="https://github.com/${REPO}/releases/download/v${version}"
+
+  echo "::group::Installing check-image v${version}"
+
+  if [[ "${os}" == "windows" ]]; then
+    local archive_url="${url}/${archive_name}.zip"
+    echo "Downloading: ${archive_url}"
+    curl -fsSL "${archive_url}" -o "${install_dir}/check-image.zip"
+    unzip -o -q "${install_dir}/check-image.zip" -d "${install_dir}"
+    rm -f "${install_dir}/check-image.zip"
+  else
+    local archive_url="${url}/${archive_name}.tar.gz"
+    echo "Downloading: ${archive_url}"
+    curl -fsSL "${archive_url}" | tar xz -C "${install_dir}"
+  fi
+
+  # Add to PATH for this step
+  echo "${install_dir}" >> "${GITHUB_PATH}"
+  export PATH="${install_dir}:${PATH}"
+
+  echo "Installed: $(${install_dir}/check-image version 2>/dev/null || echo 'check-image')"
+  echo "::endgroup::"
+}
+
+# --- Install ---
+install_check_image "${INPUT_VERSION}"
 
 echo "::group::check-image configuration"
 echo "Image to validate: ${INPUT_IMAGE}"
 echo "check-image version: ${INPUT_VERSION}"
-echo "Docker image: ${IMAGE_REF}"
-echo "::endgroup::"
-
-# --- Pull the image ---
-echo "::group::Pulling check-image image"
-if ! docker pull "${IMAGE_REF}"; then
-  echo "::error::Failed to pull ${IMAGE_REF}. Verify the version exists."
-  exit 2
-fi
 echo "::endgroup::"
 
 # --- Build check-image CLI arguments ---
-CMD_ARGS=("all" "${INPUT_IMAGE}" "--output" "json")
+CMD_ARGS=("check-image" "all" "${INPUT_IMAGE}" "--output" "json")
 
 if [[ -n "${INPUT_LOG_LEVEL}" && "${INPUT_LOG_LEVEL}" != "info" ]]; then
   CMD_ARGS+=("--log-level" "${INPUT_LOG_LEVEL}")
@@ -119,18 +169,11 @@ fi
 
 # --- Execute ---
 echo "::group::Running check-image"
-full_cmd=(
-  "docker" "run" "--rm"
-  "-v" "${GITHUB_WORKSPACE}:${WORKSPACE}:ro"
-  "-w" "${WORKSPACE}"
-  "${IMAGE_REF}"
-  "${CMD_ARGS[@]}"
-)
-echo "Command: ${full_cmd[*]}"
+echo "Command: ${CMD_ARGS[*]}"
 
 exit_code=0
 stderr_file="$(mktemp)"
-json_output="$("${full_cmd[@]}" 2>"${stderr_file}")" || exit_code=$?
+json_output="$("${CMD_ARGS[@]}" 2>"${stderr_file}")" || exit_code=$?
 
 # Display stderr (log output) in the workflow log
 if [[ -s "${stderr_file}" ]]; then

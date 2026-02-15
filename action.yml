@@ -67,7 +67,7 @@ inputs:
     required: false
     default: 'info'
   version:
-    description: 'Version of check-image Docker image to use'
+    description: 'Version of check-image to use'
     required: false
     default: '0.10.0' # x-release-please-version
 
