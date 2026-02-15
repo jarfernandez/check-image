@@ -262,6 +262,18 @@ Validates that the image runs as non-root user.
 check-image root-user <image>
 ```
 
+#### `healthcheck`
+Validates that the image has a healthcheck defined.
+
+```bash
+check-image healthcheck <image>
+```
+
+The command checks that:
+- A healthcheck section exists in the image configuration
+- The healthcheck test command is not empty
+- The healthcheck is not explicitly disabled (`NONE`)
+
 #### `secrets`
 Validates that the image does not contain sensitive data (passwords, tokens, keys).
 
@@ -346,7 +358,7 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
-- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, labels)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
 - `--max-layers`, `-y`: Maximum number of layers (default: 20)
@@ -359,7 +371,7 @@ Options:
 - `--fail-fast`: Stop on first check failure (default: false)
 
 Precedence rules:
-1. Without `--config`: all 7 checks run with defaults, except those in `--skip`
+1. Without `--config`: all 8 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
 3. CLI flags override config file values
 4. `--skip` always takes precedence over the config file
@@ -735,10 +747,14 @@ The hooks run automatically on `git commit`. You can also:
 
 - `cmd/check-image/main.go`: The entry point of the application that initializes the CLI and executes commands.
 - `cmd/check-image/commands/`: Contains individual command implementations using the `cobra` library.
-- `internal/imageutil/imageutil.go`: Provides utilities for interacting with container images, such as fetching images from local or remote sources and retrieving image configurations.
-- `internal/registry/policy.go`: Manages registry policies, including trusted and excluded registries.
+- `internal/fileutil/`: Provides file reading utilities with support for JSON/YAML parsing and stdin input.
+- `internal/imageutil/`: Provides utilities for interacting with container images, such as fetching images from local or remote sources and retrieving image configurations.
+- `internal/labels/`: Handles label policy loading and validation for required OCI annotations.
+- `internal/output/`: Defines output format types, result structs, and JSON rendering helpers.
+- `internal/registry/`: Manages registry policies, including trusted and excluded registries.
 - `internal/secrets/`: Handles secrets detection, including policy loading and scanning for sensitive data in environment variables and files.
-- `config/`: Contains sample configuration files for registry policies, allowed ports, and secrets detection.
+- `internal/version/`: Manages the application version string, injected at build time via ldflags.
+- `config/`: Contains sample configuration files for registry policies, allowed ports, labels, secrets detection, and all-checks configuration.
 - `go.mod`: Defines the module and its dependencies.
 - `go.sum`: Contains the checksums for module dependencies.
 
@@ -746,8 +762,10 @@ The hooks run automatically on `git commit`. You can also:
 
 - `github.com/spf13/cobra`: For CLI command structure.
 - `github.com/google/go-containerregistry`: For interacting with container registries.
-- `gopkg.in/yaml.v3`: For parsing YAML configuration files.
 - `github.com/sirupsen/logrus`: For logging.
+- `github.com/mattn/go-isatty`: For terminal detection (controls log color output).
+- `github.com/stretchr/testify`: For test assertions.
+- `gopkg.in/yaml.v3`: For parsing YAML configuration files.
 
 ## Testing
 
