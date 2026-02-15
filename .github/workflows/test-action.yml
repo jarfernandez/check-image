@@ -6,12 +6,6 @@ on:
       - 'action.yml'
       - 'entrypoint.sh'
       - '.github/workflows/test-action.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'action.yml'
-      - 'entrypoint.sh'
-      - '.github/workflows/test-action.yml'
 
 jobs:
   test-defaults:
