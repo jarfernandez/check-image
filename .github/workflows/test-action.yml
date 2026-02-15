@@ -22,10 +22,30 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run check-image with defaults
+        id: check
         uses: ./
+        continue-on-error: true
         with:
           image: nginx:latest
           skip: registry,labels
+
+      - name: Verify action produced valid output
+        run: |
+          echo "Result: ${{ steps.check.outputs.result }}"
+          echo "JSON output:"
+          echo '${{ steps.check.outputs.json }}' | jq .
+
+          # Verify result is set (passed or failed, not empty)
+          if [[ -z "${{ steps.check.outputs.result }}" ]]; then
+            echo "::error::Expected result output to be set"
+            exit 1
+          fi
+
+          # Verify JSON output is valid and contains expected structure
+          if ! echo '${{ steps.check.outputs.json }}' | jq -e '.summary.total' > /dev/null 2>&1; then
+            echo "::error::JSON output missing summary.total field"
+            exit 1
+          fi
 
   test-specific-checks:
     name: Test specific checks
@@ -50,11 +70,31 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run with inline config
+        id: check
         uses: ./
+        continue-on-error: true
         with:
           image: nginx:latest
           config: config/config-inline.yaml
           skip: registry,labels
+
+      - name: Verify config file was processed
+        run: |
+          echo "Result: ${{ steps.check.outputs.result }}"
+          echo "JSON output:"
+          echo '${{ steps.check.outputs.json }}' | jq .
+
+          # Verify result is set
+          if [[ -z "${{ steps.check.outputs.result }}" ]]; then
+            echo "::error::Expected result output to be set"
+            exit 1
+          fi
+
+          # Verify JSON output is valid and contains checks from config
+          if ! echo '${{ steps.check.outputs.json }}' | jq -e '.checks | length > 0' > /dev/null 2>&1; then
+            echo "::error::JSON output missing checks array"
+            exit 1
+          fi
 
   test-soft-failure:
     name: Test soft failure and outputs
