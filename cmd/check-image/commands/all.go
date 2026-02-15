@@ -97,7 +97,8 @@ Precedence rules:
   check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
   check-image all oci:/path/to/layout:1.0
   check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry
-  check-image all nginx:latest --fail-fast --skip registry`,
+  check-image all nginx:latest --fail-fast --skip registry
+  cat config.json | check-image all nginx:latest --config -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := runAll(cmd, args[0]); err != nil {

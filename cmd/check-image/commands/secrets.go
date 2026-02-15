@@ -34,7 +34,8 @@ The 'image' argument supports multiple formats:
   check-image secrets nginx:latest --skip-files
   check-image secrets oci:/path/to/layout:1.0
   check-image secrets oci-archive:/path/to/image.tar:latest --secrets-policy secrets-policy.json
-  check-image secrets docker-archive:/path/to/image.tar:tag --skip-files`,
+  check-image secrets docker-archive:/path/to/image.tar:tag --skip-files
+  cat secrets-policy.yaml | check-image secrets nginx:latest --secrets-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		result, err := runSecrets(args[0])
