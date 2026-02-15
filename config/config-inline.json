@@ -23,6 +23,15 @@
         "excluded-env-vars": ["PUBLIC_KEY", "SSH_PUBLIC_KEY"],
         "excluded-paths": ["/usr/share/**", "/var/log/**"]
       }
+    },
+    "labels": {
+      "labels-policy": {
+        "required-labels": [
+          {"name": "maintainer"},
+          {"name": "org.opencontainers.image.version", "pattern": "^v?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$"},
+          {"name": "org.opencontainers.image.vendor", "value": "MyCompany"}
+        ]
+      }
     }
   }
 }

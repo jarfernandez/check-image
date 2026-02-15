@@ -119,10 +119,21 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Policy supports `excluded-paths`, `excluded-env-vars`, and custom patterns
 - Works out-of-the-box with sensible defaults when no policy file is provided
 
+**labels**: Validates that image has required labels (OCI annotations) with correct values
+- Flags: `--labels-policy` (required, JSON or YAML file)
+- Policy format: defines `required-labels` array with validation rules
+- Three validation modes:
+  - Existence check: label must be present (only `name` specified)
+  - Exact value match: label value must exactly match (specify `name` and `value`)
+  - Pattern match: label value must match regex (specify `name` and `pattern`)
+- Reports missing labels and invalid label values with detailed error messages
+- Supports both file paths and stdin input (`-`) for dynamic policy generation
+- Inline policy support: policy can be embedded as object in all-checks config file
+
 **all**: Runs all validation checks on a container image at once
-- Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
+- Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
 - Precedence: CLI flags > config file values > defaults; `--skip` always wins
-- Without `--config`: runs all 6 checks with defaults (except skipped)
+- Without `--config`: runs all 7 checks with defaults (except skipped)
 - With `--config`: only runs checks present in the config file (except skipped)
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
 - Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runRegistryForAll()` skips gracefully when no `--registry-policy` is provided
@@ -140,6 +151,7 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 Sample configuration files are in `config/`:
 - `allowed-ports.yaml` / `allowed-ports.json`: Allowed ports list
 - `registry-policy.yaml` / `registry-policy.json`: Trusted registries list
+- `labels-policy.yaml` / `labels-policy.json`: Required labels validation policy
 - `config.yaml` / `config.json`: All-checks configuration (defines which checks to run and their parameters for the `all` command)
 - `secrets-policy.yaml` / `secrets-policy.json`: Secrets detection policy with exclusions
 
@@ -148,6 +160,7 @@ Both JSON and YAML formats are supported throughout the tool. Format detection i
 #### Stdin Support
 All file arguments support reading from stdin using `-` as the path, enabling dynamic configuration from pipelines:
 - `--registry-policy -` - Read registry policy from stdin
+- `--labels-policy -` - Read labels policy from stdin
 - `--secrets-policy -` - Read secrets policy from stdin
 - `--allowed-ports @-` - Read allowed ports from stdin
 - `--config -` - Read all-checks config from stdin
@@ -176,6 +189,14 @@ The `all` command config file supports embedding policies directly as objects in
     "registry": {
       "registry-policy": {
         "trusted-registries": ["docker.io", "ghcr.io"]
+      }
+    },
+    "labels": {
+      "labels-policy": {
+        "required-labels": [
+          {"name": "maintainer"},
+          {"name": "org.opencontainers.image.version", "pattern": "^v?\\d+\\.\\d+\\.\\d+$"}
+        ]
       }
     },
     "secrets": {
@@ -296,7 +317,7 @@ All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do 
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 84.2% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 89.3% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.

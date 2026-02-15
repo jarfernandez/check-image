@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/jarfernandez/check-image/internal/output"
 )
@@ -28,6 +29,8 @@ func renderResult(r *output.CheckResult) error {
 		renderRootUserText(r)
 	case "secrets":
 		renderSecretsText(r)
+	case "labels":
+		renderLabelsText(r)
 	}
 
 	return nil
@@ -143,4 +146,58 @@ func renderSecretsText(r *output.CheckResult) {
 	}
 
 	fmt.Println(r.Message)
+}
+
+func renderLabelsText(r *output.CheckResult) {
+	d := r.Details.(output.LabelsDetails)
+	fmt.Printf("Checking labels of image %s\n", r.Image)
+
+	// Show required labels
+	if len(d.RequiredLabels) > 0 {
+		fmt.Println("\nRequired labels:")
+		for _, req := range d.RequiredLabels {
+			switch {
+			case req.Pattern != "":
+				fmt.Printf("  - %s (pattern: %q)\n", req.Name, req.Pattern)
+			case req.Value != "":
+				fmt.Printf("  - %s (exact: %q)\n", req.Name, req.Value)
+			default:
+				fmt.Printf("  - %s (existence check)\n", req.Name)
+			}
+		}
+	}
+
+	// Show actual labels from image
+	if len(d.ActualLabels) > 0 {
+		fmt.Printf("\nActual labels (%d):\n", len(d.ActualLabels))
+		// Sort keys for deterministic output
+		keys := make([]string, 0, len(d.ActualLabels))
+		for k := range d.ActualLabels {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Printf("  %s: %s\n", k, d.ActualLabels[k])
+		}
+	} else {
+		fmt.Println("\nNo labels found in image")
+	}
+
+	// Show missing labels
+	if len(d.MissingLabels) > 0 {
+		fmt.Printf("\nMissing labels (%d):\n", len(d.MissingLabels))
+		for _, name := range d.MissingLabels {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
+
+	// Show invalid labels
+	if len(d.InvalidLabels) > 0 {
+		fmt.Printf("\nInvalid labels (%d):\n", len(d.InvalidLabels))
+		for _, inv := range d.InvalidLabels {
+			fmt.Printf("  - %s: %s\n", inv.Name, inv.Reason)
+		}
+	}
+
+	fmt.Printf("\n%s\n", r.Message)
 }

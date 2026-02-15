@@ -23,7 +23,7 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Set the version you want to install (or use 'latest' tag from releases page)
-VERSION=0.8.0
+VERSION=0.9.0
 
 # macOS (Apple Silicon)
 curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_arm64.tar.gz" | tar xz
@@ -46,7 +46,7 @@ sudo mv check-image /usr/local/bin/
 # and extract to a directory in your PATH
 ```
 
-Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.8.0`).
+Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.9.0`).
 
 ### Install with Go
 
@@ -57,7 +57,7 @@ Pre-built binaries include the correct version number (e.g., `check-image versio
 go install github.com/jarfernandez/check-image/cmd/check-image@latest
 
 # Or install a specific version
-go install github.com/jarfernandez/check-image/cmd/check-image@v0.8.0
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.9.0
 ```
 
 This will install the `check-image` binary to your `GOBIN` directory.
@@ -129,7 +129,7 @@ Without the Docker socket mounted (the default), check-image automatically uses 
 **Using a specific version:**
 
 ```bash
-docker pull ghcr.io/jarfernandez/check-image:0.8.0
+docker pull ghcr.io/jarfernandez/check-image:0.9.0
 ```
 
 ## Usage
@@ -278,6 +278,65 @@ The command scans:
 - Environment variables for sensitive patterns (password, secret, token, key, etc.)
 - Files across all image layers for common secret files (SSH keys, cloud credentials, password files, etc.)
 
+#### `labels`
+Validates that the image has required labels (OCI annotations) with correct values.
+
+```bash
+check-image labels <image> --labels-policy <file>
+```
+
+Options:
+- `--labels-policy`: Path to labels policy file (JSON or YAML, required)
+
+Policy file format:
+```yaml
+required-labels:
+  # Existence check - label must be present
+  - name: "maintainer"
+
+  # Exact value match
+  - name: "org.opencontainers.image.vendor"
+    value: "MyCompany"
+
+  # Pattern match (regex)
+  - name: "org.opencontainers.image.version"
+    pattern: "^v?\\d+\\.\\d+\\.\\d+$"
+```
+
+The command validates three types of requirements:
+- **Existence check**: Label must be present with any value (only `name` specified)
+- **Exact value match**: Label value must exactly match the specified string (`name` and `value`)
+- **Pattern match**: Label value must match the regular expression (`name` and `pattern`)
+
+Example JSON output:
+```json
+{
+  "check": "labels",
+  "image": "nginx:latest",
+  "passed": false,
+  "message": "Image does not meet label requirements",
+  "details": {
+    "required-labels": [
+      {"name": "maintainer"},
+      {"name": "org.opencontainers.image.version", "pattern": "^v?\\\\d+\\\\.\\\\d+\\\\.\\\\d+$"}
+    ],
+    "actual-labels": {
+      "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+    },
+    "missing-labels": ["org.opencontainers.image.version"],
+    "invalid-labels": []
+  }
+}
+```
+
+Common OCI standard labels:
+- `org.opencontainers.image.created` - Image creation timestamp
+- `org.opencontainers.image.version` - Version of the packaged software
+- `org.opencontainers.image.vendor` - Name of the distributing entity
+- `org.opencontainers.image.source` - URL to the source code repository
+- `org.opencontainers.image.revision` - Source control revision identifier
+- `org.opencontainers.image.licenses` - License(s) under which the image is distributed
+
 #### `all`
 Runs all validation checks on a container image at once.
 
@@ -287,19 +346,20 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
-- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, labels)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
 - `--max-layers`, `-y`: Maximum number of layers (default: 20)
 - `--allowed-ports`, `-p`: Comma-separated list of allowed ports or `@<file>`
 - `--registry-policy`, `-r`: Registry policy file (JSON or YAML)
+- `--labels-policy`: Labels policy file (JSON or YAML)
 - `--secrets-policy`, `-s`: Secrets policy file (JSON or YAML)
 - `--skip-env-vars`: Skip environment variable checks in secrets detection
 - `--skip-files`: Skip file system checks in secrets detection
 - `--fail-fast`: Stop on first check failure (default: false)
 
 Precedence rules:
-1. Without `--config`: all 6 checks run with defaults, except those in `--skip`
+1. Without `--config`: all 7 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
 3. CLI flags override config file values
 4. `--skip` always takes precedence over the config file
@@ -691,7 +751,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 84.2% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 89.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -715,11 +775,12 @@ go tool cover -html=coverage.out
 
 - **internal/version**: 100.0% coverage
 - **internal/output**: 100.0% coverage
+- **internal/labels**: 98.1% coverage
 - **internal/registry**: 97.3% coverage
 - **internal/secrets**: 95.9% coverage
 - **internal/fileutil**: 89.2% coverage
-- **internal/imageutil**: 75.4% coverage
-- **cmd/check-image/commands**: 73.8% coverage
+- **internal/imageutil**: 81.0% coverage
+- **cmd/check-image/commands**: 80.9% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

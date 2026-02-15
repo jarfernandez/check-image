@@ -1,0 +1,19 @@
+# Labels Policy Configuration
+# This file defines required labels (OCI annotations) for container images
+
+required-labels:
+  # Existence check - label must be present with any value
+  - name: "maintainer"
+
+  # Pattern match - value must match semantic versioning regex
+  - name: "org.opencontainers.image.version"
+    pattern: "^v?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$"
+
+  # Exact value match - value must exactly match the specified string
+  - name: "org.opencontainers.image.vendor"
+    value: "MyCompany"
+
+  # Additional recommended OCI labels
+  - name: "org.opencontainers.image.source"
+  - name: "org.opencontainers.image.created"
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"

@@ -1,0 +1,22 @@
+{
+  "required-labels": [
+    {
+      "name": "maintainer"
+    },
+    {
+      "name": "org.opencontainers.image.version",
+      "pattern": "^v?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$"
+    },
+    {
+      "name": "org.opencontainers.image.vendor",
+      "value": "MyCompany"
+    },
+    {
+      "name": "org.opencontainers.image.source"
+    },
+    {
+      "name": "org.opencontainers.image.created",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    }
+  ]
+}

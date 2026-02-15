@@ -13,3 +13,5 @@ checks:
     secrets-policy: config/secrets-policy.yaml
     skip-env-vars: false
     skip-files: false
+  labels:
+    labels-policy: config/labels-policy.yaml

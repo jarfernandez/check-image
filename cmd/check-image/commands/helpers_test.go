@@ -26,6 +26,7 @@ type testImageOptions struct {
 	created      time.Time
 	exposedPorts map[string]struct{}
 	env          []string
+	labels       map[string]string // Optional: image labels
 	layerCount   int
 	layerSizes   []int64             // Optional: specific sizes for each layer in bytes. If nil, default sizes are used.
 	layerFiles   []map[string]string // Optional: files to add to each layer. Map of path -> content.
@@ -51,6 +52,7 @@ func createTestOCILayout(t *testing.T, tag string, opts testImageOptions) string
 	cfg.Created = v1.Time{Time: opts.created}
 	cfg.Config.ExposedPorts = opts.exposedPorts
 	cfg.Config.Env = opts.env
+	cfg.Config.Labels = opts.labels
 
 	// Apply config
 	img, err = mutate.ConfigFile(img, cfg)
@@ -135,6 +137,67 @@ func createTestImage(t *testing.T, opts testImageOptions) string {
 
 	layoutPath := createTestOCILayout(t, "latest", opts)
 	return "oci:" + layoutPath + ":latest"
+}
+
+// createTestOCIImage creates an OCI layout image in the specified directory with the given labels
+// This is a convenience function for tests that only need to set labels
+func createTestOCIImage(t *testing.T, layoutPath string, labels map[string]string) {
+	t.Helper()
+
+	opts := testImageOptions{
+		labels: labels,
+	}
+
+	// Create base image
+	img := empty.Image
+
+	// Create config
+	cfg, err := img.ConfigFile()
+	require.NoError(t, err)
+
+	// Set labels
+	cfg.Config.Labels = opts.labels
+
+	// Apply config
+	img, err = mutate.ConfigFile(img, cfg)
+	require.NoError(t, err)
+
+	// Create layout
+	p, err := layout.Write(layoutPath, empty.Index)
+	require.NoError(t, err)
+
+	// Append image
+	err = p.AppendImage(img)
+	require.NoError(t, err)
+
+	// Get digest
+	digest, err := img.Digest()
+	require.NoError(t, err)
+
+	// Add tag annotation
+	idx, err := p.ImageIndex()
+	require.NoError(t, err)
+
+	manifest, err := idx.IndexManifest()
+	require.NoError(t, err)
+
+	for i := range manifest.Manifests {
+		if manifest.Manifests[i].Digest == digest {
+			if manifest.Manifests[i].Annotations == nil {
+				manifest.Manifests[i].Annotations = make(map[string]string)
+			}
+			manifest.Manifests[i].Annotations["org.opencontainers.image.ref.name"] = "latest"
+			break
+		}
+	}
+
+	// Write updated index
+	indexBytes, err := json.Marshal(manifest)
+	require.NoError(t, err)
+
+	indexPath := filepath.Join(layoutPath, "index.json")
+	err = os.WriteFile(indexPath, indexBytes, 0644)
+	require.NoError(t, err)
 }
 
 // createTestLayer creates a test layer with approximately the specified compressed size

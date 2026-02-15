@@ -73,6 +73,30 @@ type FileFinding struct {
 	Description string `json:"description"`
 }
 
+// LabelsDetails holds details for the labels check.
+type LabelsDetails struct {
+	RequiredLabels []RequiredLabelCheck `json:"required-labels"`
+	ActualLabels   map[string]string    `json:"actual-labels,omitempty"`
+	MissingLabels  []string             `json:"missing-labels,omitempty"`
+	InvalidLabels  []InvalidLabelDetail `json:"invalid-labels,omitempty"`
+}
+
+// RequiredLabelCheck represents a required label with its validation mode.
+type RequiredLabelCheck struct {
+	Name    string `json:"name"`
+	Value   string `json:"value,omitempty"`
+	Pattern string `json:"pattern,omitempty"`
+}
+
+// InvalidLabelDetail represents a label that exists but doesn't meet requirements.
+type InvalidLabelDetail struct {
+	Name            string `json:"name"`
+	ActualValue     string `json:"actual-value"`
+	ExpectedValue   string `json:"expected-value,omitempty"`
+	ExpectedPattern string `json:"expected-pattern,omitempty"`
+	Reason          string `json:"reason"`
+}
+
 // AllResult is the aggregated result for the "all" command.
 type AllResult struct {
 	Image   string        `json:"image"`

@@ -25,7 +25,8 @@ The 'image' argument supports multiple formats:
 
 Note: Registry validation is only applicable for registry images and will be skipped for other transports.`,
 	Example: `  check-image registry nginx:latest --registry-policy registry-policy.json
-  check-image registry docker.io/library/nginx:latest --registry-policy registry-policy.yaml`,
+  check-image registry docker.io/library/nginx:latest --registry-policy registry-policy.yaml
+  cat registry-policy.json | check-image registry nginx:latest --registry-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		result, err := runRegistry(args[0])
