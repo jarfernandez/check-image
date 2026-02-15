@@ -13,7 +13,7 @@ import (
 )
 
 // validCheckNames lists all check names recognized by the all command.
-var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "labels"}
+var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels"}
 
 // allConfig represents the configuration file structure for the all command.
 type allConfig struct {
@@ -21,13 +21,14 @@ type allConfig struct {
 }
 
 type allChecksConfig struct {
-	Age      *ageCheckConfig      `json:"age,omitempty"       yaml:"age,omitempty"`
-	Size     *sizeCheckConfig     `json:"size,omitempty"      yaml:"size,omitempty"`
-	Ports    *portsCheckConfig    `json:"ports,omitempty"     yaml:"ports,omitempty"`
-	Registry *registryCheckConfig `json:"registry,omitempty"  yaml:"registry,omitempty"`
-	RootUser *rootUserCheckConfig `json:"root-user,omitempty" yaml:"root-user,omitempty"`
-	Secrets  *secretsCheckConfig  `json:"secrets,omitempty"   yaml:"secrets,omitempty"`
-	Labels   *labelsCheckConfig   `json:"labels,omitempty"    yaml:"labels,omitempty"`
+	Age         *ageCheckConfig         `json:"age,omitempty"       yaml:"age,omitempty"`
+	Size        *sizeCheckConfig        `json:"size,omitempty"      yaml:"size,omitempty"`
+	Ports       *portsCheckConfig       `json:"ports,omitempty"     yaml:"ports,omitempty"`
+	Registry    *registryCheckConfig    `json:"registry,omitempty"  yaml:"registry,omitempty"`
+	RootUser    *rootUserCheckConfig    `json:"root-user,omitempty" yaml:"root-user,omitempty"`
+	Secrets     *secretsCheckConfig     `json:"secrets,omitempty"   yaml:"secrets,omitempty"`
+	Healthcheck *healthcheckCheckConfig `json:"healthcheck,omitempty" yaml:"healthcheck,omitempty"`
+	Labels      *labelsCheckConfig      `json:"labels,omitempty"      yaml:"labels,omitempty"`
 }
 
 type ageCheckConfig struct {
@@ -48,6 +49,8 @@ type registryCheckConfig struct {
 }
 
 type rootUserCheckConfig struct{}
+
+type healthcheckCheckConfig struct{}
 
 type secretsCheckConfig struct {
 	SecretsPolicy any   `json:"secrets-policy,omitempty" yaml:"secrets-policy,omitempty"`
@@ -74,7 +77,7 @@ var allCmd = &cobra.Command{
 	Short: "Run all validation checks on a container image",
 	Long: `Run all validation checks on a container image at once.
 
-By default, runs all checks (age, size, ports, registry, root-user, secrets, labels).
+By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels).
 Use --config to specify which checks to run and their parameters.
 Use --skip to skip specific checks.
 Use --fail-fast to stop on the first check failure.
@@ -86,7 +89,7 @@ The 'image' argument supports multiple formats:
   - Docker tarball: docker-archive:/path/to/image.tar:tag
 
 Precedence rules:
-  1. Without --config: all 6 checks run with defaults, except those in --skip
+  1. Without --config: all checks run with defaults, except those in --skip
   2. With --config: only checks present in the config file run, except those in --skip
   3. CLI flags override config file values
   4. --skip always takes precedence over the config file`,
@@ -113,7 +116,7 @@ func init() {
 	rootCmd.AddCommand(allCmd)
 
 	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to configuration file (JSON or YAML) (optional)")
-	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, labels) (optional)")
+	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
@@ -374,6 +377,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 			{"registry", cfg.Checks.Registry != nil, runRegistry},
 			{"root-user", cfg.Checks.RootUser != nil, runRootUser},
 			{"secrets", cfg.Checks.Secrets != nil, runSecrets},
+			{"healthcheck", cfg.Checks.Healthcheck != nil, runHealthcheck},
 			{"labels", cfg.Checks.Labels != nil, runLabels},
 		}
 	} else {
@@ -385,6 +389,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 			{"registry", true, runRegistry},
 			{"root-user", true, runRootUser},
 			{"secrets", true, runSecrets},
+			{"healthcheck", true, runHealthcheck},
 			{"labels", true, runLabels},
 		}
 	}

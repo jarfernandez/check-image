@@ -55,7 +55,7 @@ The `UpdateResult()` helper in `root.go` enforces this precedence. The iota orde
 ### Output Format
 - Controlled by the `--output`/`-o` global flag (values: `text` default, `json`)
 - `internal/output/format.go`: Defines `Format` type, `ParseFormat()`, and `RenderJSON()` helper
-- `internal/output/results.go`: Result structs (`CheckResult`, `AgeDetails`, `SizeDetails`, `PortsDetails`, `RegistryDetails`, `RootUserDetails`, `SecretsDetails`, `AllResult`, `Summary`, `VersionResult`)
+- `internal/output/results.go`: Result structs (`CheckResult`, `AgeDetails`, `SizeDetails`, `PortsDetails`, `RegistryDetails`, `RootUserDetails`, `HealthcheckDetails`, `SecretsDetails`, `LabelsDetails`, `AllResult`, `Summary`, `VersionResult`)
 - `cmd/check-image/commands/render.go`: Text renderers for each check; `renderResult()` dispatches to JSON or text based on `OutputFmt`
 - In JSON mode, `main.go` suppresses the final "Validation succeeded/failed" text message (it's already in the JSON)
 
@@ -111,6 +111,11 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - No flags
 - Checks if `config.Config.User` is empty or "root"
 
+**healthcheck**: Validates that the image has a healthcheck defined
+- No flags
+- Checks if `config.Config.Healthcheck` is not nil, has a non-empty test command, and test is not `["NONE"]` (explicitly disabled)
+- Returns `HealthcheckDetails` with `HasHealthcheck` boolean
+
 **secrets**: Validates that image does not contain sensitive data (passwords, tokens, keys)
 - Flags: `--secrets-policy` (optional, JSON or YAML file), `--skip-env-vars`, `--skip-files`
 - Scans environment variables for sensitive patterns (case-insensitive matching for keywords like password, secret, token, key, etc.)
@@ -133,7 +138,7 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 **all**: Runs all validation checks on a container image at once
 - Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
 - Precedence: CLI flags > config file values > defaults; `--skip` always wins
-- Without `--config`: runs all 7 checks with defaults (except skipped)
+- Without `--config`: runs all 8 checks with defaults (except skipped)
 - With `--config`: only runs checks present in the config file (except skipped)
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
 - Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runRegistryForAll()` skips gracefully when no `--registry-policy` is provided
@@ -317,7 +322,7 @@ All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do 
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 89.3% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 89.5% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.

@@ -29,6 +29,8 @@ func renderResult(r *output.CheckResult) error {
 		renderRootUserText(r)
 	case "secrets":
 		renderSecretsText(r)
+	case "healthcheck":
+		renderHealthcheckText(r)
 	case "labels":
 		renderLabelsText(r)
 	}
@@ -145,6 +147,11 @@ func renderSecretsText(r *output.CheckResult) {
 		fmt.Println()
 	}
 
+	fmt.Println(r.Message)
+}
+
+func renderHealthcheckText(r *output.CheckResult) {
+	fmt.Printf("Checking if image %s has a healthcheck defined\n", r.Image)
 	fmt.Println(r.Message)
 }
 
