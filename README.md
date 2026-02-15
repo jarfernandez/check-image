@@ -6,6 +6,7 @@ Check Image is a Go-based CLI tool designed for validating container images. It 
 
 - [Installation](#installation)
 - [Docker](#docker)
+- [GitHub Action](#github-action)
 - [Usage](#usage)
 - [Commands](#commands)
 - [Configuration Files](#configuration-files)
@@ -23,7 +24,7 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Set the version you want to install (or use 'latest' tag from releases page)
-VERSION=0.10.0
+VERSION=0.11.0
 
 # macOS (Apple Silicon)
 curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_arm64.tar.gz" | tar xz
@@ -46,7 +47,7 @@ sudo mv check-image /usr/local/bin/
 # and extract to a directory in your PATH
 ```
 
-Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.10.0`).
+Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.11.0`).
 
 ### Install with Go
 
@@ -57,7 +58,7 @@ Pre-built binaries include the correct version number (e.g., `check-image versio
 go install github.com/jarfernandez/check-image/cmd/check-image@latest
 
 # Or install a specific version
-go install github.com/jarfernandez/check-image/cmd/check-image@v0.10.0
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.11.0
 ```
 
 This will install the `check-image` binary to your `GOBIN` directory.
@@ -129,8 +130,123 @@ Without the Docker socket mounted (the default), check-image automatically uses 
 **Using a specific version:**
 
 ```bash
-docker pull ghcr.io/jarfernandez/check-image:0.10.0
+docker pull ghcr.io/jarfernandez/check-image:0.11.0
 ```
+
+## GitHub Action
+
+Check Image is available as a GitHub Action for validating container images directly in your CI/CD workflows.
+
+### Basic Usage
+
+```yaml
+- uses: jarfernandez/check-image@v0.11.0
+  with:
+    image: nginx:latest
+```
+
+This runs all 8 checks with default settings. Checks that require policy files (registry, labels) will report an error unless their policies are provided.
+
+### With a Config File
+
+```yaml
+- uses: jarfernandez/check-image@v0.11.0
+  with:
+    image: myorg/myapp:${{ github.sha }}
+    config: .check-image/config.yaml
+```
+
+The config file determines which checks to run and their parameters. See [All Checks Configuration Files](#all-checks-configuration-files) for the format.
+
+### Running Specific Checks
+
+```yaml
+- uses: jarfernandez/check-image@v0.11.0
+  with:
+    image: nginx:latest
+    checks: age,size,root-user
+    max-age: '30'
+    max-size: '200'
+```
+
+### With Policy Files
+
+```yaml
+- uses: jarfernandez/check-image@v0.11.0
+  with:
+    image: ghcr.io/myorg/app:latest
+    registry-policy: policies/registry-policy.yaml
+    labels-policy: policies/labels-policy.json
+    skip: healthcheck
+```
+
+### Soft Failure
+
+Use `continue-on-error` to prevent the action from failing the workflow:
+
+```yaml
+- uses: jarfernandez/check-image@v0.11.0
+  id: check
+  continue-on-error: true
+  with:
+    image: nginx:latest
+    config: .check-image/config.yaml
+
+- name: Handle results
+  if: steps.check.outputs.result == 'failed'
+  run: echo "Image validation failed but continuing"
+```
+
+### Using JSON Output
+
+The action captures full JSON output for programmatic use in subsequent steps:
+
+```yaml
+- uses: jarfernandez/check-image@v0.11.0
+  id: check
+  continue-on-error: true
+  with:
+    image: nginx:latest
+    checks: age,size
+
+- name: Process results
+  if: always()
+  run: echo '${{ steps.check.outputs.json }}' | jq '.summary'
+```
+
+### Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `image` | Yes | - | Container image to validate |
+| `config` | No | - | Path to config file for the `all` command |
+| `checks` | No | - | Comma-separated list of checks to run |
+| `skip` | No | - | Comma-separated list of checks to skip |
+| `fail-fast` | No | `false` | Stop on first check failure |
+| `max-age` | No | - | Maximum image age in days |
+| `max-size` | No | - | Maximum image size in MB |
+| `max-layers` | No | - | Maximum number of layers |
+| `allowed-ports` | No | - | Comma-separated allowed ports or `@file` path |
+| `registry-policy` | No | - | Path to registry policy file |
+| `labels-policy` | No | - | Path to labels policy file |
+| `secrets-policy` | No | - | Path to secrets policy file |
+| `skip-env-vars` | No | `false` | Skip environment variable checks |
+| `skip-files` | No | `false` | Skip file system checks |
+| `log-level` | No | `info` | Log level |
+| `version` | No | `0.11.0` | check-image version to use |
+
+### Outputs
+
+| Output | Description |
+|--------|-------------|
+| `result` | Validation result: `passed`, `failed`, or `error` |
+| `json` | Full JSON output from check-image |
+
+The action also generates a **Step Summary** visible in the GitHub Actions UI with a results table, details of failed checks, and full JSON output.
+
+### Requirements
+
+The action downloads the check-image binary from GitHub Releases, so no additional dependencies are needed for validating remote registry images. To validate local Docker images (e.g., after `docker build`), Docker must be available on the runner — this is satisfied by default on `ubuntu-latest` runners.
 
 ## Usage
 

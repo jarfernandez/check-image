@@ -55,7 +55,7 @@ jobs:
 
   docker:
     name: Docker
-    needs: release-please
+    needs: [release-please, goreleaser]
     if: ${{ needs.release-please.outputs.releases_created == 'true' }}
     runs-on: ubuntu-latest
     permissions:
@@ -104,6 +104,13 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+
+      - name: Validate image with check-image
+        uses: ./
+        with:
+          image: check-image:scan
+          checks: size,root-user,ports,secrets
+          max-size: '20'
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3

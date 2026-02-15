@@ -251,12 +251,24 @@ In `internal/secrets/`:
 - **Local build**: `docker build --build-arg VERSION=dev -t check-image .`
 - **Container behavior**: Without Docker socket, `GetLocalImage()` fails silently and falls back to remote registry. This is the expected and recommended mode. Docker socket mounting is possible but grants host-level daemon access.
 
+### GitHub Action
+- **Type**: Composite action that downloads the check-image binary from GitHub Releases (like Trivy), giving native Docker daemon access
+- **Files**: `action.yml` (action definition), `entrypoint.sh` (binary download + input-to-CLI mapping script)
+- **How it works**: Downloads the check-image binary for the runner's OS/arch from GitHub Releases, then runs `check-image all` directly on the runner. Maps `RUNNER_OS`/`RUNNER_ARCH` to goreleaser archive names (e.g., `Linux`/`X64` → `linux`/`amd64`)
+- **Command**: Always runs `check-image all` — individual check selection is done via the `checks` input (translated to `--skip` by computing the complement) or the `skip` input
+- **Output capture**: stdout (JSON) is captured separately from stderr (logs). JSON goes to the `json` output, logs go to the workflow log
+- **Step summary**: Generates `$GITHUB_STEP_SUMMARY` with results table, failed check details, and collapsible full JSON (uses `jq`, pre-installed on GitHub runners)
+- **Exit codes**: Propagated directly — 0 (passed), 1 (validation failed), 2 (execution error)
+- **Version sync**: The `version` input default in `action.yml` uses the `x-release-please-version` marker. Release-please's `extra-files` config (in `.github/release-please-config.json`) auto-updates this value on each release
+- **Dogfooding**: The release workflow's docker job uses `uses: ./` to validate `check-image:scan` after Trivy. The docker job depends on goreleaser (`needs: [release-please, goreleaser]`) so the binary is available for download
+- **Testing**: `.github/workflows/test-action.yml` tests the action using `uses: ./` against real images
+
 ### Release Pipeline
 Single workflow in `.github/workflows/release-please.yml` with three chained jobs:
 
 1. **release-please job**: Runs on every push to `main`. Creates/updates a release PR with changelog and version bump. When the release PR is merged, creates the git tag and GitHub release. Exports `releases_created` and `tag_name` as outputs.
-2. **goreleaser job**: Depends on the release-please job. Only runs when `releases_created == 'true'`. Checks out the tag, builds binaries for linux/darwin/windows (amd64/arm64), and uploads them to the GitHub release via `mode: append`.
-3. **docker job**: Depends on the release-please job. Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
+2. **goreleaser job**: Depends on release-please. Only runs when `releases_created == 'true'`. Checks out the tag, builds binaries for linux/darwin/windows (amd64/arm64), and uploads them to the GitHub release via `mode: append`.
+3. **docker job**: Depends on both release-please and goreleaser (needs binaries available for the check-image action). Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), validates image with check-image (dogfooding: size, root-user, ports, secrets), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
 
 All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
 
