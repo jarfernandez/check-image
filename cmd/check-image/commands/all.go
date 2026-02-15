@@ -74,7 +74,7 @@ var allCmd = &cobra.Command{
 	Short: "Run all validation checks on a container image",
 	Long: `Run all validation checks on a container image at once.
 
-By default, runs all checks (age, size, ports, registry, root-user, secrets).
+By default, runs all checks (age, size, ports, registry, root-user, secrets, labels).
 Use --config to specify which checks to run and their parameters.
 Use --skip to skip specific checks.
 Use --fail-fast to stop on the first check failure.
