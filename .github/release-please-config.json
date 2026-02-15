@@ -22,6 +22,10 @@
         {
           "type": "generic",
           "path": "action.yml"
+        },
+        {
+          "type": "generic",
+          "path": "README.md"
         }
       ],
       "release-search-depth": 100,
