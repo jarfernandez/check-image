@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0](https://github.com/jarfernandez/check-image/compare/v0.9.1...v0.10.0) (2026-02-15)
+
+
+### Features
+
+* Add healthcheck validation command ([#61](https://github.com/jarfernandez/check-image/issues/61)) ([6c8ab45](https://github.com/jarfernandez/check-image/commit/6c8ab454a4baa487a52a02cdfb0535a12dd2fcc4))
+
 ## [0.9.1](https://github.com/jarfernandez/check-image/compare/v0.9.0...v0.9.1) (2026-02-15)
 
 
