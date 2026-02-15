@@ -317,7 +317,7 @@ All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do 
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 81.1% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 89.3% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.

@@ -97,6 +97,34 @@ func TestReadStdin_SizeLimit(t *testing.T) {
 	assert.Contains(t, err.Error(), "exceeds maximum size")
 }
 
+func TestReadStdin_ExactSizeLimit(t *testing.T) {
+	// Save original stdin
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }()
+
+	// Create pipe to mock stdin
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdin = r
+
+	// Write exactly 10MB of data (should succeed, not exceed)
+	exactData := make([]byte, maxStdinSize)
+	for i := range exactData {
+		exactData[i] = byte(i % 256)
+	}
+
+	go func() {
+		_, _ = w.Write(exactData)
+		w.Close()
+	}()
+
+	// Test ReadStdin - should succeed as it's exactly at limit
+	data, err := ReadStdin()
+	require.NoError(t, err)
+	assert.Equal(t, len(exactData), len(data))
+	assert.Equal(t, exactData, data)
+}
+
 func TestReadFileOrStdin_File(t *testing.T) {
 	// Create temporary file
 	tmpDir := t.TempDir()

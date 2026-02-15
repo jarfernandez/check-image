@@ -751,7 +751,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 81.1% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 89.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -779,8 +779,8 @@ go tool cover -html=coverage.out
 - **internal/registry**: 97.3% coverage
 - **internal/secrets**: 95.9% coverage
 - **internal/fileutil**: 89.2% coverage
-- **internal/imageutil**: 75.4% coverage
-- **cmd/check-image/commands**: 67.8% coverage
+- **internal/imageutil**: 81.0% coverage
+- **cmd/check-image/commands**: 80.9% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

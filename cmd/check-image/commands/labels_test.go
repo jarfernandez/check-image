@@ -282,3 +282,274 @@ func TestRunLabels_NonexistentImage(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 }
+
+func TestLabelsCommand_RunE(t *testing.T) {
+	// Save original Result and OutputFmt
+	origResult := Result
+	origOutputFmt := OutputFmt
+	defer func() {
+		Result = origResult
+		OutputFmt = origOutputFmt
+	}()
+
+	t.Run("successful validation", func(t *testing.T) {
+		// Reset Result
+		Result = ValidationSkipped
+		OutputFmt = output.FormatText
+
+		// Create test image with valid labels
+		tmpDir := t.TempDir()
+		imageDir := filepath.Join(tmpDir, "test-image")
+		createTestOCIImage(t, imageDir, map[string]string{
+			"maintainer": "John Doe",
+		})
+
+		// Create policy file
+		policyContent := `{"required-labels": [{"name": "maintainer"}]}`
+		policyFile := filepath.Join(tmpDir, "policy.json")
+		err := os.WriteFile(policyFile, []byte(policyContent), 0600)
+		require.NoError(t, err)
+
+		labelsPolicy = policyFile
+
+		// Capture output
+		output := captureStdout(t, func() {
+			err := labelsCmd.RunE(labelsCmd, []string{"oci:" + imageDir + ":latest"})
+			require.NoError(t, err)
+		})
+
+		// Verify Result was updated to ValidationSucceeded
+		assert.Equal(t, ValidationSucceeded, Result)
+		assert.Contains(t, output, "All required labels are present and valid")
+	})
+
+	t.Run("failed validation", func(t *testing.T) {
+		// Reset Result
+		Result = ValidationSkipped
+		OutputFmt = output.FormatText
+
+		// Create test image with missing labels
+		tmpDir := t.TempDir()
+		imageDir := filepath.Join(tmpDir, "test-image")
+		createTestOCIImage(t, imageDir, nil)
+
+		// Create policy file
+		policyContent := `{"required-labels": [{"name": "maintainer"}]}`
+		policyFile := filepath.Join(tmpDir, "policy.json")
+		err := os.WriteFile(policyFile, []byte(policyContent), 0600)
+		require.NoError(t, err)
+
+		labelsPolicy = policyFile
+
+		// Capture output
+		output := captureStdout(t, func() {
+			err := labelsCmd.RunE(labelsCmd, []string{"oci:" + imageDir + ":latest"})
+			require.NoError(t, err)
+		})
+
+		// Verify Result was updated to ValidationFailed
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, output, "Image does not meet label requirements")
+	})
+}
+
+func TestLabelsCommand_StdinInput(t *testing.T) {
+	tests := []struct {
+		name          string
+		stdinContent  string
+		expectedError bool
+		errorContains string
+	}{
+		{
+			name: "JSON policy from stdin",
+			stdinContent: `{
+				"required-labels": [
+					{"name": "maintainer"}
+				]
+			}`,
+			expectedError: false,
+		},
+		{
+			name: "YAML policy from stdin",
+			stdinContent: `required-labels:
+  - name: maintainer`,
+			expectedError: false,
+		},
+		{
+			name:          "Malformed JSON from stdin",
+			stdinContent:  `{invalid json`,
+			expectedError: true,
+			errorContains: "unable to load labels policy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			// Create test image
+			imageDir := filepath.Join(tmpDir, "test-image")
+			createTestOCIImage(t, imageDir, map[string]string{
+				"maintainer": "John Doe",
+			})
+
+			// Create stdin file and redirect
+			stdinFile := filepath.Join(tmpDir, "stdin")
+			err := os.WriteFile(stdinFile, []byte(tt.stdinContent), 0600)
+			require.NoError(t, err)
+
+			oldStdin := os.Stdin
+			defer func() { os.Stdin = oldStdin }()
+
+			f, err := os.Open(stdinFile)
+			require.NoError(t, err)
+			defer f.Close()
+			os.Stdin = f
+
+			// Set policy to stdin
+			labelsPolicy = "-"
+
+			// Run check
+			result, err := runLabels("oci:" + imageDir + ":latest")
+
+			if tt.expectedError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.True(t, result.Passed)
+		})
+	}
+}
+
+func TestLabelsCommand_JSONOutput(t *testing.T) {
+	// Save original OutputFmt
+	origOutputFmt := OutputFmt
+	defer func() { OutputFmt = origOutputFmt }()
+
+	// Create test image
+	tmpDir := t.TempDir()
+	imageDir := filepath.Join(tmpDir, "test-image")
+	createTestOCIImage(t, imageDir, map[string]string{
+		"maintainer": "John Doe",
+		"version":    "1.2.3",
+	})
+
+	// Create policy file
+	policyContent := `{
+		"required-labels": [
+			{"name": "maintainer"},
+			{"name": "version", "pattern": "^\\d+\\.\\d+\\.\\d+$"}
+		]
+	}`
+	policyFile := filepath.Join(tmpDir, "policy.json")
+	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
+	require.NoError(t, err)
+
+	labelsPolicy = policyFile
+
+	// Run check
+	result, err := runLabels("oci:" + imageDir + ":latest")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Set JSON output mode
+	OutputFmt = output.FormatJSON
+
+	// Capture JSON output
+	jsonOutput := captureStdout(t, func() {
+		err := renderResult(result)
+		require.NoError(t, err)
+	})
+
+	// Verify JSON structure
+	assert.Contains(t, jsonOutput, `"check": "labels"`)
+	assert.Contains(t, jsonOutput, `"passed": true`)
+	assert.Contains(t, jsonOutput, `"required-labels"`)
+	assert.Contains(t, jsonOutput, `"actual-labels"`)
+	assert.Contains(t, jsonOutput, `"maintainer"`)
+	assert.Contains(t, jsonOutput, `"version"`)
+}
+
+func TestRunLabels_InvalidPolicyFormat(t *testing.T) {
+	tests := []struct {
+		name          string
+		policyContent string
+		errorContains string
+	}{
+		{
+			name:          "Malformed JSON",
+			policyContent: `{invalid json}`,
+			errorContains: "unable to load labels policy",
+		},
+		{
+			name: "Malformed YAML",
+			policyContent: `required-labels:
+  - name: test
+    invalid:
+    - [unclosed`,
+			errorContains: "unable to load labels policy",
+		},
+		{
+			name: "Invalid regex pattern",
+			policyContent: `{
+				"required-labels": [
+					{"name": "version", "pattern": "[invalid(regex"}
+				]
+			}`,
+			errorContains: "unable to load labels policy",
+		},
+		{
+			name: "Both value and pattern specified",
+			policyContent: `{
+				"required-labels": [
+					{"name": "version", "value": "1.0", "pattern": "^v?\\d+"}
+				]
+			}`,
+			errorContains: "unable to load labels policy",
+		},
+		{
+			name: "Label without name",
+			policyContent: `{
+				"required-labels": [
+					{"value": "test"}
+				]
+			}`,
+			errorContains: "unable to load labels policy",
+		},
+		{
+			name: "Duplicate label names",
+			policyContent: `{
+				"required-labels": [
+					{"name": "version"},
+					{"name": "version", "pattern": "^v?\\d+"}
+				]
+			}`,
+			errorContains: "unable to load labels policy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			// Create policy file
+			policyFile := filepath.Join(tmpDir, "policy.json")
+			err := os.WriteFile(policyFile, []byte(tt.policyContent), 0600)
+			require.NoError(t, err)
+
+			labelsPolicy = policyFile
+
+			// Try to run check - should fail to load policy
+			result, err := runLabels("nginx:latest")
+			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Contains(t, err.Error(), tt.errorContains)
+		})
+	}
+}

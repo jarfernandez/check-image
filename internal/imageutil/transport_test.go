@@ -218,3 +218,92 @@ func TestParseTransportReference(t *testing.T) {
 		})
 	}
 }
+
+func TestFindPathTagSeparator_WindowsPaths(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantIndex int
+	}{
+		{
+			name:      "Windows path with backslash and tag",
+			input:     `C:\path\to\image.tar:latest`,
+			wantIndex: 20, // Index of ':' before 'latest'
+		},
+		{
+			name:      "Windows path with forward slash and tag",
+			input:     "C:/path/to/image.tar:v1.0",
+			wantIndex: 20, // Index of ':' before 'v1.0'
+		},
+		{
+			name:      "Unix path with tag",
+			input:     "/path/to/image.tar:tag",
+			wantIndex: 18, // Index of ':' before 'tag'
+		},
+		{
+			name:      "No tag separator",
+			input:     "C:/path/to/image.tar",
+			wantIndex: -1, // No separator found
+		},
+		{
+			name:      "Windows drive letter skipped",
+			input:     "C:image.tar:tag",
+			wantIndex: 11, // Should skip 'C:' and find ':' before 'tag'
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			index := findPathTagSeparator(tt.input)
+			assert.Equal(t, tt.wantIndex, index)
+		})
+	}
+}
+
+func TestGetImageRegistry_WithPort(t *testing.T) {
+	tests := []struct {
+		name         string
+		imageName    string
+		wantRegistry string
+		wantErr      bool
+	}{
+		{
+			name:         "Registry with standard port",
+			imageName:    "registry.example.com:5000/myimage:latest",
+			wantRegistry: "registry.example.com:5000",
+			wantErr:      false,
+		},
+		{
+			name:         "Registry with custom port",
+			imageName:    "localhost:8080/app:v1",
+			wantRegistry: "localhost:8080",
+			wantErr:      false,
+		},
+		{
+			name:         "Default registry with port",
+			imageName:    "docker.io:443/library/nginx:latest",
+			wantRegistry: "docker.io:443",
+			wantErr:      false,
+		},
+		{
+			name:         "IP address with port",
+			imageName:    "192.168.1.100:5000/image:tag",
+			wantRegistry: "192.168.1.100:5000",
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			registry, err := GetImageRegistry(tt.imageName)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantRegistry, registry)
+		})
+	}
+}

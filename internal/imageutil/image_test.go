@@ -1,15 +1,19 @@
 package imageutil
 
 import (
+	"archive/tar"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -254,17 +258,126 @@ func TestGetImageAndConfig_OCIWithoutTag(t *testing.T) {
 	assert.Contains(t, err.Error(), "requires tag or digest")
 }
 
+// createTarballFromOCILayout creates a tarball archive from an OCI layout directory
+func createTarballFromOCILayout(t *testing.T, layoutPath string, tarPath string) {
+	t.Helper()
+
+	tarFile, err := os.Create(tarPath)
+	require.NoError(t, err)
+	defer tarFile.Close()
+
+	tw := tar.NewWriter(tarFile)
+	defer tw.Close()
+
+	// Walk the layout directory and add all files to the tarball
+	err = filepath.Walk(layoutPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Get the relative path from layoutPath
+		relPath, err := filepath.Rel(layoutPath, path)
+		if err != nil {
+			return err
+		}
+
+		// Skip the root directory itself (.)
+		if relPath == "." {
+			return nil
+		}
+
+		// Create tar header
+		header, err := tar.FileInfoHeader(info, info.Name())
+		if err != nil {
+			return err
+		}
+		header.Name = relPath
+
+		// Write header
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		// If it's a file (not a directory), write its contents
+		if !info.IsDir() {
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			if _, err := io.Copy(tw, file); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	require.NoError(t, err)
+}
+
 // TestGetImage_OCIArchiveTransport tests the oci-archive transport
-// Note: This requires actual implementation of extractOCIArchive which may not be complete
 func TestGetImage_OCIArchiveTransport(t *testing.T) {
-	// Skip test if OCI archive functionality is not yet implemented
-	t.Skip("OCI archive extraction not yet implemented")
+	tmpDir := t.TempDir()
+
+	// Create an OCI layout
+	layoutPath := filepath.Join(tmpDir, "layout")
+	img, digest := createOCILayoutWithTag(t, layoutPath, "test-tag")
+	require.NotNil(t, img)
+
+	// Create a tarball from the OCI layout
+	tarPath := filepath.Join(tmpDir, "image.tar")
+	createTarballFromOCILayout(t, layoutPath, tarPath)
+
+	// Test with tag reference
+	loadedImg, err := GetImage("oci-archive:" + tarPath + ":test-tag")
+	require.NoError(t, err)
+	require.NotNil(t, loadedImg)
+
+	// Verify it's the same image by comparing digest
+	loadedDigest, err := loadedImg.Digest()
+	require.NoError(t, err)
+	assert.Equal(t, digest, loadedDigest)
+
+	// Test with digest reference
+	loadedImg2, err := GetImage("oci-archive:" + tarPath + "@" + digest.String())
+	require.NoError(t, err)
+	require.NotNil(t, loadedImg2)
+
+	// Test error: missing reference
+	_, err = GetImage("oci-archive:" + tarPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires tag or digest")
 }
 
 // TestGetImage_DockerArchiveTransport tests the docker-archive transport
 func TestGetImage_DockerArchiveTransport(t *testing.T) {
-	// Skip test - requires actual Docker archive file
-	t.Skip("Docker archive test requires actual archive file")
+	tmpDir := t.TempDir()
+
+	// Create a random test image
+	img, err := random.Image(512, 1)
+	require.NoError(t, err)
+
+	// Create a Docker archive (tarball) - tarball.WriteToFile needs a tag
+	tarPath := filepath.Join(tmpDir, "docker-image.tar")
+	tag, err := name.NewTag("test/image:latest")
+	require.NoError(t, err)
+
+	err = tarball.WriteToFile(tarPath, tag, img)
+	require.NoError(t, err)
+
+	// Load the image from docker-archive without specifying tag
+	// (will load the first/only image in the archive)
+	loadedImg, err := GetImage("docker-archive:" + tarPath)
+	require.NoError(t, err)
+	require.NotNil(t, loadedImg)
+
+	// Verify it's the same image by comparing digest
+	origDigest, err := img.Digest()
+	require.NoError(t, err)
+	loadedDigest, err := loadedImg.Digest()
+	require.NoError(t, err)
+	assert.Equal(t, origDigest, loadedDigest)
 }
 
 // TestGetLocalImage and TestGetRemoteImage would require mocking

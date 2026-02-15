@@ -1107,3 +1107,179 @@ func TestLoadAllConfig_InlinePolicy(t *testing.T) {
 	require.True(t, ok, "secrets-policy should be a map")
 	assert.Contains(t, secretsObj, "check-env-vars")
 }
+
+func TestFormatLabelsPolicy(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       any
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, result string)
+	}{
+		{
+			name:    "String file path",
+			input:   "config/labels-policy.json",
+			wantErr: false,
+			validate: func(t *testing.T, result string) {
+				assert.Equal(t, "config/labels-policy.json", result)
+			},
+		},
+		{
+			name: "Inline object",
+			input: map[string]any{
+				"required-labels": []any{
+					map[string]any{"name": "maintainer"},
+					map[string]any{"name": "version", "pattern": "^v?\\d+\\.\\d+\\.\\d+$"},
+				},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result string) {
+				// Should create a temp file
+				assert.Contains(t, result, "labels-policy-")
+				assert.Contains(t, result, ".json")
+				// Verify file exists and contains the policy
+				data, err := os.ReadFile(result)
+				require.NoError(t, err)
+				assert.Contains(t, string(data), "required-labels")
+				assert.Contains(t, string(data), "maintainer")
+				// Cleanup temp file
+				os.Remove(result)
+			},
+		},
+		{
+			name:        "Invalid type",
+			input:       123,
+			wantErr:     true,
+			errContains: "must be either a string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := formatLabelsPolicy(tt.input)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.validate != nil {
+				tt.validate(t, result)
+			}
+		})
+	}
+}
+
+func TestApplyLabelsConfig(t *testing.T) {
+	t.Run("config value applied when flag not changed", func(t *testing.T) {
+		// Save and reset globals
+		origLabelsPolicy := labelsPolicy
+		defer func() { labelsPolicy = origLabelsPolicy }()
+
+		// Set default
+		labelsPolicy = ""
+
+		// Create a mock command with flags not marked as changed
+		cmd := &cobra.Command{}
+		cmd.Flags().String("labels-policy", "", "")
+
+		cfg := &labelsCheckConfig{
+			LabelsPolicy: "config/labels-policy.yaml",
+		}
+
+		applyLabelsConfig(cmd, cfg)
+		assert.Equal(t, "config/labels-policy.yaml", labelsPolicy)
+	})
+
+	t.Run("config value skipped when flag changed", func(t *testing.T) {
+		// Save and reset globals
+		origLabelsPolicy := labelsPolicy
+		defer func() { labelsPolicy = origLabelsPolicy }()
+
+		// Set CLI flag value
+		labelsPolicy = "cli/policy.json"
+
+		// Create a mock command with flag marked as changed
+		cmd := &cobra.Command{}
+		cmd.Flags().String("labels-policy", "", "")
+		cmd.Flags().Set("labels-policy", "cli/policy.json")
+
+		cfg := &labelsCheckConfig{
+			LabelsPolicy: "config/labels-policy.yaml",
+		}
+
+		applyLabelsConfig(cmd, cfg)
+		// Should keep CLI value, not apply config
+		assert.Equal(t, "cli/policy.json", labelsPolicy)
+	})
+
+	t.Run("nil config does nothing", func(t *testing.T) {
+		origLabelsPolicy := labelsPolicy
+		defer func() { labelsPolicy = origLabelsPolicy }()
+
+		labelsPolicy = "original"
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("labels-policy", "", "")
+
+		applyLabelsConfig(cmd, nil)
+		assert.Equal(t, "original", labelsPolicy)
+	})
+}
+
+func TestRunAll_LabelsRequiresPolicy(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry" // skip registry check which also requires a policy
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	// Without --labels-policy and without skipping labels, runAll should error
+	err := runAll(allCmd, imageRef)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--labels-policy is required")
+}
+
+func TestLoadAllConfig_InlineLabelsPolicy(t *testing.T) {
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, "config.json")
+
+	content := `{
+		"checks": {
+			"labels": {
+				"labels-policy": {
+					"required-labels": [
+						{"name": "maintainer"},
+						{"name": "version", "pattern": "^v?\\d+\\.\\d+\\.\\d+$"}
+					]
+				}
+			}
+		}
+	}`
+
+	err := os.WriteFile(configFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	cfg, err := loadAllConfig(configFile)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify labels policy is loaded as object
+	require.NotNil(t, cfg.Checks.Labels)
+	require.NotNil(t, cfg.Checks.Labels.LabelsPolicy)
+	policyObj, ok := cfg.Checks.Labels.LabelsPolicy.(map[string]any)
+	require.True(t, ok, "labels-policy should be a map")
+	assert.Contains(t, policyObj, "required-labels")
+
+	// Verify required-labels is a list
+	requiredLabels, ok := policyObj["required-labels"].([]any)
+	require.True(t, ok, "required-labels should be a list")
+	require.Len(t, requiredLabels, 2)
+}
