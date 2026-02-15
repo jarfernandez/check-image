@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1](https://github.com/jarfernandez/check-image/compare/v0.9.0...v0.9.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* Include labels in default checks help text ([#59](https://github.com/jarfernandez/check-image/issues/59)) ([5f85f52](https://github.com/jarfernandez/check-image/commit/5f85f524ab75d638316e6add88283c478a3bed49))
+
 ## [0.9.0](https://github.com/jarfernandez/check-image/compare/v0.8.0...v0.9.0) (2026-02-15)
 
 
