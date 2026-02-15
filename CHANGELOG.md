@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1](https://github.com/jarfernandez/check-image/compare/v0.11.0...v0.11.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* Remove push-to-main trigger from test-action workflow ([#66](https://github.com/jarfernandez/check-image/issues/66)) ([383defe](https://github.com/jarfernandez/check-image/commit/383defef610d2b45e1066527d1d0d5d9591f6fde))
+
 ## [0.11.0](https://github.com/jarfernandez/check-image/compare/v0.10.0...v0.11.0) (2026-02-15)
 
 
