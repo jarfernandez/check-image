@@ -32,6 +32,7 @@
           {"name": "org.opencontainers.image.vendor", "value": "MyCompany"}
         ]
       }
-    }
+    },
+    "healthcheck": {}
   }
 }

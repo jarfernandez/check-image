@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -235,21 +236,21 @@ func TestLoadAllConfig(t *testing.T) {
 }
 
 func TestDetermineChecks(t *testing.T) {
-	t.Run("no config no skip runs all 7 checks", func(t *testing.T) {
+	t.Run("no config no skip runs all 8 checks", func(t *testing.T) {
 		checks := determineChecks(nil, nil)
-		assert.Len(t, checks, 7)
+		assert.Len(t, checks, 8)
 
 		names := make([]string, len(checks))
 		for i, c := range checks {
 			names[i] = c.name
 		}
-		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "labels"}, names)
+		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels"}, names)
 	})
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
 		checks := determineChecks(nil, skipMap)
-		assert.Len(t, checks, 5)
+		assert.Len(t, checks, 6)
 
 		for _, c := range checks {
 			assert.NotEqual(t, "registry", c.name)
@@ -288,7 +289,8 @@ func TestDetermineChecks(t *testing.T) {
 	t.Run("skip all gives 0 checks", func(t *testing.T) {
 		skipMap := map[string]bool{
 			"age": true, "size": true, "ports": true,
-			"registry": true, "root-user": true, "secrets": true, "labels": true,
+			"registry": true, "root-user": true, "secrets": true,
+			"healthcheck": true, "labels": true,
 		}
 		checks := determineChecks(nil, skipMap)
 		assert.Len(t, checks, 0)
@@ -497,6 +499,9 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 		user:       "1000",
 		created:    time.Now().Add(-10 * 24 * time.Hour),
 		layerCount: 2,
+		healthcheck: &v1.HealthConfig{
+			Test: []string{"CMD", "/health.sh"},
+		},
 	})
 
 	output := captureStdout(t, func() {
@@ -514,7 +519,7 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 
 func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
 
 	// Image runs as root -> root-user check fails
 	imageRef := createTestImage(t, testImageOptions{
@@ -538,7 +543,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "root-user,registry,labels" // skip root-user (would fail) and checks that require policy files
+	skipChecks = "root-user,registry,healthcheck,labels" // skip root-user (would fail) and checks that require policy files or missing healthcheck
 
 	// Image runs as root but we skip root-user check
 	imageRef := createTestImage(t, testImageOptions{
@@ -668,8 +673,8 @@ func TestRunAll_CLIOverridesConfig(t *testing.T) {
 
 func TestRunAll_WithoutConfig_FlagsWork(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
-	maxAge = 1                     // Very strict: 1 day
+	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
+	maxAge = 1                                 // Very strict: 1 day
 
 	// Image is 10 days old -> should fail age check
 	imageRef := createTestImage(t, testImageOptions{
@@ -704,7 +709,7 @@ func TestRunAll_RegistryRequiresPolicy(t *testing.T) {
 
 func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
 
 	// Image exposes ports but no allowed-ports provided -> ports check fails
 	imageRef := createTestImage(t, testImageOptions{
@@ -725,7 +730,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 
 func TestRunAll_SkipAll(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "age,size,ports,registry,root-user,secrets,labels"
+	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000",
@@ -777,7 +782,7 @@ func TestAllCommandFailFastFlag(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
 	failFast = true
 
 	// Image runs as root -> root-user check fails
@@ -802,7 +807,7 @@ func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
 	failFast = true
 
 	// Provide invalid allowed-ports to cause an execution error in ports check
@@ -829,7 +834,7 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 
 func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
 	failFast = false
 
 	// Image runs as root -> root-user check fails
@@ -1282,4 +1287,86 @@ func TestLoadAllConfig_InlineLabelsPolicy(t *testing.T) {
 	requiredLabels, ok := policyObj["required-labels"].([]any)
 	require.True(t, ok, "required-labels should be a list")
 	require.Len(t, requiredLabels, 2)
+}
+
+func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry,labels" // skip checks that require policy files
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+		healthcheck: &v1.HealthConfig{
+			Test: []string{"CMD", "/health.sh"},
+		},
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "=== healthcheck ===")
+	assert.Contains(t, out, "Image has a healthcheck defined")
+}
+
+func TestRunAll_HealthcheckFailsWithoutHealthcheck(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry,labels" // skip checks that require policy files
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	assert.Contains(t, out, "=== healthcheck ===")
+	assert.Contains(t, out, "Image does not have a healthcheck defined")
+}
+
+func TestLoadAllConfig_Healthcheck(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := `checks:
+  age:
+    max-age: 30
+  root-user: {}
+  healthcheck: {}
+`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	cfg, err := loadAllConfig(cfgFile)
+	require.NoError(t, err)
+	require.NotNil(t, cfg.Checks.Age)
+	require.NotNil(t, cfg.Checks.RootUser)
+	require.NotNil(t, cfg.Checks.Healthcheck)
+	assert.Nil(t, cfg.Checks.Size)
+	assert.Nil(t, cfg.Checks.Ports)
+	assert.Nil(t, cfg.Checks.Registry)
+	assert.Nil(t, cfg.Checks.Secrets)
+	assert.Nil(t, cfg.Checks.Labels)
+}
+
+func TestDetermineChecks_HealthcheckInConfig(t *testing.T) {
+	cfg := &allConfig{
+		Checks: allChecksConfig{
+			Age:         &ageCheckConfig{},
+			RootUser:    &rootUserCheckConfig{},
+			Healthcheck: &healthcheckCheckConfig{},
+		},
+	}
+	checks := determineChecks(cfg, nil)
+	assert.Len(t, checks, 3)
+	assert.Equal(t, "age", checks[0].name)
+	assert.Equal(t, "root-user", checks[1].name)
+	assert.Equal(t, "healthcheck", checks[2].name)
 }

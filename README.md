@@ -23,7 +23,7 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Set the version you want to install (or use 'latest' tag from releases page)
-VERSION=0.9.1
+VERSION=0.10.0
 
 # macOS (Apple Silicon)
 curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_arm64.tar.gz" | tar xz
@@ -46,7 +46,7 @@ sudo mv check-image /usr/local/bin/
 # and extract to a directory in your PATH
 ```
 
-Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.9.1`).
+Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.10.0`).
 
 ### Install with Go
 
@@ -57,7 +57,7 @@ Pre-built binaries include the correct version number (e.g., `check-image versio
 go install github.com/jarfernandez/check-image/cmd/check-image@latest
 
 # Or install a specific version
-go install github.com/jarfernandez/check-image/cmd/check-image@v0.9.1
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.10.0
 ```
 
 This will install the `check-image` binary to your `GOBIN` directory.
@@ -129,7 +129,7 @@ Without the Docker socket mounted (the default), check-image automatically uses 
 **Using a specific version:**
 
 ```bash
-docker pull ghcr.io/jarfernandez/check-image:0.9.1
+docker pull ghcr.io/jarfernandez/check-image:0.10.0
 ```
 
 ## Usage
@@ -751,7 +751,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 89.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 89.5% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -780,7 +780,7 @@ go tool cover -html=coverage.out
 - **internal/secrets**: 95.9% coverage
 - **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 80.9% coverage
+- **cmd/check-image/commands**: 80.1% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

@@ -73,6 +73,11 @@ type FileFinding struct {
 	Description string `json:"description"`
 }
 
+// HealthcheckDetails holds details for the healthcheck check.
+type HealthcheckDetails struct {
+	HasHealthcheck bool `json:"has-healthcheck"`
+}
+
 // LabelsDetails holds details for the labels check.
 type LabelsDetails struct {
 	RequiredLabels []RequiredLabelCheck `json:"required-labels"`

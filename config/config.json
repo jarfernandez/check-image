@@ -21,6 +21,7 @@
     },
     "labels": {
       "labels-policy": "config/labels-policy.json"
-    }
+    },
+    "healthcheck": {}
   }
 }

@@ -27,6 +27,7 @@ type testImageOptions struct {
 	exposedPorts map[string]struct{}
 	env          []string
 	labels       map[string]string // Optional: image labels
+	healthcheck  *v1.HealthConfig  // Optional: healthcheck configuration
 	layerCount   int
 	layerSizes   []int64             // Optional: specific sizes for each layer in bytes. If nil, default sizes are used.
 	layerFiles   []map[string]string // Optional: files to add to each layer. Map of path -> content.
@@ -53,6 +54,7 @@ func createTestOCILayout(t *testing.T, tag string, opts testImageOptions) string
 	cfg.Config.ExposedPorts = opts.exposedPorts
 	cfg.Config.Env = opts.env
 	cfg.Config.Labels = opts.labels
+	cfg.Config.Healthcheck = opts.healthcheck
 
 	// Apply config
 	img, err = mutate.ConfigFile(img, cfg)
