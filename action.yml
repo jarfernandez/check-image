@@ -1,0 +1,105 @@
+name: 'Check Image'
+description: 'Validate container images against security and operational standards'
+author: 'jarfernandez'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  image:
+    description: 'Container image to validate (e.g., nginx:latest, ghcr.io/org/app:1.0)'
+    required: true
+  config:
+    description: 'Path to config file for the all command (relative to repo root)'
+    required: false
+    default: ''
+  checks:
+    description: 'Comma-separated list of checks to run (age,size,ports,registry,root-user,healthcheck,secrets,labels)'
+    required: false
+    default: ''
+  skip:
+    description: 'Comma-separated list of checks to skip'
+    required: false
+    default: ''
+  fail-fast:
+    description: 'Stop on first check failure'
+    required: false
+    default: 'false'
+  max-age:
+    description: 'Maximum image age in days'
+    required: false
+    default: ''
+  max-size:
+    description: 'Maximum image size in MB'
+    required: false
+    default: ''
+  max-layers:
+    description: 'Maximum number of layers'
+    required: false
+    default: ''
+  allowed-ports:
+    description: 'Comma-separated list of allowed ports or @file path (relative to repo root)'
+    required: false
+    default: ''
+  registry-policy:
+    description: 'Path to registry policy file (relative to repo root)'
+    required: false
+    default: ''
+  labels-policy:
+    description: 'Path to labels policy file (relative to repo root)'
+    required: false
+    default: ''
+  secrets-policy:
+    description: 'Path to secrets policy file (relative to repo root)'
+    required: false
+    default: ''
+  skip-env-vars:
+    description: 'Skip environment variable checks in secrets detection'
+    required: false
+    default: 'false'
+  skip-files:
+    description: 'Skip file system checks in secrets detection'
+    required: false
+    default: 'false'
+  log-level:
+    description: 'Log level (trace, debug, info, warn, error, fatal, panic)'
+    required: false
+    default: 'info'
+  version:
+    description: 'Version of check-image Docker image to use'
+    required: false
+    default: '0.10.0' # x-release-please-version
+
+outputs:
+  result:
+    description: 'Validation result: passed, failed, or error'
+    value: ${{ steps.run.outputs.result }}
+  json:
+    description: 'Full JSON output from check-image'
+    value: ${{ steps.run.outputs.json }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate container image
+      id: run
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_CHECKS: ${{ inputs.checks }}
+        INPUT_SKIP: ${{ inputs.skip }}
+        INPUT_FAIL_FAST: ${{ inputs.fail-fast }}
+        INPUT_MAX_AGE: ${{ inputs.max-age }}
+        INPUT_MAX_SIZE: ${{ inputs.max-size }}
+        INPUT_MAX_LAYERS: ${{ inputs.max-layers }}
+        INPUT_ALLOWED_PORTS: ${{ inputs.allowed-ports }}
+        INPUT_REGISTRY_POLICY: ${{ inputs.registry-policy }}
+        INPUT_LABELS_POLICY: ${{ inputs.labels-policy }}
+        INPUT_SECRETS_POLICY: ${{ inputs.secrets-policy }}
+        INPUT_SKIP_ENV_VARS: ${{ inputs.skip-env-vars }}
+        INPUT_SKIP_FILES: ${{ inputs.skip-files }}
+        INPUT_LOG_LEVEL: ${{ inputs.log-level }}
+        INPUT_VERSION: ${{ inputs.version }}
+      run: "${{ github.action_path }}/entrypoint.sh"

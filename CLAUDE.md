@@ -251,6 +251,17 @@ In `internal/secrets/`:
 - **Local build**: `docker build --build-arg VERSION=dev -t check-image .`
 - **Container behavior**: Without Docker socket, `GetLocalImage()` fails silently and falls back to remote registry. This is the expected and recommended mode. Docker socket mounting is possible but grants host-level daemon access.
 
+### GitHub Action
+- **Type**: Composite action (not Docker action) — the Docker image is distroless (no shell), so a Docker action with `docker://` can't run an entrypoint script
+- **Files**: `action.yml` (action definition), `entrypoint.sh` (input-to-CLI mapping script)
+- **How it works**: Uses `docker run` with the pre-built GHCR image. Mounts `$GITHUB_WORKSPACE` read-only at `/github/workspace` with `-w` so relative paths in config files work naturally
+- **Command**: Always runs `check-image all` — individual check selection is done via the `checks` input (translated to `--skip` by computing the complement) or the `skip` input
+- **Output capture**: stdout (JSON) is captured separately from stderr (logs). JSON goes to the `json` output, logs go to the workflow log
+- **Step summary**: Generates `$GITHUB_STEP_SUMMARY` with results table, failed check details, and collapsible full JSON (uses `jq`, pre-installed on GitHub runners)
+- **Exit codes**: Propagated directly — 0 (passed), 1 (validation failed), 2 (execution error)
+- **Version sync**: The `version` input default in `action.yml` uses the `x-release-please-version` marker. Release-please's `extra-files` config (in `.github/release-please-config.json`) auto-updates this value on each release
+- **Testing**: `.github/workflows/test-action.yml` tests the action using `uses: ./` against real images
+
 ### Release Pipeline
 Single workflow in `.github/workflows/release-please.yml` with three chained jobs:
 

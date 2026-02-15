@@ -18,6 +18,12 @@
         {"type": "ci", "section": "Continuous Integration", "hidden": true},
         {"type": "chore", "section": "Miscellaneous", "hidden": true}
       ],
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "action.yml"
+        }
+      ],
       "release-search-depth": 100,
       "draft": false,
       "prerelease": false

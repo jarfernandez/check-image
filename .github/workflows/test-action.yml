@@ -1,0 +1,100 @@
+name: Test Action
+
+on:
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'entrypoint.sh'
+      - '.github/workflows/test-action.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'entrypoint.sh'
+      - '.github/workflows/test-action.yml'
+
+jobs:
+  test-defaults:
+    name: Test with defaults (skip registry and labels)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run check-image with defaults
+        uses: ./
+        with:
+          image: nginx:latest
+          skip: registry,labels
+
+  test-specific-checks:
+    name: Test specific checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run age and size checks
+        uses: ./
+        with:
+          image: nginx:latest
+          checks: age,size
+          max-age: '365'
+          max-size: '1000'
+
+  test-config-file:
+    name: Test with config file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run with inline config
+        uses: ./
+        with:
+          image: nginx:latest
+          config: config/config-inline.yaml
+          skip: registry,labels
+
+  test-soft-failure:
+    name: Test soft failure and outputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run check that will fail (strict age)
+        id: check
+        uses: ./
+        continue-on-error: true
+        with:
+          image: nginx:latest
+          checks: age
+          max-age: '1'
+
+      - name: Verify outputs
+        run: |
+          echo "Result: ${{ steps.check.outputs.result }}"
+          echo "JSON output:"
+          echo '${{ steps.check.outputs.json }}' | jq .
+
+          if [[ "${{ steps.check.outputs.result }}" != "failed" ]]; then
+            echo "::error::Expected result to be 'failed' but got '${{ steps.check.outputs.result }}'"
+            exit 1
+          fi
+
+  test-fail-fast:
+    name: Test fail-fast mode
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run with fail-fast
+        uses: ./
+        continue-on-error: true
+        with:
+          image: nginx:latest
+          checks: age,size
+          max-age: '1'
+          fail-fast: 'true'
