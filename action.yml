@@ -15,11 +15,11 @@ inputs:
     required: false
     default: ''
   checks:
-    description: 'Comma-separated list of checks to run (age,size,ports,registry,root-user,healthcheck,secrets,labels)'
+    description: 'Comma-separated list of checks to run (mutually exclusive with skip)'
     required: false
     default: ''
   skip:
-    description: 'Comma-separated list of checks to skip'
+    description: 'Comma-separated list of checks to skip (mutually exclusive with checks)'
     required: false
     default: ''
   fail-fast:

@@ -220,8 +220,8 @@ The action captures full JSON output for programmatic use in subsequent steps:
 |-------|----------|---------|-------------|
 | `image` | Yes | - | Container image to validate |
 | `config` | No | - | Path to config file for the `all` command |
-| `checks` | No | - | Comma-separated list of checks to run |
-| `skip` | No | - | Comma-separated list of checks to skip |
+| `checks` | No | - | Comma-separated list of checks to run (mutually exclusive with `skip`) |
+| `skip` | No | - | Comma-separated list of checks to skip (mutually exclusive with `checks`) |
 | `fail-fast` | No | `false` | Stop on first check failure |
 | `max-age` | No | - | Maximum image age in days |
 | `max-size` | No | - | Maximum image size in MB |
@@ -474,6 +474,7 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
+- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels)
 - `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
@@ -486,11 +487,14 @@ Options:
 - `--skip-files`: Skip file system checks in secrets detection
 - `--fail-fast`: Stop on first check failure (default: false)
 
+Note: `--include` and `--skip` are mutually exclusive.
+
 Precedence rules:
 1. Without `--config`: all 8 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
-3. CLI flags override config file values
-4. `--skip` always takes precedence over the config file
+3. `--include` overrides config file check selection (runs only specified checks)
+4. CLI flags override config file values
+5. `--include` and `--skip` always take precedence over the config file
 
 Examples:
 ```bash
@@ -499,6 +503,9 @@ check-image all nginx:latest
 
 # Run all checks with custom limits
 check-image all nginx:latest --max-age 30 --max-size 200
+
+# Run only specific checks
+check-image all nginx:latest --include age,size,root-user
 
 # Skip specific checks
 check-image all nginx:latest --skip registry,secrets
@@ -885,7 +892,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 89.5% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 90.4% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -914,7 +921,7 @@ go tool cover -html=coverage.out
 - **internal/secrets**: 95.9% coverage
 - **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 80.1% coverage
+- **cmd/check-image/commands**: 81.8% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

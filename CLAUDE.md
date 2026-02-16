@@ -136,10 +136,11 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Inline policy support: policy can be embedded as object in all-checks config file
 
 **all**: Runs all validation checks on a container image at once
-- Flags: `--config` (`-c`, config file), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
-- Precedence: CLI flags > config file values > defaults; `--skip` always wins
-- Without `--config`: runs all 8 checks with defaults (except skipped)
-- With `--config`: only runs checks present in the config file (except skipped)
+- Flags: `--config` (`-c`, config file), `--include` (comma-separated checks to run), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`)
+- `--include` and `--skip` are mutually exclusive
+- Precedence: CLI flags > config file values > defaults; `--include` and `--skip` always take precedence over config file check selection
+- Without `--config`: runs all 8 checks with defaults (except skipped, or only included)
+- With `--config`: only runs checks present in the config file (except skipped); `--include` overrides config check selection
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
 - Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runRegistryForAll()` skips gracefully when no `--registry-policy` is provided
 - Continue-on-error (default): if a check returns an error, logs it, sets `Result = ValidationFailed`, and continues with the next check
@@ -255,7 +256,7 @@ In `internal/secrets/`:
 - **Type**: Composite action that downloads the check-image binary from GitHub Releases (like Trivy), giving native Docker daemon access
 - **Files**: `action.yml` (action definition), `entrypoint.sh` (binary download + input-to-CLI mapping script)
 - **How it works**: Downloads the check-image binary for the runner's OS/arch from GitHub Releases, then runs `check-image all` directly on the runner. Maps `RUNNER_OS`/`RUNNER_ARCH` to goreleaser archive names (e.g., `Linux`/`X64` → `linux`/`amd64`)
-- **Command**: Always runs `check-image all` — individual check selection is done via the `checks` input (translated to `--skip` by computing the complement) or the `skip` input
+- **Command**: Always runs `check-image all` — individual check selection is done via the `checks` input (passed directly as `--include`) or the `skip` input (passed as `--skip`). The two inputs are mutually exclusive
 - **Output capture**: stdout (JSON) is captured separately from stderr (logs). JSON goes to the `json` output, logs go to the workflow log
 - **Step summary**: Generates `$GITHUB_STEP_SUMMARY` with results table, failed check details, and collapsible full JSON (uses `jq`, pre-installed on GitHub runners)
 - **Exit codes**: Propagated directly — 0 (passed), 1 (validation failed), 2 (execution error)
@@ -334,7 +335,7 @@ All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do 
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 89.5% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 90.4% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
