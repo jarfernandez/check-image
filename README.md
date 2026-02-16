@@ -950,7 +950,7 @@ Releases are fully automated using [release-please](https://github.com/googleapi
      - `feat:` → minor version bump (0.1.0 → 0.2.0)
      - `fix:` → patch version bump (0.1.0 → 0.1.1)
      - `BREAKING CHANGE:` → major version bump (0.1.0 → 1.0.0)
-   - Creates/updates a "Release PR" with updated CHANGELOG.md
+   - Creates/updates a "Release PR" with updated CHANGELOG.md, README.md version references, and action.yml default version
 
 3. **Release**: When the Release PR is merged:
    - Git tag is created (e.g., `v0.2.0`)
