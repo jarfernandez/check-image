@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0](https://github.com/jarfernandez/check-image/compare/v0.11.1...v0.12.0) (2026-02-16)
+
+
+### Features
+
+* Add --include flag to the all command ([#70](https://github.com/jarfernandez/check-image/issues/70)) ([eb3e239](https://github.com/jarfernandez/check-image/commit/eb3e2394805422eed8c646eb36fa7339ecb4b047))
+
 ## [0.11.1](https://github.com/jarfernandez/check-image/compare/v0.11.0...v0.11.1) (2026-02-15)
 
 
