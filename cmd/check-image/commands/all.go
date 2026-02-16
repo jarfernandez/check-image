@@ -86,18 +86,18 @@ Use --fail-fast to stop on the first check failure.
 
 Note: --include and --skip are mutually exclusive.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag
-
 Precedence rules:
   1. Without --config: all checks run with defaults, except those in --skip
   2. With --config: only checks present in the config file run, except those in --skip
   3. --include overrides config file check selection (runs only specified checks)
   4. CLI flags override config file values
-  5. --include and --skip always take precedence over the config file`,
+  5. --include and --skip always take precedence over the config file
+
+The 'image' argument supports multiple formats:
+  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
+  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
+  - OCI tarball: oci-archive:/path/to/image.tar:tag
+  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image all nginx:latest
   check-image all nginx:latest --max-age 30 --max-size 200
   check-image all nginx:latest --include age,size,root-user
