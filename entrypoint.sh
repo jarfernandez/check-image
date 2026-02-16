@@ -6,7 +6,6 @@ set -euo pipefail
 # directly on the runner (like Trivy), giving native Docker daemon access.
 
 readonly REPO="jarfernandez/check-image"
-readonly ALL_CHECKS=("age" "size" "ports" "registry" "root-user" "healthcheck" "secrets" "labels")
 
 # --- Map runner OS/arch to goreleaser archive names ---
 map_os() {
@@ -131,40 +130,9 @@ if [[ "${INPUT_SKIP_FILES}" == "true" ]]; then
   CMD_ARGS+=("--skip-files")
 fi
 
-# --- Handle 'checks' input: compute skip list from complement ---
+# --- Handle 'checks' input: pass directly as --include ---
 if [[ -n "${INPUT_CHECKS}" ]]; then
-  declare -A requested
-  IFS=',' read -ra check_array <<< "${INPUT_CHECKS}"
-  for check in "${check_array[@]}"; do
-    check="$(echo "${check}" | xargs)"
-    requested["${check}"]=1
-  done
-
-  derived_skip=""
-  for check in "${ALL_CHECKS[@]}"; do
-    if [[ -z "${requested[${check}]+_}" ]]; then
-      if [[ -n "${derived_skip}" ]]; then
-        derived_skip="${derived_skip},${check}"
-      else
-        derived_skip="${check}"
-      fi
-    fi
-  done
-
-  if [[ -n "${derived_skip}" ]]; then
-    # Merge with existing --skip flag if present
-    skip_merged=false
-    for i in "${!CMD_ARGS[@]}"; do
-      if [[ "${CMD_ARGS[${i}]}" == "--skip" ]]; then
-        CMD_ARGS[$((i + 1))]="${CMD_ARGS[$((i + 1))]},${derived_skip}"
-        skip_merged=true
-        break
-      fi
-    done
-    if [[ "${skip_merged}" == "false" ]]; then
-      CMD_ARGS+=("--skip" "${derived_skip}")
-    fi
-  fi
+  CMD_ARGS+=("--include" "${INPUT_CHECKS}")
 fi
 
 # --- Execute ---

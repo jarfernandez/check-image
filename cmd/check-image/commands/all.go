@@ -70,6 +70,7 @@ type checkRunner struct {
 
 var configFile string
 var skipChecks string
+var includeChecks string
 var failFast bool
 
 var allCmd = &cobra.Command{
@@ -79,8 +80,11 @@ var allCmd = &cobra.Command{
 
 By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels).
 Use --config to specify which checks to run and their parameters.
+Use --include to run only specific checks.
 Use --skip to skip specific checks.
 Use --fail-fast to stop on the first check failure.
+
+Note: --include and --skip are mutually exclusive.
 
 The 'image' argument supports multiple formats:
   - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
@@ -91,10 +95,12 @@ The 'image' argument supports multiple formats:
 Precedence rules:
   1. Without --config: all checks run with defaults, except those in --skip
   2. With --config: only checks present in the config file run, except those in --skip
-  3. CLI flags override config file values
-  4. --skip always takes precedence over the config file`,
+  3. --include overrides config file check selection (runs only specified checks)
+  4. CLI flags override config file values
+  5. --include and --skip always take precedence over the config file`,
 	Example: `  check-image all nginx:latest
   check-image all nginx:latest --max-age 30 --max-size 200
+  check-image all nginx:latest --include age,size,root-user
   check-image all nginx:latest --skip registry,secrets
   check-image all nginx:latest --config config/config.json
   check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
@@ -117,6 +123,7 @@ func init() {
 
 	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to configuration file (JSON or YAML) (optional)")
 	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels) (optional)")
+	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
@@ -129,8 +136,10 @@ func init() {
 	allCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first check failure (optional)")
 }
 
-func parseSkipList(skip string) (map[string]bool, error) {
-	if skip == "" {
+// parseCheckNameList parses a comma-separated list of check names and validates
+// each name against validCheckNames. Returns a map of valid check names.
+func parseCheckNameList(list string) (map[string]bool, error) {
+	if list == "" {
 		return nil, nil
 	}
 
@@ -139,8 +148,8 @@ func parseSkipList(skip string) (map[string]bool, error) {
 		validNames[name] = true
 	}
 
-	skipMap := make(map[string]bool)
-	for part := range strings.SplitSeq(skip, ",") {
+	nameMap := make(map[string]bool)
+	for part := range strings.SplitSeq(list, ",") {
 		name := strings.TrimSpace(part)
 		if name == "" {
 			continue
@@ -148,10 +157,10 @@ func parseSkipList(skip string) (map[string]bool, error) {
 		if !validNames[name] {
 			return nil, fmt.Errorf("unknown check name %q, valid names are: %s", name, strings.Join(validCheckNames, ", "))
 		}
-		skipMap[name] = true
+		nameMap[name] = true
 	}
 
-	return skipMap, nil
+	return nameMap, nil
 }
 
 func loadAllConfig(path string) (*allConfig, error) {
@@ -356,8 +365,8 @@ func formatLabelsPolicy(v any) (string, error) {
 	}
 }
 
-// determineChecks decides which checks to run based on config and skip list.
-func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
+// determineChecks decides which checks to run based on config, skip list, and include list.
+func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[string]bool) []checkRunner {
 	var checks []checkRunner
 
 	type checkDef struct {
@@ -395,8 +404,16 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool) []checkRunner {
 	}
 
 	for _, def := range defs {
-		if def.enabled && !skipMap[def.name] {
-			checks = append(checks, checkRunner{name: def.name, run: def.runFunc})
+		if includeMap != nil {
+			// --include mode: only run checks explicitly listed
+			if includeMap[def.name] {
+				checks = append(checks, checkRunner{name: def.name, run: def.runFunc})
+			}
+		} else {
+			// Default/skip mode: use config/default enablement minus skip
+			if def.enabled && !skipMap[def.name] {
+				checks = append(checks, checkRunner{name: def.name, run: def.runFunc})
+			}
 		}
 	}
 
@@ -414,9 +431,18 @@ func runPortsForAll(imageName string) (*output.CheckResult, error) {
 }
 
 func runAll(cmd *cobra.Command, imageName string) error {
-	skipMap, err := parseSkipList(skipChecks)
+	skipMap, err := parseCheckNameList(skipChecks)
 	if err != nil {
 		return err
+	}
+
+	includeMap, err := parseCheckNameList(includeChecks)
+	if err != nil {
+		return err
+	}
+
+	if skipMap != nil && includeMap != nil {
+		return fmt.Errorf("--include and --skip are mutually exclusive, use only one")
 	}
 
 	var cfg *allConfig
@@ -428,21 +454,15 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		applyConfigValues(cmd, cfg)
 	}
 
-	checks := determineChecks(cfg, skipMap)
+	checks := determineChecks(cfg, skipMap, includeMap)
 
-	// Validate that required flags are provided when checks will run
-	for _, c := range checks {
-		if c.name == "registry" && registryPolicy == "" {
-			return fmt.Errorf("--registry-policy is required when the registry check is enabled")
-		}
-		if c.name == "labels" && labelsPolicy == "" {
-			return fmt.Errorf("--labels-policy is required when the labels check is enabled")
-		}
+	if err := validateRequiredFlags(checks); err != nil {
+		return err
 	}
 
 	if len(checks) == 0 {
 		if OutputFmt == output.FormatJSON {
-			skipped := skippedCheckNames(skipMap)
+			skipped := nonRunningCheckNames(skipMap, includeMap)
 			allResult := output.AllResult{
 				Image:  imageName,
 				Passed: true,
@@ -465,9 +485,22 @@ func runAll(cmd *cobra.Command, imageName string) error {
 	results := executeChecks(checks, imageName)
 
 	if OutputFmt == output.FormatJSON {
-		return renderAllJSON(imageName, results, skipMap)
+		return renderAllJSON(imageName, results, skipMap, includeMap)
 	}
 
+	return nil
+}
+
+// validateRequiredFlags checks that required flags are provided when their checks will run.
+func validateRequiredFlags(checks []checkRunner) error {
+	for _, c := range checks {
+		if c.name == "registry" && registryPolicy == "" {
+			return fmt.Errorf("--registry-policy is required when the registry check is enabled")
+		}
+		if c.name == "labels" && labelsPolicy == "" {
+			return fmt.Errorf("--labels-policy is required when the labels check is enabled")
+		}
+	}
 	return nil
 }
 
@@ -524,8 +557,8 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 }
 
 // renderAllJSON renders the aggregated results as a single JSON object.
-func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[string]bool) error {
-	skipped := skippedCheckNames(skipMap)
+func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[string]bool, includeMap map[string]bool) error {
+	skipped := nonRunningCheckNames(skipMap, includeMap)
 	var passed, failed, errored int
 	for _, r := range results {
 		switch {
@@ -553,8 +586,21 @@ func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[s
 	return output.RenderJSON(os.Stdout, allResult)
 }
 
-// skippedCheckNames returns the list of skipped check names from the skip map.
-func skippedCheckNames(skipMap map[string]bool) []string {
+// nonRunningCheckNames returns the list of check names that did not run.
+func nonRunningCheckNames(skipMap map[string]bool, includeMap map[string]bool) []string {
+	if includeMap != nil {
+		var names []string
+		for _, name := range validCheckNames {
+			if !includeMap[name] {
+				names = append(names, name)
+			}
+		}
+		if len(names) == 0 {
+			return nil
+		}
+		return names
+	}
+
 	if len(skipMap) == 0 {
 		return nil
 	}

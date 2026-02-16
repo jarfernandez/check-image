@@ -40,6 +40,9 @@ func TestAllCommandFlags(t *testing.T) {
 	flag = allCmd.Flags().Lookup("skip")
 	assert.NotNil(t, flag)
 
+	flag = allCmd.Flags().Lookup("include")
+	assert.NotNil(t, flag)
+
 	flag = allCmd.Flags().Lookup("max-age")
 	assert.NotNil(t, flag)
 	assert.Equal(t, "a", flag.Shorthand)
@@ -74,7 +77,7 @@ func TestAllCommandFlags(t *testing.T) {
 	assert.NotNil(t, flag)
 }
 
-func TestParseSkipList(t *testing.T) {
+func TestParseCheckNameList(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
@@ -130,7 +133,7 @@ func TestParseSkipList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseSkipList(tt.input)
+			result, err := parseCheckNameList(tt.input)
 			if tt.expectErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "unknown check name")
@@ -237,7 +240,7 @@ func TestLoadAllConfig(t *testing.T) {
 
 func TestDetermineChecks(t *testing.T) {
 	t.Run("no config no skip runs all 8 checks", func(t *testing.T) {
-		checks := determineChecks(nil, nil)
+		checks := determineChecks(nil, nil, nil)
 		assert.Len(t, checks, 8)
 
 		names := make([]string, len(checks))
@@ -249,7 +252,7 @@ func TestDetermineChecks(t *testing.T) {
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
-		checks := determineChecks(nil, skipMap)
+		checks := determineChecks(nil, skipMap, nil)
 		assert.Len(t, checks, 6)
 
 		for _, c := range checks {
@@ -265,7 +268,7 @@ func TestDetermineChecks(t *testing.T) {
 				RootUser: &rootUserCheckConfig{},
 			},
 		}
-		checks := determineChecks(cfg, nil)
+		checks := determineChecks(cfg, nil, nil)
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
 		assert.Equal(t, "root-user", checks[1].name)
@@ -280,7 +283,7 @@ func TestDetermineChecks(t *testing.T) {
 			},
 		}
 		skipMap := map[string]bool{"size": true}
-		checks := determineChecks(cfg, skipMap)
+		checks := determineChecks(cfg, skipMap, nil)
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
 		assert.Equal(t, "root-user", checks[1].name)
@@ -292,7 +295,7 @@ func TestDetermineChecks(t *testing.T) {
 			"registry": true, "root-user": true, "secrets": true,
 			"healthcheck": true, "labels": true,
 		}
-		checks := determineChecks(nil, skipMap)
+		checks := determineChecks(nil, skipMap, nil)
 		assert.Len(t, checks, 0)
 	})
 }
@@ -471,6 +474,7 @@ func resetAllGlobals() {
 	skipFiles = false
 	configFile = ""
 	skipChecks = ""
+	includeChecks = ""
 	failFast = false
 }
 
@@ -1364,9 +1368,214 @@ func TestDetermineChecks_HealthcheckInConfig(t *testing.T) {
 			Healthcheck: &healthcheckCheckConfig{},
 		},
 	}
-	checks := determineChecks(cfg, nil)
+	checks := determineChecks(cfg, nil, nil)
 	assert.Len(t, checks, 3)
 	assert.Equal(t, "age", checks[0].name)
 	assert.Equal(t, "root-user", checks[1].name)
 	assert.Equal(t, "healthcheck", checks[2].name)
+}
+
+func TestDetermineChecks_IncludeMap(t *testing.T) {
+	t.Run("includeMap selects subset", func(t *testing.T) {
+		includeMap := map[string]bool{"age": true, "size": true}
+		checks := determineChecks(nil, nil, includeMap)
+		assert.Len(t, checks, 2)
+		assert.Equal(t, "age", checks[0].name)
+		assert.Equal(t, "size", checks[1].name)
+	})
+
+	t.Run("includeMap overrides config selection", func(t *testing.T) {
+		cfg := &allConfig{
+			Checks: allChecksConfig{
+				Age:      &ageCheckConfig{},
+				RootUser: &rootUserCheckConfig{},
+			},
+		}
+		// Config enables age and root-user, but --include asks only for size
+		includeMap := map[string]bool{"size": true}
+		checks := determineChecks(cfg, nil, includeMap)
+		assert.Len(t, checks, 1)
+		assert.Equal(t, "size", checks[0].name)
+	})
+
+	t.Run("includeMap single check", func(t *testing.T) {
+		includeMap := map[string]bool{"healthcheck": true}
+		checks := determineChecks(nil, nil, includeMap)
+		assert.Len(t, checks, 1)
+		assert.Equal(t, "healthcheck", checks[0].name)
+	})
+
+	t.Run("includeMap all checks", func(t *testing.T) {
+		includeMap := map[string]bool{
+			"age": true, "size": true, "ports": true, "registry": true,
+			"root-user": true, "secrets": true, "healthcheck": true, "labels": true,
+		}
+		checks := determineChecks(nil, nil, includeMap)
+		assert.Len(t, checks, 8)
+	})
+}
+
+func TestNonRunningCheckNames(t *testing.T) {
+	t.Run("with skip map", func(t *testing.T) {
+		skipMap := map[string]bool{"age": true, "size": true}
+		names := nonRunningCheckNames(skipMap, nil)
+		assert.Equal(t, []string{"age", "size"}, names)
+	})
+
+	t.Run("with include map", func(t *testing.T) {
+		includeMap := map[string]bool{"age": true, "size": true}
+		names := nonRunningCheckNames(nil, includeMap)
+		assert.Len(t, names, 6)
+		assert.NotContains(t, names, "age")
+		assert.NotContains(t, names, "size")
+		assert.Contains(t, names, "ports")
+		assert.Contains(t, names, "registry")
+		assert.Contains(t, names, "root-user")
+		assert.Contains(t, names, "secrets")
+		assert.Contains(t, names, "healthcheck")
+		assert.Contains(t, names, "labels")
+	})
+
+	t.Run("with neither", func(t *testing.T) {
+		names := nonRunningCheckNames(nil, nil)
+		assert.Nil(t, names)
+	})
+
+	t.Run("include all checks returns nil", func(t *testing.T) {
+		includeMap := map[string]bool{
+			"age": true, "size": true, "ports": true, "registry": true,
+			"root-user": true, "secrets": true, "healthcheck": true, "labels": true,
+		}
+		names := nonRunningCheckNames(nil, includeMap)
+		assert.Nil(t, names)
+	})
+
+	t.Run("empty skip map returns nil", func(t *testing.T) {
+		names := nonRunningCheckNames(map[string]bool{}, nil)
+		assert.Nil(t, names)
+	})
+}
+
+func TestRunAll_IncludeAndSkipMutuallyExclusive(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "age"
+	includeChecks = "size"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:    "1000",
+		created: time.Now(),
+	})
+
+	err := runAll(allCmd, imageRef)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mutually exclusive")
+}
+
+func TestRunAll_IncludeSelectsSubset(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "age,root-user"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "=== age ===")
+	assert.Contains(t, out, "=== root-user ===")
+	assert.NotContains(t, out, "=== size ===")
+	assert.NotContains(t, out, "=== ports ===")
+	assert.NotContains(t, out, "=== registry ===")
+	assert.NotContains(t, out, "=== secrets ===")
+	assert.NotContains(t, out, "=== healthcheck ===")
+	assert.NotContains(t, out, "=== labels ===")
+	assert.Contains(t, out, "Running 2 checks")
+}
+
+func TestRunAll_IncludeOverridesConfig(t *testing.T) {
+	resetAllGlobals()
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := `checks:
+  age:
+    max-age: 90
+  root-user: {}
+`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+	// Config enables age and root-user, but --include overrides to only size
+	includeChecks = "size"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "=== size ===")
+	assert.NotContains(t, out, "=== age ===")
+	assert.NotContains(t, out, "=== root-user ===")
+	assert.Contains(t, out, "Running 1 checks")
+}
+
+func TestRunAll_IncludeWithConfig_ValuesApply(t *testing.T) {
+	resetAllGlobals()
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	// Use max-layers instead of max-age because allCmd's max-age flag may be
+	// permanently marked as Changed by TestRunAll_CLIOverridesConfig.
+	content := `checks:
+  size:
+    max-layers: 1
+`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+	// --include selects size, config sets max-layers: 1
+	includeChecks = "size"
+
+	// Image has 3 layers; config says max-layers: 1 -> should fail
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 3,
+	})
+
+	captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+}
+
+func TestRunAll_InvalidIncludeList(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "age,invalid"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:    "1000",
+		created: time.Now(),
+	})
+
+	err := runAll(allCmd, imageRef)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown check name")
 }
