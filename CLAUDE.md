@@ -259,7 +259,7 @@ In `internal/secrets/`:
 - **Output capture**: stdout (JSON) is captured separately from stderr (logs). JSON goes to the `json` output, logs go to the workflow log
 - **Step summary**: Generates `$GITHUB_STEP_SUMMARY` with results table, failed check details, and collapsible full JSON (uses `jq`, pre-installed on GitHub runners)
 - **Exit codes**: Propagated directly — 0 (passed), 1 (validation failed), 2 (execution error)
-- **Version sync**: The `version` input default in `action.yml` uses the `x-release-please-version` marker. Release-please's `extra-files` config (in `.github/release-please-config.json`) auto-updates this value on each release
+- **Version sync**: The `version` input default in `action.yml` uses the `x-release-please-version` marker. Release-please's `extra-files` config (in `.github/release-please-config.json`) auto-updates this value on each release. README.md version references are also auto-updated via the same mechanism
 - **Dogfooding**: The release workflow's docker job uses `uses: ./` to validate `check-image:scan` after Trivy. The docker job depends on goreleaser (`needs: [release-please, goreleaser]`) so the binary is available for download
 - **Testing**: `.github/workflows/test-action.yml` tests the action using `uses: ./` against real images
 
