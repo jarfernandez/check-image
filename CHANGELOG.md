@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1](https://github.com/jarfernandez/check-image/compare/v0.12.0...v0.12.1) (2026-02-16)
+
+
+### Bug Fixes
+
+* Reorder help text in all command for logical flow ([#72](https://github.com/jarfernandez/check-image/issues/72)) ([5e55d2c](https://github.com/jarfernandez/check-image/commit/5e55d2cb44a23f948fc52ebfbf3146a43c94d866))
+
 ## [0.12.0](https://github.com/jarfernandez/check-image/compare/v0.11.1...v0.12.0) (2026-02-16)
 
 
