@@ -51,7 +51,7 @@ Pre-built binaries include the correct version number (e.g., `check-image versio
 
 ### Install with Go
 
-**Requirements:** Go 1.24 or newer
+**Requirements:** Go 1.26 or newer
 
 ```bash
 # Install the latest version

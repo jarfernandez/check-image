@@ -329,17 +329,17 @@ func TestLoadLabelsPolicy_FileErrors(t *testing.T) {
 func TestLoadLabelsPolicyFromObject(t *testing.T) {
 	tests := []struct {
 		name        string
-		obj         interface{}
+		obj         any
 		wantErr     bool
 		errContains string
 		validate    func(t *testing.T, p *Policy)
 	}{
 		{
 			name: "Valid inline policy",
-			obj: map[string]interface{}{
-				"required-labels": []interface{}{
-					map[string]interface{}{"name": "maintainer"},
-					map[string]interface{}{"name": "version", "pattern": "^v?\\d+"},
+			obj: map[string]any{
+				"required-labels": []any{
+					map[string]any{"name": "maintainer"},
+					map[string]any{"name": "version", "pattern": "^v?\\d+"},
 				},
 			},
 			wantErr: false,
@@ -351,9 +351,9 @@ func TestLoadLabelsPolicyFromObject(t *testing.T) {
 		},
 		{
 			name: "Inline policy with value",
-			obj: map[string]interface{}{
-				"required-labels": []interface{}{
-					map[string]interface{}{"name": "vendor", "value": "Acme"},
+			obj: map[string]any{
+				"required-labels": []any{
+					map[string]any{"name": "vendor", "value": "Acme"},
 				},
 			},
 			wantErr: false,
@@ -365,17 +365,17 @@ func TestLoadLabelsPolicyFromObject(t *testing.T) {
 		},
 		{
 			name: "Empty required labels",
-			obj: map[string]interface{}{
-				"required-labels": []interface{}{},
+			obj: map[string]any{
+				"required-labels": []any{},
 			},
 			wantErr:     true,
 			errContains: "at least one required label",
 		},
 		{
 			name: "Invalid pattern in inline policy",
-			obj: map[string]interface{}{
-				"required-labels": []interface{}{
-					map[string]interface{}{"name": "version", "pattern": "[invalid("},
+			obj: map[string]any{
+				"required-labels": []any{
+					map[string]any{"name": "version", "pattern": "[invalid("},
 				},
 			},
 			wantErr:     true,

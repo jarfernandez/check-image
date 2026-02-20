@@ -3,6 +3,7 @@ package commands
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jarfernandez/check-image/internal/output"
@@ -137,15 +138,16 @@ func TestRunRegistry_DifferentRegistries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
 			policyFile := filepath.Join(tmpDir, "policy.json")
-			policyContent := `{"trusted-registries": [`
+			var policyContent strings.Builder
+			policyContent.WriteString(`{"trusted-registries": [`)
 			for i, reg := range tt.trustedRegs {
 				if i > 0 {
-					policyContent += ","
+					policyContent.WriteString(",")
 				}
-				policyContent += `"` + reg + `"`
+				policyContent.WriteString(`"` + reg + `"`)
 			}
-			policyContent += `]}`
-			err := os.WriteFile(policyFile, []byte(policyContent), 0600)
+			policyContent.WriteString(`]}`)
+			err := os.WriteFile(policyFile, []byte(policyContent.String()), 0600)
 			require.NoError(t, err)
 
 			registryPolicy = policyFile

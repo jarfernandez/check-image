@@ -51,7 +51,7 @@ func LoadLabelsPolicy(path string) (*Policy, error) {
 }
 
 // LoadLabelsPolicyFromObject creates a Policy from an inline config object
-func LoadLabelsPolicyFromObject(obj interface{}) (*Policy, error) {
+func LoadLabelsPolicyFromObject(obj any) (*Policy, error) {
 	// Marshal to JSON then unmarshal to Policy for type conversion
 	data, err := json.Marshal(obj)
 	if err != nil {

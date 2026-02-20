@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -158,21 +159,16 @@ func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]FileFinding, e
 
 // isExcluded checks if a value is in the exclusion list (case-sensitive)
 func isExcluded(value string, exclusionList []string) bool {
-	for _, excluded := range exclusionList {
-		if value == excluded {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(exclusionList, value)
 }
 
 // isPathExcluded checks if a path matches any exclusion patterns
 func isPathExcluded(path string, excludedPatterns []string) bool {
 	for _, pattern := range excludedPatterns {
 		// Support both exact matches and glob patterns
-		if strings.HasSuffix(pattern, "/**") {
+		if before, ok := strings.CutSuffix(pattern, "/**"); ok {
 			// Directory prefix match
-			prefix := strings.TrimSuffix(pattern, "/**")
+			prefix := before
 			if strings.HasPrefix(path, prefix+"/") || path == prefix {
 				return true
 			}

@@ -352,7 +352,7 @@ func TestLoadRegistryPolicy_Stdin(t *testing.T) {
 func TestLoadRegistryPolicyFromObject(t *testing.T) {
 	tests := []struct {
 		name        string
-		obj         interface{}
+		obj         any
 		wantErr     bool
 		errContains string
 		validate    func(t *testing.T, p *Policy)
