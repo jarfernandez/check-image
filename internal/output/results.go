@@ -119,7 +119,16 @@ type Summary struct {
 	Skipped []string `json:"skipped,omitempty"`
 }
 
-// VersionResult holds the version output for JSON mode.
+// VersionResult holds the short version output for JSON mode (--short flag).
 type VersionResult struct {
 	Version string `json:"version"`
+}
+
+// BuildInfoResult holds the full build information for JSON mode.
+type BuildInfoResult struct {
+	Version   string `json:"version"`
+	Commit    string `json:"commit"`
+	BuiltAt   string `json:"built_at"`
+	GoVersion string `json:"go_version"`
+	Platform  string `json:"platform"`
 }

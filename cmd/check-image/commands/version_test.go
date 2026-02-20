@@ -1,9 +1,7 @@
 package commands
 
 import (
-	"bytes"
-	"io"
-	"os"
+	"runtime"
 	"testing"
 
 	"github.com/jarfernandez/check-image/internal/output"
@@ -12,158 +10,146 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVersionCommand_Execute(t *testing.T) {
+// saveBuildState saves and restores all version package globals and the shortVersion flag.
+func saveBuildState(t *testing.T) {
+	t.Helper()
+	origVersion := ver.Version
+	origCommit := ver.Commit
+	origBuildDate := ver.BuildDate
+	origShort := shortVersion
+	origFmt := OutputFmt
+	t.Cleanup(func() {
+		ver.Version = origVersion
+		ver.Commit = origCommit
+		ver.BuildDate = origBuildDate
+		shortVersion = origShort
+		OutputFmt = origFmt
+	})
+}
+
+func TestVersionCommand_Short_Text(t *testing.T) {
 	tests := []struct {
 		name           string
 		versionValue   string
 		expectedOutput string
 	}{
 		{
-			name:           "Version with injected value",
+			name:           "injected version",
 			versionValue:   "v0.1.0",
 			expectedOutput: "v0.1.0\n",
 		},
 		{
-			name:           "Version with default dev value",
+			name:           "default dev value",
 			versionValue:   "dev",
 			expectedOutput: "dev\n",
 		},
 		{
-			name:           "Version with whitespace",
+			name:           "version with whitespace is trimmed",
 			versionValue:   "  v1.2.3  ",
 			expectedOutput: "v1.2.3\n",
-		}}
+		},
+		{
+			name:           "empty version falls back to dev",
+			versionValue:   "",
+			expectedOutput: "dev\n",
+		},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Preserve original version
-			originalVersion := ver.Version
-			defer func() { ver.Version = originalVersion }()
-
-			// Set the version value
+			saveBuildState(t)
 			ver.Version = tt.versionValue
-
-			// Set text output mode
 			OutputFmt = output.FormatText
+			shortVersion = true
 
-			// Capture stdout
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			// Execute the version command
-			err := runVersion()
-
-			// Restore stdout
-			_ = w.Close()
-			os.Stdout = old
-
-			// Read captured output
-			var buf bytes.Buffer
-			_, _ = io.Copy(&buf, r)
-
-			// Assert
-			require.NoError(t, err, "runVersion should not return an error")
-			assert.Equal(t, tt.expectedOutput, buf.String(), "Output should match expected version")
+			var err error
+			got := captureStdout(t, func() { err = runVersion() })
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedOutput, got)
 		})
 	}
 }
 
+func TestVersionCommand_Full_Text(t *testing.T) {
+	saveBuildState(t)
+	ver.Version = "v1.2.3"
+	ver.Commit = "abc1234"
+	ver.BuildDate = "2026-02-18T12:34:56Z"
+	OutputFmt = output.FormatText
+	shortVersion = false
+
+	var err error
+	got := captureStdout(t, func() { err = runVersion() })
+	require.NoError(t, err)
+
+	assert.Contains(t, got, "check-image version v1.2.3")
+	assert.Contains(t, got, "commit:     abc1234")
+	assert.Contains(t, got, "built at:   2026-02-18T12:34:56Z")
+	assert.Contains(t, got, "go version: "+runtime.Version())
+	assert.Contains(t, got, "platform:   "+runtime.GOOS+"/"+runtime.GOARCH)
+}
+
+func TestVersionCommand_Full_JSON(t *testing.T) {
+	saveBuildState(t)
+	ver.Version = "v1.2.3"
+	ver.Commit = "abc1234"
+	ver.BuildDate = "2026-02-18T12:34:56Z"
+	OutputFmt = output.FormatJSON
+	shortVersion = false
+
+	var err error
+	got := captureStdout(t, func() { err = runVersion() })
+	require.NoError(t, err)
+
+	assert.Contains(t, got, `"version": "v1.2.3"`)
+	assert.Contains(t, got, `"commit": "abc1234"`)
+	assert.Contains(t, got, `"built_at": "2026-02-18T12:34:56Z"`)
+	assert.Contains(t, got, `"go_version": "`+runtime.Version()+`"`)
+	assert.Contains(t, got, `"platform": "`+runtime.GOOS+"/"+runtime.GOARCH+`"`)
+}
+
+func TestVersionCommand_Short_JSON(t *testing.T) {
+	saveBuildState(t)
+	ver.Version = "v1.2.3"
+	OutputFmt = output.FormatJSON
+	shortVersion = true
+
+	var err error
+	got := captureStdout(t, func() { err = runVersion() })
+	require.NoError(t, err)
+
+	assert.Contains(t, got, `"version": "v1.2.3"`)
+	// Full build fields must NOT appear in --short JSON output
+	assert.NotContains(t, got, `"commit"`)
+	assert.NotContains(t, got, `"built_at"`)
+	assert.NotContains(t, got, `"go_version"`)
+	assert.NotContains(t, got, `"platform"`)
+}
+
 func TestVersionCommand_Properties(t *testing.T) {
-	assert.NotNil(t, versionCmd, "versionCmd should not be nil")
-	assert.Equal(t, "version", versionCmd.Use, "Command should have correct Use value")
-	assert.Equal(t, "Show the check-image version", versionCmd.Short, "Command should have correct Short description")
-	assert.NotEmpty(t, versionCmd.Long, "Command should have Long description")
-	assert.NotEmpty(t, versionCmd.Example, "Command should have Example")
+	assert.NotNil(t, versionCmd)
+	assert.Equal(t, "version", versionCmd.Use)
+	assert.Equal(t, "Show the check-image version", versionCmd.Short)
+	assert.NotEmpty(t, versionCmd.Long)
+	assert.NotEmpty(t, versionCmd.Example)
+	assert.NotNil(t, versionCmd.Flags().Lookup("short"), "--short flag should be registered")
 }
 
 func TestVersionCommand_NoArgs(t *testing.T) {
-	// Test that the command rejects arguments
 	err := versionCmd.Args(versionCmd, []string{"extra"})
-	assert.Error(t, err, "Command should reject extra arguments")
+	assert.Error(t, err, "command should reject extra arguments")
 }
 
 func TestVersionCommand_RunE(t *testing.T) {
-	// Preserve original version
-	originalVersion := ver.Version
-	defer func() { ver.Version = originalVersion }()
-
-	// Set a test version
+	saveBuildState(t)
 	ver.Version = "v1.0.0"
 	OutputFmt = output.FormatText
+	shortVersion = true
 
-	// Capture stdout
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// Execute the RunE function
-	err := versionCmd.RunE(versionCmd, []string{})
-
-	// Restore stdout
-	_ = w.Close()
-	os.Stdout = old
-
-	// Read captured output
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-
-	// Assert
-	require.NoError(t, err, "RunE should not return an error")
-	assert.Equal(t, "v1.0.0\n", buf.String(), "Output should contain the version")
-}
-
-func TestRunVersion_EmptyVersion(t *testing.T) {
-	// Preserve original version
-	originalVersion := ver.Version
-	defer func() { ver.Version = originalVersion }()
-
-	// Test behavior with empty version string
-	ver.Version = ""
-	OutputFmt = output.FormatText
-
-	// Capture stdout
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// Execute runVersion
-	err := runVersion()
-
-	// Restore stdout
-	_ = w.Close()
-	os.Stdout = old
-
-	// Read captured output
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-
-	// Assert
-	require.NoError(t, err, "runVersion should not return an error with empty version")
-	assert.Equal(t, "dev\n", buf.String(), "Output should be a newline for empty version")
-}
-
-func TestRunVersion_JSONFormat(t *testing.T) {
-	// Preserve original version
-	originalVersion := ver.Version
-	defer func() { ver.Version = originalVersion }()
-
-	ver.Version = "v1.2.3"
-	OutputFmt = output.FormatJSON
-
-	// Capture stdout
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err := runVersion()
-
-	_ = w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-
+	var err error
+	got := captureStdout(t, func() {
+		err = versionCmd.RunE(versionCmd, []string{})
+	})
 	require.NoError(t, err)
-	assert.Contains(t, buf.String(), `"version": "v1.2.3"`)
+	assert.Equal(t, "v1.0.0\n", got)
 }

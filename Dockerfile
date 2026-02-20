@@ -11,12 +11,17 @@ RUN go mod download && go mod verify
 COPY cmd/ cmd/
 COPY internal/ internal/
 
-# Version injection via build arg (default "dev" for local builds)
+# Build metadata injected via build args (defaults for local builds)
 ARG VERSION=dev
+ARG COMMIT=none
+ARG BUILD_DATE=unknown
 
 # Build a fully static binary with debug info stripped
 RUN CGO_ENABLED=0 go build \
-    -ldflags "-s -w -X github.com/jarfernandez/check-image/internal/version.Version=v${VERSION}" \
+    -ldflags "-s -w \
+      -X github.com/jarfernandez/check-image/internal/version.Version=v${VERSION} \
+      -X github.com/jarfernandez/check-image/internal/version.Commit=${COMMIT} \
+      -X github.com/jarfernandez/check-image/internal/version.BuildDate=${BUILD_DATE}" \
     -o /check-image \
     ./cmd/check-image
 

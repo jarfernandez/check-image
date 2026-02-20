@@ -521,16 +521,41 @@ check-image all nginx:latest --fail-fast --skip registry
 ```
 
 #### `version`
-Shows the check-image version.
+Shows the check-image version with full build information.
 
 ```bash
 check-image version
 ```
 
-The version can be set at build time using ldflags:
-```bash
-go build -ldflags "-X github.com/jarfernandez/check-image/internal/version.Version=v0.1.0" ./cmd/check-image
 ```
+check-image version v0.12.1
+commit:     a1b2c3d
+built at:   2026-02-18T12:34:56Z
+go version: go1.26.0
+platform:   linux/amd64
+```
+
+Options:
+- `--short`: Print only the version number
+
+```bash
+check-image version --short
+```
+
+```
+v0.12.1
+```
+
+The version and build metadata are injected at build time using ldflags:
+```bash
+go build \
+  -ldflags "-X github.com/jarfernandez/check-image/internal/version.Version=v0.1.0 \
+            -X github.com/jarfernandez/check-image/internal/version.Commit=abc1234 \
+            -X github.com/jarfernandez/check-image/internal/version.BuildDate=2026-02-18T12:34:56Z" \
+  ./cmd/check-image
+```
+
+The Go version and platform are read from the Go runtime and do not require ldflags injection.
 
 ### Global Flags
 
@@ -587,13 +612,27 @@ check-image all nginx:latest --skip registry -o json
 }
 ```
 
-**Version command:**
+**Version command (full):**
 ```bash
 check-image version -o json
 ```
 ```json
 {
-  "version": "v0.4.0"
+  "version": "v0.12.1",
+  "commit": "a1b2c3d",
+  "built_at": "2026-02-18T12:34:56Z",
+  "go_version": "go1.26.0",
+  "platform": "linux/amd64"
+}
+```
+
+**Version command (short):**
+```bash
+check-image version --short -o json
+```
+```json
+{
+  "version": "v0.12.1"
 }
 ```
 
@@ -892,7 +931,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 90.4% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 90.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -917,11 +956,11 @@ go tool cover -html=coverage.out
 - **internal/version**: 100.0% coverage
 - **internal/output**: 100.0% coverage
 - **internal/labels**: 98.1% coverage
-- **internal/registry**: 97.3% coverage
-- **internal/secrets**: 95.9% coverage
+- **internal/registry**: 96.8% coverage
+- **internal/secrets**: 95.8% coverage
 - **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 81.8% coverage
+- **cmd/check-image/commands**: 81.9% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
