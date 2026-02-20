@@ -108,7 +108,7 @@ func LoadSecretsPolicy(path string) (*Policy, error) {
 }
 
 // LoadSecretsPolicyFromObject creates a Policy from an inline config object
-func LoadSecretsPolicyFromObject(obj interface{}) (*Policy, error) {
+func LoadSecretsPolicyFromObject(obj any) (*Policy, error) {
 	// Marshal to JSON then unmarshal to Policy for type conversion
 	data, err := json.Marshal(obj)
 	if err != nil {

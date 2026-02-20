@@ -65,10 +65,7 @@ func createTestOCILayout(t *testing.T, tag string, opts testImageOptions) string
 		var layers []v1.Layer
 
 		// Determine actual number of layers to create
-		numLayers := opts.layerCount
-		if len(opts.layerFiles) > numLayers {
-			numLayers = len(opts.layerFiles)
-		}
+		numLayers := max(len(opts.layerFiles), opts.layerCount)
 
 		for i := 0; i < numLayers; i++ {
 			var layer v1.Layer
@@ -213,10 +210,7 @@ func createTestLayer(t *testing.T, sizeBytes int64) v1.Layer {
 	// Create a file with random content to reach approximately the desired COMPRESSED size
 	// Random data doesn't compress well, so compressed size ≈ uncompressed size
 	// Account for tar header overhead (~512 bytes) and minimal gzip overhead (~20 bytes)
-	contentSize := sizeBytes - 532
-	if contentSize < 0 {
-		contentSize = 0
-	}
+	contentSize := max(sizeBytes-532, 0)
 
 	// Create truly random content that won't compress
 	content := make([]byte, contentSize)

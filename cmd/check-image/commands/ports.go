@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -77,8 +78,8 @@ func parseAllowedPorts() ([]int, error) {
 		return nil, nil
 	}
 
-	if strings.HasPrefix(allowedPorts, "@") {
-		path := strings.TrimPrefix(allowedPorts, "@")
+	if after, ok := strings.CutPrefix(allowedPorts, "@"); ok {
+		path := after
 
 		// Read file or stdin
 		data, err := fileutil.ReadFileOrStdin(path)
@@ -162,13 +163,7 @@ func runPorts(imageName string) (*output.CheckResult, error) {
 	// Check if all exposed ports are in the allowed list
 	unauthorizedPorts := make([]int, 0)
 	for _, exposedPort := range exposedPorts {
-		isAllowed := false
-		for _, allowedPort := range allowedPortsList {
-			if exposedPort == allowedPort {
-				isAllowed = true
-				break
-			}
-		}
+		isAllowed := slices.Contains(allowedPortsList, exposedPort)
 		if !isAllowed {
 			unauthorizedPorts = append(unauthorizedPorts, exposedPort)
 		}

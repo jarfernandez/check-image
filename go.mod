@@ -1,6 +1,6 @@
 module github.com/jarfernandez/check-image
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/google/go-containerregistry v0.20.7

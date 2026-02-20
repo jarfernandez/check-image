@@ -3,6 +3,7 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
 )
@@ -49,7 +50,7 @@ func LoadRegistryPolicy(path string) (*Policy, error) {
 }
 
 // LoadRegistryPolicyFromObject creates a Policy from an inline config object
-func LoadRegistryPolicyFromObject(obj interface{}) (*Policy, error) {
+func LoadRegistryPolicyFromObject(obj any) (*Policy, error) {
 	// Marshal to JSON then unmarshal to Policy for type conversion
 	data, err := json.Marshal(obj)
 	if err != nil {
@@ -82,22 +83,12 @@ func LoadRegistryPolicyFromObject(obj interface{}) (*Policy, error) {
 func (p *Policy) IsRegistryAllowed(registry string) bool {
 	// Allowlist mode: only trusted registries are allowed
 	if len(p.TrustedRegistries) > 0 {
-		for _, trusted := range p.TrustedRegistries {
-			if registry == trusted {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(p.TrustedRegistries, registry)
 	}
 
 	// Blocklist mode: all registries except excluded ones are allowed
 	if len(p.ExcludedRegistries) > 0 {
-		for _, excluded := range p.ExcludedRegistries {
-			if registry == excluded {
-				return false
-			}
-		}
-		return true
+		return !slices.Contains(p.ExcludedRegistries, registry)
 	}
 
 	// This should not happen if LoadRegistryPolicy validation works correctly

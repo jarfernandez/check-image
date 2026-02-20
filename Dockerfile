@@ -1,5 +1,5 @@
 # Build stage: compile a static Go binary
-FROM golang:1.24-bookworm AS builder
+FROM golang:1.26-bookworm AS builder
 
 WORKDIR /build
 

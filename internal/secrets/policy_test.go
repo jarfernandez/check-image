@@ -347,7 +347,7 @@ excluded-env-vars:
 func TestLoadSecretsPolicyFromObject(t *testing.T) {
 	tests := []struct {
 		name     string
-		obj      interface{}
+		obj      any
 		wantErr  bool
 		validate func(t *testing.T, p *Policy)
 	}{
