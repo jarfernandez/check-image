@@ -416,54 +416,10 @@ check-image labels <image> --labels-policy <file>
 Options:
 - `--labels-policy`: Path to labels policy file (JSON or YAML, required)
 
-Policy file format:
-```yaml
-required-labels:
-  # Existence check - label must be present
-  - name: "maintainer"
-
-  # Exact value match
-  - name: "org.opencontainers.image.vendor"
-    value: "MyCompany"
-
-  # Pattern match (regex)
-  - name: "org.opencontainers.image.version"
-    pattern: "^v?\\d+\\.\\d+\\.\\d+$"
-```
-
 The command validates three types of requirements:
 - **Existence check**: Label must be present with any value (only `name` specified)
 - **Exact value match**: Label value must exactly match the specified string (`name` and `value`)
 - **Pattern match**: Label value must match the regular expression (`name` and `pattern`)
-
-Example JSON output:
-```json
-{
-  "check": "labels",
-  "image": "nginx:latest",
-  "passed": false,
-  "message": "Image does not meet label requirements",
-  "details": {
-    "required-labels": [
-      {"name": "maintainer"},
-      {"name": "org.opencontainers.image.version", "pattern": "^v?\\\\d+\\\\.\\\\d+\\\\.\\\\d+$"}
-    ],
-    "actual-labels": {
-      "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
-    },
-    "missing-labels": ["org.opencontainers.image.version"],
-    "invalid-labels": []
-  }
-}
-```
-
-Common OCI standard labels:
-- `org.opencontainers.image.created` - Image creation timestamp
-- `org.opencontainers.image.version` - Version of the packaged software
-- `org.opencontainers.image.vendor` - Name of the distributing entity
-- `org.opencontainers.image.source` - URL to the source code repository
-- `org.opencontainers.image.revision` - Source control revision identifier
-- `org.opencontainers.image.licenses` - License(s) under which the image is distributed
 
 #### `all`
 Runs all validation checks on a container image at once.
@@ -495,30 +451,6 @@ Precedence rules:
 3. `--include` overrides config file check selection (runs only specified checks)
 4. CLI flags override config file values
 5. `--include` and `--skip` always take precedence over the config file
-
-Examples:
-```bash
-# Run all checks with defaults
-check-image all nginx:latest
-
-# Run all checks with custom limits
-check-image all nginx:latest --max-age 30 --max-size 200
-
-# Run only specific checks
-check-image all nginx:latest --include age,size,root-user
-
-# Skip specific checks
-check-image all nginx:latest --skip registry,secrets
-
-# Use a configuration file
-check-image all nginx:latest --config config/config.json
-
-# Config file with CLI overrides and skip
-check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
-
-# Stop on first check failure
-check-image all nginx:latest --fail-fast --skip registry
-```
 
 #### `version`
 Shows the check-image version with full build information.
@@ -587,7 +519,7 @@ check-image age nginx:latest -o json
 
 **All command:**
 ```bash
-check-image all nginx:latest --skip registry -o json
+check-image all nginx:latest --skip registry,labels -o json
 ```
 ```json
 {
@@ -599,15 +531,22 @@ check-image all nginx:latest --skip registry -o json
       "image": "nginx:latest",
       "passed": true,
       "message": "Image is less than 90 days old",
-      "details": { "created-at": "...", "age-days": 75, "max-age": 90 }
+      "details": {
+        "created-at": "2026-02-04T23:53:09Z",
+        "age-days": 15.975077092155601,
+        "max-age": 90
+      }
     }
   ],
   "summary": {
-    "total": 5,
-    "passed": 4,
-    "failed": 1,
+    "total": 6,
+    "passed": 3,
+    "failed": 3,
     "errored": 0,
-    "skipped": ["registry"]
+    "skipped": [
+      "registry",
+      "labels"
+    ]
   }
 }
 ```
