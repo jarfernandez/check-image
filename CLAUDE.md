@@ -303,6 +303,14 @@ In `internal/secrets/`:
 - **Local build**: `docker build --build-arg VERSION=dev -t check-image .`
 - **Container behavior**: Without Docker socket, `GetLocalImage()` fails silently and falls back to remote registry. This is the expected and recommended mode. Docker socket mounting is possible but grants host-level daemon access.
 
+### Homebrew Distribution
+- **Tap**: `jarfernandez/homebrew-tap` (repositorio público; tap address: `jarfernandez/tap`)
+- **Tipo**: Homebrew Formula (sección `brews` de GoReleaser), fichero publicado en `Formula/check-image.rb` del tap
+- **Instalación**: `brew tap jarfernandez/tap && brew install check-image`
+- **Auth**: GoReleaser usa un Fine-grained PAT (`HOMEBREW_TAP_GITHUB_TOKEN` secret en el repo `check-image`) con permiso `Contents: read and write` sobre `homebrew-tap`. El `GITHUB_TOKEN` del workflow no puede escribir en repos externos.
+- **Trigger**: Auto-publicado en cada release por el job `goreleaser` en `release-please.yml`; controlado por `skip_upload: auto` (se omite en snapshot builds)
+- **PAT**: Renovar antes de la expiración (GitHub envía aviso por email); sin PAT válido, el job de goreleaser falla al intentar publicar la fórmula
+
 ### GitHub Action
 - **Type**: Composite action that downloads the check-image binary from GitHub Releases (like Trivy), giving native Docker daemon access
 - **Files**: `action.yml` (action definition), `entrypoint.sh` (binary download + input-to-CLI mapping script)

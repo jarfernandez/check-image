@@ -49,6 +49,21 @@ sudo mv check-image /usr/local/bin/
 
 Pre-built binaries include the correct version number (e.g., `check-image version --short` returns `v0.16.0`). <!-- x-release-please-version -->
 
+### Install with Homebrew
+
+**Requirements:** macOS or Linux with [Homebrew](https://brew.sh) installed.
+
+```bash
+brew tap jarfernandez/tap
+brew install check-image
+```
+
+To upgrade to a new version:
+
+```bash
+brew upgrade check-image
+```
+
 ### Install with Go
 
 **Requirements:** Go 1.26 or newer
