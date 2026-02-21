@@ -354,6 +354,7 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Use the GitHub CLI (`gh`) for all interactions with GitHub (issues, pull requests, comments).
 - Always create a feature branch for new changes. Never commit directly to `main`.
 - Use Conventional Commits format for all commit messages (e.g., `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
+- Commit messages and PR titles must start with an uppercase letter after the conventional commit prefix. Example: `feat: Add platforms validation command`, not `feat: add platforms validation command`.
 - Do not add Claude as a co-author in commits (no `Co-Authored-By: Claude` lines).
 
 ### Go Best Practices
@@ -387,6 +388,9 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Validate user input early and fail fast.
 - Print user-facing errors to `stderr`.
 - Return proper exit codes (`0` for success, non-zero for failure).
+- All commands must support JSON output via the global `--output json` flag.
+- All JSON keys — both in output structs and in input configuration files — must use kebab-case (e.g., `max-age`, `allowed-ports`, `trusted-registries`). Go struct tags must reflect this: `json:"my-field"`.
+- When new functionality introduces new configuration file fields or new config file types, add sample files in both JSON and YAML formats to the `config/` directory.
 
 #### Interfaces
 - Define interfaces at the point of use.
@@ -400,12 +404,18 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
 - Comprehensive unit tests cover all commands and internal packages with 90.7% overall coverage.
+- Every new feature must include complete unit tests. Existing tests affected by the change must be updated.
+- After adding or modifying tests, run the full test suite (`go test ./...`) to confirm nothing is broken.
+- Before committing, run end-to-end verification of both the new feature and any related functionality that may have been affected.
+- After any test changes, recalculate coverage (`go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out`) and update the overall coverage figure in CLAUDE.md and the per-package breakdown in README.md.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
-- Run `go vet` and `golangci-lint`.
+- Run `go fix ./...` to apply any API migration rewrites.
+- Run `go vet` and `golangci-lint` to ensure idiomatic Go.
 - Keep `go.mod` tidy.
-- Pre-commit hooks automatically enforce these requirements before each commit.
+- Run `pre-commit run --all-files` explicitly before committing and fix any reported issues before proceeding.
+- Pre-commit hooks enforce these requirements automatically on `git commit` as well.
 - See `.golangci.yml` for linter configuration (balanced settings).
 - Install hooks with: `pre-commit install && pre-commit install --hook-type commit-msg`.
 
@@ -413,6 +423,10 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Explain *why*, not *what*.
 - Comment only exported identifiers and complex logic.
 - Keep documentation aligned with the code.
+- Every new feature must update both CLAUDE.md and README.md:
+  - **CLAUDE.md**: architectural decisions, key implementation details, flag/struct names, and anything useful for future development.
+  - **README.md**: user-facing description, usage examples, and flags — consistent in style and depth with existing commands.
+- Explain the important design decisions made during the implementation of a new feature (why a particular approach was chosen, trade-offs considered, known limitations).
 
 #### Dependencies
 - Minimize external dependencies.
