@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0](https://github.com/jarfernandez/check-image/compare/v0.15.0...v0.16.0) (2026-02-21)
+
+
+### Features
+
+* Add private registry authentication support ([#88](https://github.com/jarfernandez/check-image/issues/88)) ([65c2e7f](https://github.com/jarfernandez/check-image/commit/65c2e7fd2f86810c5f36667d0bd8e3e295c44671))
+
 ## [0.15.0](https://github.com/jarfernandez/check-image/compare/v0.14.0...v0.15.0) (2026-02-21)
 
 
