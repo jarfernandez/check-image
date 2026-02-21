@@ -2,33 +2,40 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0](https://github.com/jarfernandez/check-image/compare/v0.13.0...v0.14.0) (2026-02-21)
+
+
+### Features
+
+* Add `entrypoint` validation command ([#81](https://github.com/jarfernandez/check-image/issues/81)) ([55824d0](https://github.com/jarfernandez/check-image/commit/55824d086b38b99288b97a778ca388afc86b15a8))
+
 ## [0.13.0](https://github.com/jarfernandez/check-image/compare/v0.12.1...v0.13.0) (2026-02-21)
 
 
 ### Features
 
-* **version:** Add build info and --short flag ([#78](https://github.com/jarfernandez/check-image/issues/78)) ([988f982](https://github.com/jarfernandez/check-image/commit/988f982949caf395e41ac41a868ec0d3eda5748a))
+* **version:** Add build info and `--short` flag ([#78](https://github.com/jarfernandez/check-image/issues/78)) ([988f982](https://github.com/jarfernandez/check-image/commit/988f982949caf395e41ac41a868ec0d3eda5748a))
 
 ## [0.12.1](https://github.com/jarfernandez/check-image/compare/v0.12.0...v0.12.1) (2026-02-16)
 
 
 ### Bug Fixes
 
-* Reorder help text in all command for logical flow ([#72](https://github.com/jarfernandez/check-image/issues/72)) ([5e55d2c](https://github.com/jarfernandez/check-image/commit/5e55d2cb44a23f948fc52ebfbf3146a43c94d866))
+* **all:** Reorder help text ([#72](https://github.com/jarfernandez/check-image/issues/72)) ([5e55d2c](https://github.com/jarfernandez/check-image/commit/5e55d2cb44a23f948fc52ebfbf3146a43c94d866))
 
 ## [0.12.0](https://github.com/jarfernandez/check-image/compare/v0.11.1...v0.12.0) (2026-02-16)
 
 
 ### Features
 
-* Add --include flag to the all command ([#70](https://github.com/jarfernandez/check-image/issues/70)) ([eb3e239](https://github.com/jarfernandez/check-image/commit/eb3e2394805422eed8c646eb36fa7339ecb4b047))
+* **all:** Add `--include` flag ([#70](https://github.com/jarfernandez/check-image/issues/70)) ([eb3e239](https://github.com/jarfernandez/check-image/commit/eb3e2394805422eed8c646eb36fa7339ecb4b047))
 
 ## [0.11.1](https://github.com/jarfernandez/check-image/compare/v0.11.0...v0.11.1) (2026-02-15)
 
 
 ### Bug Fixes
 
-* Remove push-to-main trigger from test-action workflow ([#66](https://github.com/jarfernandez/check-image/issues/66)) ([383defe](https://github.com/jarfernandez/check-image/commit/383defef610d2b45e1066527d1d0d5d9591f6fde))
+* Remove `push-to-main` trigger from `test-action` workflow ([#66](https://github.com/jarfernandez/check-image/issues/66)) ([383defe](https://github.com/jarfernandez/check-image/commit/383defef610d2b45e1066527d1d0d5d9591f6fde))
 
 ## [0.11.0](https://github.com/jarfernandez/check-image/compare/v0.10.0...v0.11.0) (2026-02-15)
 
@@ -42,21 +49,21 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Features
 
-* Add healthcheck validation command ([#61](https://github.com/jarfernandez/check-image/issues/61)) ([6c8ab45](https://github.com/jarfernandez/check-image/commit/6c8ab454a4baa487a52a02cdfb0535a12dd2fcc4))
+* Add `healthcheck` validation command ([#61](https://github.com/jarfernandez/check-image/issues/61)) ([6c8ab45](https://github.com/jarfernandez/check-image/commit/6c8ab454a4baa487a52a02cdfb0535a12dd2fcc4))
 
 ## [0.9.1](https://github.com/jarfernandez/check-image/compare/v0.9.0...v0.9.1) (2026-02-15)
 
 
 ### Bug Fixes
 
-* Include labels in default checks help text ([#59](https://github.com/jarfernandez/check-image/issues/59)) ([5f85f52](https://github.com/jarfernandez/check-image/commit/5f85f524ab75d638316e6add88283c478a3bed49))
+* **all:** Include `labels` in default checks help text ([#59](https://github.com/jarfernandez/check-image/issues/59)) ([5f85f52](https://github.com/jarfernandez/check-image/commit/5f85f524ab75d638316e6add88283c478a3bed49))
 
 ## [0.9.0](https://github.com/jarfernandez/check-image/compare/v0.8.0...v0.9.0) (2026-02-15)
 
 
 ### Features
 
-* Add labels validation command ([#57](https://github.com/jarfernandez/check-image/issues/57)) ([ea47eb8](https://github.com/jarfernandez/check-image/commit/ea47eb83ef0c8b144a32614e9bcacc71d0218725))
+* Add `labels` validation command ([#57](https://github.com/jarfernandez/check-image/issues/57)) ([ea47eb8](https://github.com/jarfernandez/check-image/commit/ea47eb83ef0c8b144a32614e9bcacc71d0218725))
 
 ## [0.8.0](https://github.com/jarfernandez/check-image/compare/v0.7.0...v0.8.0) (2026-02-14)
 
@@ -98,7 +105,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Features
 
-* Add `--fail-fast` flag to `all` command ([#43](https://github.com/jarfernandez/check-image/issues/43)) ([52e4863](https://github.com/jarfernandez/check-image/commit/52e4863afb5d95509d132e73c2c3f1c938e51aa1))
+* **all:** Add `--fail-fast` flag ([#43](https://github.com/jarfernandez/check-image/issues/43)) ([52e4863](https://github.com/jarfernandez/check-image/commit/52e4863afb5d95509d132e73c2c3f1c938e51aa1))
 
 ## [0.3.0](https://github.com/jarfernandez/check-image/compare/v0.2.0...v0.3.0) (2026-02-10)
 
