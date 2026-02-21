@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0](https://github.com/jarfernandez/check-image/compare/v0.12.1...v0.13.0) (2026-02-21)
+
+
+### Features
+
+* **version:** Add build info and --short flag ([#78](https://github.com/jarfernandez/check-image/issues/78)) ([988f982](https://github.com/jarfernandez/check-image/commit/988f982949caf395e41ac41a868ec0d3eda5748a))
+
 ## [0.12.1](https://github.com/jarfernandez/check-image/compare/v0.12.0...v0.12.1) (2026-02-16)
 
 
