@@ -28,6 +28,8 @@ type testImageOptions struct {
 	env          []string
 	labels       map[string]string // Optional: image labels
 	healthcheck  *v1.HealthConfig  // Optional: healthcheck configuration
+	entrypoint   []string          // Optional: image entrypoint
+	cmd          []string          // Optional: image cmd
 	layerCount   int
 	layerSizes   []int64             // Optional: specific sizes for each layer in bytes. If nil, default sizes are used.
 	layerFiles   []map[string]string // Optional: files to add to each layer. Map of path -> content.
@@ -55,6 +57,8 @@ func createTestOCILayout(t *testing.T, tag string, opts testImageOptions) string
 	cfg.Config.Env = opts.env
 	cfg.Config.Labels = opts.labels
 	cfg.Config.Healthcheck = opts.healthcheck
+	cfg.Config.Entrypoint = opts.entrypoint
+	cfg.Config.Cmd = opts.cmd
 
 	// Apply config
 	img, err = mutate.ConfigFile(img, cfg)
@@ -67,7 +71,7 @@ func createTestOCILayout(t *testing.T, tag string, opts testImageOptions) string
 		// Determine actual number of layers to create
 		numLayers := max(len(opts.layerFiles), opts.layerCount)
 
-		for i := 0; i < numLayers; i++ {
+		for i := range numLayers {
 			var layer v1.Layer
 
 			// If files are specified for this layer, create layer with files

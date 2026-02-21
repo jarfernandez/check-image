@@ -239,21 +239,21 @@ func TestLoadAllConfig(t *testing.T) {
 }
 
 func TestDetermineChecks(t *testing.T) {
-	t.Run("no config no skip runs all 8 checks", func(t *testing.T) {
+	t.Run("no config no skip runs all 9 checks", func(t *testing.T) {
 		checks := determineChecks(nil, nil, nil)
-		assert.Len(t, checks, 8)
+		assert.Len(t, checks, 9)
 
 		names := make([]string, len(checks))
 		for i, c := range checks {
 			names[i] = c.name
 		}
-		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels"}, names)
+		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint"}, names)
 	})
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
 		checks := determineChecks(nil, skipMap, nil)
-		assert.Len(t, checks, 6)
+		assert.Len(t, checks, 7)
 
 		for _, c := range checks {
 			assert.NotEqual(t, "registry", c.name)
@@ -293,7 +293,7 @@ func TestDetermineChecks(t *testing.T) {
 		skipMap := map[string]bool{
 			"age": true, "size": true, "ports": true,
 			"registry": true, "root-user": true, "secrets": true,
-			"healthcheck": true, "labels": true,
+			"healthcheck": true, "labels": true, "entrypoint": true,
 		}
 		checks := determineChecks(nil, skipMap, nil)
 		assert.Len(t, checks, 0)
@@ -472,6 +472,7 @@ func resetAllGlobals() {
 	secretsPolicy = ""
 	skipEnvVars = false
 	skipFiles = false
+	allowShellForm = false
 	configFile = ""
 	skipChecks = ""
 	includeChecks = ""
@@ -506,6 +507,7 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 		healthcheck: &v1.HealthConfig{
 			Test: []string{"CMD", "/health.sh"},
 		},
+		entrypoint: []string{"/docker-entrypoint.sh"},
 	})
 
 	output := captureStdout(t, func() {
@@ -547,7 +549,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "root-user,registry,healthcheck,labels" // skip root-user (would fail) and checks that require policy files or missing healthcheck
+	skipChecks = "root-user,registry,healthcheck,labels,entrypoint" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
 
 	// Image runs as root but we skip root-user check
 	imageRef := createTestImage(t, testImageOptions{
@@ -734,7 +736,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 
 func TestRunAll_SkipAll(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels"
+	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000",
@@ -1304,6 +1306,7 @@ func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
 		healthcheck: &v1.HealthConfig{
 			Test: []string{"CMD", "/health.sh"},
 		},
+		entrypoint: []string{"/docker-entrypoint.sh"},
 	})
 
 	out := captureStdout(t, func() {
@@ -1408,10 +1411,10 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 	t.Run("includeMap all checks", func(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
-			"root-user": true, "secrets": true, "healthcheck": true, "labels": true,
+			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
 		}
 		checks := determineChecks(nil, nil, includeMap)
-		assert.Len(t, checks, 8)
+		assert.Len(t, checks, 9)
 	})
 }
 
@@ -1425,7 +1428,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 	t.Run("with include map", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true}
 		names := nonRunningCheckNames(nil, includeMap)
-		assert.Len(t, names, 6)
+		assert.Len(t, names, 7)
 		assert.NotContains(t, names, "age")
 		assert.NotContains(t, names, "size")
 		assert.Contains(t, names, "ports")
@@ -1434,6 +1437,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 		assert.Contains(t, names, "secrets")
 		assert.Contains(t, names, "healthcheck")
 		assert.Contains(t, names, "labels")
+		assert.Contains(t, names, "entrypoint")
 	})
 
 	t.Run("with neither", func(t *testing.T) {
@@ -1444,7 +1448,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 	t.Run("include all checks returns nil", func(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
-			"root-user": true, "secrets": true, "healthcheck": true, "labels": true,
+			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
 		}
 		names := nonRunningCheckNames(nil, includeMap)
 		assert.Nil(t, names)
@@ -1578,4 +1582,91 @@ func TestRunAll_InvalidIncludeList(t *testing.T) {
 	err := runAll(allCmd, imageRef)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown check name")
+}
+
+func TestRunAll_EntrypointPassesWithExecForm(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "entrypoint" // run only entrypoint check
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now(),
+		entrypoint: []string{"/docker-entrypoint.sh"},
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "=== entrypoint ===")
+	assert.Contains(t, out, "exec-form entrypoint")
+}
+
+func TestRunAll_EntrypointFailsWithShellForm(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "entrypoint"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now(),
+		entrypoint: []string{"/bin/sh", "-c", "nginx -g 'daemon off;'"},
+	})
+
+	captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+}
+
+func TestRunAll_EntrypointSkipped(t *testing.T) {
+	resetAllGlobals()
+	skipChecks = "registry,healthcheck,labels,entrypoint"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.NotContains(t, out, "=== entrypoint ===")
+}
+
+func TestRunAll_EntrypointWithAllowShellFormViaConfig(t *testing.T) {
+	resetAllGlobals()
+
+	allow := true
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := `checks:
+  entrypoint:
+    allow-shell-form: true
+`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+	_ = allow // used via config
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now(),
+		entrypoint: []string{"/bin/sh", "-c", "nginx"},
+	})
+
+	captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	// With allow-shell-form: true from config, shell form should pass
+	assert.Equal(t, ValidationSucceeded, Result)
 }
