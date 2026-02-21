@@ -47,7 +47,7 @@ sudo mv check-image /usr/local/bin/
 # and extract to a directory in your PATH
 ```
 
-Pre-built binaries include the correct version number (e.g., `check-image version` returns `v0.13.0`). <!-- x-release-please-version -->
+Pre-built binaries include the correct version number (e.g., `check-image version --short` returns `v0.13.0`). <!-- x-release-please-version -->
 
 ### Install with Go
 
