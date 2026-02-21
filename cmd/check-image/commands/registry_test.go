@@ -314,3 +314,68 @@ func TestRunRegistry_InvalidImageName(t *testing.T) {
 
 	registryPolicy = ""
 }
+
+func TestRunRegistry_PolicyFromStdin(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		imageName   string
+		wantPassed  bool
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:       "JSON policy from stdin — trusted registry",
+			input:      `{"trusted-registries": ["index.docker.io"]}`,
+			imageName:  "nginx:latest",
+			wantPassed: true,
+		},
+		{
+			name: "YAML policy from stdin — trusted registry",
+			input: `trusted-registries:
+  - index.docker.io
+`,
+			imageName:  "nginx:latest",
+			wantPassed: true,
+		},
+		{
+			name:       "JSON policy from stdin — untrusted registry",
+			input:      `{"trusted-registries": ["gcr.io"]}`,
+			imageName:  "nginx:latest",
+			wantPassed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origRegistryPolicy := registryPolicy
+			defer func() { registryPolicy = origRegistryPolicy }()
+
+			origStdin := os.Stdin
+			defer func() { os.Stdin = origStdin }()
+
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stdin = r
+
+			go func() {
+				_, _ = w.WriteString(tt.input)
+				w.Close()
+			}()
+
+			registryPolicy = "-"
+
+			result, err := runRegistry(tt.imageName)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPassed, result.Passed)
+		})
+	}
+}

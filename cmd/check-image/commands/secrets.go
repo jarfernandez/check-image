@@ -59,7 +59,7 @@ The 'image' argument supports multiple formats:
 
 func init() {
 	rootCmd.AddCommand(secretsCmd)
-	secretsCmd.Flags().StringVarP(&secretsPolicy, "secrets-policy", "s", "", "Path to secrets policy file (JSON or YAML) (optional)")
+	secretsCmd.Flags().StringVarP(&secretsPolicy, "secrets-policy", "s", "", "Secrets policy file (JSON or YAML) (optional)")
 	secretsCmd.Flags().BoolVar(&skipEnvVars, "skip-env-vars", false, "Skip environment variable checks (optional)")
 	secretsCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks (optional)")
 }

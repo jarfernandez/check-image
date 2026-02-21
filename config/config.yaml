@@ -17,3 +17,5 @@ checks:
     labels-policy: config/labels-policy.yaml
   healthcheck: {}
   entrypoint: {}
+  platform:
+    allowed-platforms: "@config/allowed-platforms.yaml"

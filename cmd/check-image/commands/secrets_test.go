@@ -364,3 +364,63 @@ excluded-env-vars:
 
 	secretsPolicy = ""
 }
+
+func TestRunSecrets_PolicyFromStdin(t *testing.T) {
+	t.Run("JSON policy from stdin — excludes env var", func(t *testing.T) {
+		origSecretsPolicy := secretsPolicy
+		defer func() { secretsPolicy = origSecretsPolicy }()
+
+		origStdin := os.Stdin
+		defer func() { os.Stdin = origStdin }()
+
+		r, w, err := os.Pipe()
+		require.NoError(t, err)
+		os.Stdin = r
+
+		go func() {
+			_, _ = w.WriteString(`{"check-env-vars": true, "excluded-env-vars": ["SECRET_KEY"]}`)
+			w.Close()
+		}()
+
+		secretsPolicy = "-"
+
+		imageRef := createTestImage(t, testImageOptions{
+			env: []string{"SECRET_KEY=myvalue"},
+		})
+
+		result, err := runSecrets(imageRef)
+		require.NoError(t, err)
+		// SECRET_KEY is excluded by the stdin policy, so no findings
+		assert.True(t, result.Passed)
+	})
+
+	t.Run("YAML policy from stdin — excludes path", func(t *testing.T) {
+		origSecretsPolicy := secretsPolicy
+		defer func() { secretsPolicy = origSecretsPolicy }()
+
+		origStdin := os.Stdin
+		defer func() { os.Stdin = origStdin }()
+
+		r, w, err := os.Pipe()
+		require.NoError(t, err)
+		os.Stdin = r
+
+		go func() {
+			_, _ = w.WriteString("check-env-vars: false\ncheck-files: false\n")
+			w.Close()
+		}()
+
+		secretsPolicy = "-"
+
+		imageRef := createTestImage(t, testImageOptions{
+			layerFiles: []map[string]string{
+				{"/etc/id_rsa": "PRIVATE KEY content"},
+			},
+		})
+
+		result, err := runSecrets(imageRef)
+		require.NoError(t, err)
+		// Files check disabled by the stdin policy
+		assert.True(t, result.Passed)
+	})
+}

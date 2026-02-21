@@ -145,7 +145,7 @@ Check Image is available as a GitHub Action for validating container images dire
     image: nginx:latest
 ```
 
-This runs all 9 checks with default settings. Checks that require policy files (registry, labels) will report an error unless their policies are provided.
+This runs all 10 checks with default settings. Checks that require additional configuration (registry, labels, platform) will report an error unless their configuration is provided.
 
 ### With a Config File
 
@@ -227,6 +227,7 @@ The action captures full JSON output for programmatic use in subsequent steps:
 | `max-size` | No | - | Maximum image size in MB |
 | `max-layers` | No | - | Maximum number of layers |
 | `allowed-ports` | No | - | Comma-separated allowed ports or `@file` path |
+| `allowed-platforms` | No | - | Comma-separated allowed platforms or `@file` path |
 | `registry-policy` | No | - | Path to registry policy file |
 | `labels-policy` | No | - | Path to labels policy file |
 | `secrets-policy` | No | - | Path to secrets policy file |
@@ -440,6 +441,18 @@ The command validates three types of requirements:
 - **Exact value match**: Label value must exactly match the specified string (`name` and `value`)
 - **Pattern match**: Label value must match the regular expression (`name` and `pattern`)
 
+#### `platform`
+Validates that the image platform (OS and architecture) is in the allowed list.
+
+```bash
+check-image platform <image> --allowed-platforms <platforms>
+```
+
+Options:
+- `--allowed-platforms`: Comma-separated list of allowed platforms or `@<file>` with JSON/YAML array (required)
+
+The platform string is constructed as `OS/Architecture` (e.g., `linux/amd64`) or `OS/Architecture/Variant` for architectures with variants (e.g., `linux/arm/v7`). The check validates the resolved image's platform — the platform of the concrete image that would actually be executed, not a manifest index listing.
+
 #### `all`
 Runs all validation checks on a container image at once.
 
@@ -449,12 +462,13 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
-- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint)
-- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint)
+- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
 - `--max-layers`, `-y`: Maximum number of layers (default: 20)
 - `--allowed-ports`, `-p`: Comma-separated list of allowed ports or `@<file>`
+- `--allowed-platforms`: Comma-separated list of allowed platforms or `@<file>`
 - `--registry-policy`, `-r`: Registry policy file (JSON or YAML)
 - `--labels-policy`: Labels policy file (JSON or YAML)
 - `--secrets-policy`, `-s`: Secrets policy file (JSON or YAML)
@@ -466,7 +480,7 @@ Options:
 Note: `--include` and `--skip` are mutually exclusive.
 
 Precedence rules:
-1. Without `--config`: all 9 checks run with defaults, except those in `--skip`
+1. Without `--config`: all 10 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
 3. `--include` overrides config file check selection (runs only specified checks)
 4. CLI flags override config file values
@@ -626,6 +640,15 @@ The `config/` directory contains sample configuration files that can be used as 
 Example usage:
 ```bash
 check-image ports nginx:latest --allowed-ports @config/allowed-ports.json
+```
+
+### Allowed Platforms Files
+- `config/allowed-platforms.json` - Sample allowed platforms configuration in JSON format
+- `config/allowed-platforms.yaml` - Sample allowed platforms configuration in YAML format
+
+Example usage:
+```bash
+check-image platform nginx:latest --allowed-platforms @config/allowed-platforms.yaml
 ```
 
 ### Registry Policy Files
@@ -890,7 +913,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 90.6% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 90.7% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -919,7 +942,7 @@ go tool cover -html=coverage.out
 - **internal/secrets**: 95.8% coverage
 - **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 81.6% coverage
+- **cmd/check-image/commands**: 80.9% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

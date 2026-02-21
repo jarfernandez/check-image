@@ -33,6 +33,9 @@ type testImageOptions struct {
 	layerCount   int
 	layerSizes   []int64             // Optional: specific sizes for each layer in bytes. If nil, default sizes are used.
 	layerFiles   []map[string]string // Optional: files to add to each layer. Map of path -> content.
+	os           string              // Optional: image OS (e.g. "linux"). If empty, defaults to go-containerregistry empty image default.
+	architecture string              // Optional: image architecture (e.g. "amd64"). If empty, defaults to go-containerregistry empty image default.
+	variant      string              // Optional: architecture variant (e.g. "v7" for linux/arm/v7).
 }
 
 // createTestOCILayout creates an OCI layout in a temporary directory with a test image
@@ -59,6 +62,15 @@ func createTestOCILayout(t *testing.T, tag string, opts testImageOptions) string
 	cfg.Config.Healthcheck = opts.healthcheck
 	cfg.Config.Entrypoint = opts.entrypoint
 	cfg.Config.Cmd = opts.cmd
+	if opts.os != "" {
+		cfg.OS = opts.os
+	}
+	if opts.architecture != "" {
+		cfg.Architecture = opts.architecture
+	}
+	if opts.variant != "" {
+		cfg.Variant = opts.variant
+	}
 
 	// Apply config
 	img, err = mutate.ConfigFile(img, cfg)

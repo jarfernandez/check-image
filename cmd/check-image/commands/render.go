@@ -35,6 +35,8 @@ func renderResult(r *output.CheckResult) error {
 		renderLabelsText(r)
 	case "entrypoint":
 		renderEntrypointText(r)
+	case "platform":
+		renderPlatformText(r)
 	}
 
 	return nil
@@ -166,6 +168,13 @@ func renderEntrypointText(r *output.CheckResult) {
 	if len(d.Cmd) > 0 {
 		fmt.Printf("Cmd: %v\n", d.Cmd)
 	}
+	fmt.Println(r.Message)
+}
+
+func renderPlatformText(r *output.CheckResult) {
+	d := r.Details.(output.PlatformDetails)
+	fmt.Printf("Checking platform of image %s\n", r.Image)
+	fmt.Printf("Image platform: %s\n", d.Platform)
 	fmt.Println(r.Message)
 }
 

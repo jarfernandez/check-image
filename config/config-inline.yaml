@@ -34,3 +34,7 @@ checks:
         - name: "org.opencontainers.image.vendor"
           value: "MyCompany"
   healthcheck: {}
+  platform:
+    allowed-platforms:
+      - linux/amd64
+      - linux/arm64

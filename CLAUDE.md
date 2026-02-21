@@ -144,14 +144,24 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Supports both file paths and stdin input (`-`) for dynamic policy generation
 - Inline policy support: policy can be embedded as object in all-checks config file
 
+**platform**: Validates that the image platform (OS + Architecture) is in the allowed list
+- Flags: `--allowed-platforms` (required, comma-separated or `@file` JSON/YAML)
+- File format: `{"allowed-platforms": ["linux/amd64", "linux/arm64"]}`; supports `@file` and `@-` (stdin)
+- Validates the resolved image's platform — not a manifest index listing
+- Platform string: `OS/Architecture` (e.g., `linux/amd64`) or `OS/Architecture/Variant` for variants (e.g., `linux/arm/v7`)
+- Source fields: `configFile.OS`, `configFile.Architecture`, `configFile.Variant` (top-level fields of `*v1.ConfigFile`, NOT inside `.Config`)
+- Returns `PlatformDetails` with `platform` and `allowed-platforms` (kebab-case JSON)
+- Sample config files: `config/allowed-platforms.yaml`, `config/allowed-platforms.json`
+
 **all**: Runs all validation checks on a container image at once
-- Flags: `--config` (`-c`, config file), `--include` (comma-separated checks to run), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`, `--allow-shell-form`)
+- Flags: `--config` (`-c`, config file), `--include` (comma-separated checks to run), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--allowed-platforms`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`, `--allow-shell-form`)
 - `--include` and `--skip` are mutually exclusive
 - Precedence: CLI flags > config file values > defaults; `--include` and `--skip` always take precedence over config file check selection
-- Without `--config`: runs all 9 checks with defaults (except skipped, or only included)
+- Without `--config`: runs all 10 checks with defaults (except skipped, or only included)
 - With `--config`: only runs checks present in the config file (except skipped); `--include` overrides config check selection
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
-- Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runRegistryForAll()` skips gracefully when no `--registry-policy` is provided
+- Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runPlatformForAll()` calls `parseAllowedPlatforms()` before `runPlatform()`
+- Checks that require additional configuration: registry needs `--registry-policy`, labels needs `--labels-policy`, platform needs `--allowed-platforms`. If enabled but not configured, they fail with `ExecutionError` (validated by `validateRequiredFlags()` before execution)
 - Continue-on-error (default): if a check returns an error, logs it, sets `Result = ValidationFailed`, and continues with the next check
 - Fail-fast (`--fail-fast`): stops execution on the first check that fails (validation failure or execution error)
 
@@ -347,7 +357,7 @@ All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do 
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 90.6% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 90.7% overall coverage.
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
