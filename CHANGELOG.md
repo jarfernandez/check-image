@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0](https://github.com/jarfernandez/check-image/compare/v0.14.0...v0.15.0) (2026-02-21)
+
+
+### Features
+
+* Add `platform` validation command ([#84](https://github.com/jarfernandez/check-image/issues/84)) ([7e75ae3](https://github.com/jarfernandez/check-image/commit/7e75ae3e6026a60efe4368e8dd348e053326e645))
+
 ## [0.14.0](https://github.com/jarfernandez/check-image/compare/v0.13.0...v0.14.0) (2026-02-21)
 
 
