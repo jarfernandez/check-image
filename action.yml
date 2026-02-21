@@ -62,6 +62,10 @@ inputs:
     description: 'Skip file system checks in secrets detection'
     required: false
     default: 'false'
+  allowed-platforms:
+    description: 'Comma-separated list of allowed platforms or @file path (relative to repo root)'
+    required: false
+    default: ''
   allow-shell-form:
     description: 'Allow shell form for entrypoint or cmd without failing'
     required: false
@@ -99,6 +103,7 @@ runs:
         INPUT_MAX_SIZE: ${{ inputs.max-size }}
         INPUT_MAX_LAYERS: ${{ inputs.max-layers }}
         INPUT_ALLOWED_PORTS: ${{ inputs.allowed-ports }}
+        INPUT_ALLOWED_PLATFORMS: ${{ inputs.allowed-platforms }}
         INPUT_REGISTRY_POLICY: ${{ inputs.registry-policy }}
         INPUT_LABELS_POLICY: ${{ inputs.labels-policy }}
         INPUT_SECRETS_POLICY: ${{ inputs.secrets-policy }}

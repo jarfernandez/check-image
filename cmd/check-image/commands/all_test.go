@@ -75,6 +75,9 @@ func TestAllCommandFlags(t *testing.T) {
 
 	flag = allCmd.Flags().Lookup("skip-files")
 	assert.NotNil(t, flag)
+
+	flag = allCmd.Flags().Lookup("allowed-platforms")
+	assert.NotNil(t, flag)
 }
 
 func TestParseCheckNameList(t *testing.T) {
@@ -239,21 +242,21 @@ func TestLoadAllConfig(t *testing.T) {
 }
 
 func TestDetermineChecks(t *testing.T) {
-	t.Run("no config no skip runs all 9 checks", func(t *testing.T) {
+	t.Run("no config no skip runs all 10 checks", func(t *testing.T) {
 		checks := determineChecks(nil, nil, nil)
-		assert.Len(t, checks, 9)
+		assert.Len(t, checks, 10)
 
 		names := make([]string, len(checks))
 		for i, c := range checks {
 			names[i] = c.name
 		}
-		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint"}, names)
+		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint", "platform"}, names)
 	})
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
 		checks := determineChecks(nil, skipMap, nil)
-		assert.Len(t, checks, 7)
+		assert.Len(t, checks, 8)
 
 		for _, c := range checks {
 			assert.NotEqual(t, "registry", c.name)
@@ -294,6 +297,7 @@ func TestDetermineChecks(t *testing.T) {
 			"age": true, "size": true, "ports": true,
 			"registry": true, "root-user": true, "secrets": true,
 			"healthcheck": true, "labels": true, "entrypoint": true,
+			"platform": true,
 		}
 		checks := determineChecks(nil, skipMap, nil)
 		assert.Len(t, checks, 0)
@@ -459,6 +463,109 @@ func TestFormatAllowedPorts(t *testing.T) {
 	}
 }
 
+func TestFormatAllowedPlatforms(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    any
+		expected string
+	}{
+		{
+			name:     "slice of platforms",
+			input:    []any{"linux/amd64", "linux/arm64"},
+			expected: "linux/amd64,linux/arm64",
+		},
+		{
+			name:     "string value",
+			input:    "linux/amd64,linux/arm64",
+			expected: "linux/amd64,linux/arm64",
+		},
+		{
+			name:     "empty slice",
+			input:    []any{},
+			expected: "",
+		},
+		{
+			name:     "single platform with variant",
+			input:    []any{"linux/arm/v7"},
+			expected: "linux/arm/v7",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatAllowedPlatforms(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestApplyPlatformConfig(t *testing.T) {
+	t.Run("config value applied when flag not changed", func(t *testing.T) {
+		origAllowedPlatforms := allowedPlatforms
+		defer func() { allowedPlatforms = origAllowedPlatforms }()
+
+		allowedPlatforms = ""
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("allowed-platforms", "", "")
+
+		cfg := &platformCheckConfig{
+			AllowedPlatforms: "linux/amd64,linux/arm64",
+		}
+
+		applyPlatformConfig(cmd, cfg)
+		assert.Equal(t, "linux/amd64,linux/arm64", allowedPlatforms)
+	})
+
+	t.Run("inline array applied when flag not changed", func(t *testing.T) {
+		origAllowedPlatforms := allowedPlatforms
+		defer func() { allowedPlatforms = origAllowedPlatforms }()
+
+		allowedPlatforms = ""
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("allowed-platforms", "", "")
+
+		cfg := &platformCheckConfig{
+			AllowedPlatforms: []any{"linux/amd64", "linux/arm64"},
+		}
+
+		applyPlatformConfig(cmd, cfg)
+		assert.Equal(t, "linux/amd64,linux/arm64", allowedPlatforms)
+	})
+
+	t.Run("config value skipped when flag changed", func(t *testing.T) {
+		origAllowedPlatforms := allowedPlatforms
+		defer func() { allowedPlatforms = origAllowedPlatforms }()
+
+		allowedPlatforms = "linux/amd64"
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("allowed-platforms", "", "")
+		cmd.Flags().Set("allowed-platforms", "linux/amd64")
+
+		cfg := &platformCheckConfig{
+			AllowedPlatforms: "linux/arm64",
+		}
+
+		applyPlatformConfig(cmd, cfg)
+		assert.Equal(t, "linux/amd64", allowedPlatforms)
+	})
+
+	t.Run("nil config does nothing", func(t *testing.T) {
+		origAllowedPlatforms := allowedPlatforms
+		defer func() { allowedPlatforms = origAllowedPlatforms }()
+
+		allowedPlatforms = "linux/amd64"
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("allowed-platforms", "", "")
+
+		applyPlatformConfig(cmd, nil)
+		assert.Equal(t, "linux/amd64", allowedPlatforms)
+	})
+}
+
 // resetAllGlobals resets all package-level variables used by commands to their defaults.
 func resetAllGlobals() {
 	Result = ValidationSkipped
@@ -477,6 +584,8 @@ func resetAllGlobals() {
 	skipChecks = ""
 	includeChecks = ""
 	failFast = false
+	allowedPlatforms = ""
+	allowedPlatformsList = nil
 }
 
 // captureStdout captures stdout output during fn execution.
@@ -498,7 +607,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 func TestRunAll_AllChecksPass(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,labels,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -525,7 +634,7 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 
 func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 
 	// Image runs as root -> root-user check fails
 	imageRef := createTestImage(t, testImageOptions{
@@ -549,7 +658,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "root-user,registry,healthcheck,labels,entrypoint" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
+	skipChecks = "root-user,registry,healthcheck,labels,entrypoint,platform" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
 
 	// Image runs as root but we skip root-user check
 	imageRef := createTestImage(t, testImageOptions{
@@ -679,8 +788,8 @@ func TestRunAll_CLIOverridesConfig(t *testing.T) {
 
 func TestRunAll_WithoutConfig_FlagsWork(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
-	maxAge = 1                                 // Very strict: 1 day
+	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
+	maxAge = 1                                          // Very strict: 1 day
 
 	// Image is 10 days old -> should fail age check
 	imageRef := createTestImage(t, testImageOptions{
@@ -715,7 +824,7 @@ func TestRunAll_RegistryRequiresPolicy(t *testing.T) {
 
 func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 
 	// Image exposes ports but no allowed-ports provided -> ports check fails
 	imageRef := createTestImage(t, testImageOptions{
@@ -736,7 +845,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 
 func TestRunAll_SkipAll(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint"
+	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint,platform"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000",
@@ -788,7 +897,7 @@ func TestAllCommandFailFastFlag(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = true
 
 	// Image runs as root -> root-user check fails
@@ -813,7 +922,7 @@ func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = true
 
 	// Provide invalid allowed-ports to cause an execution error in ports check
@@ -840,7 +949,7 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 
 func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = false
 
 	// Image runs as root -> root-user check fails
@@ -1244,7 +1353,7 @@ func TestApplyLabelsConfig(t *testing.T) {
 
 func TestRunAll_LabelsRequiresPolicy(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry" // skip registry check which also requires a policy
+	skipChecks = "registry,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -1297,7 +1406,7 @@ func TestLoadAllConfig_InlineLabelsPolicy(t *testing.T) {
 
 func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,labels,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -1321,7 +1430,7 @@ func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
 
 func TestRunAll_HealthcheckFailsWithoutHealthcheck(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,labels" // skip checks that require policy files
+	skipChecks = "registry,labels,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -1412,9 +1521,10 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
 			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
+			"platform": true,
 		}
 		checks := determineChecks(nil, nil, includeMap)
-		assert.Len(t, checks, 9)
+		assert.Len(t, checks, 10)
 	})
 }
 
@@ -1428,7 +1538,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 	t.Run("with include map", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true}
 		names := nonRunningCheckNames(nil, includeMap)
-		assert.Len(t, names, 7)
+		assert.Len(t, names, 8)
 		assert.NotContains(t, names, "age")
 		assert.NotContains(t, names, "size")
 		assert.Contains(t, names, "ports")
@@ -1438,6 +1548,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 		assert.Contains(t, names, "healthcheck")
 		assert.Contains(t, names, "labels")
 		assert.Contains(t, names, "entrypoint")
+		assert.Contains(t, names, "platform")
 	})
 
 	t.Run("with neither", func(t *testing.T) {
@@ -1449,6 +1560,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
 			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
+			"platform": true,
 		}
 		names := nonRunningCheckNames(nil, includeMap)
 		assert.Nil(t, names)
@@ -1624,7 +1736,7 @@ func TestRunAll_EntrypointFailsWithShellForm(t *testing.T) {
 
 func TestRunAll_EntrypointSkipped(t *testing.T) {
 	resetAllGlobals()
-	skipChecks = "registry,healthcheck,labels,entrypoint"
+	skipChecks = "registry,healthcheck,labels,entrypoint,platform"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -1669,4 +1781,130 @@ func TestRunAll_EntrypointWithAllowShellFormViaConfig(t *testing.T) {
 
 	// With allow-shell-form: true from config, shell form should pass
 	assert.Equal(t, ValidationSucceeded, Result)
+}
+
+func TestRunAll_PlatformPasses(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "platform"
+	allowedPlatforms = "linux/amd64,linux/arm64"
+
+	imageRef := createTestImage(t, testImageOptions{
+		os:           "linux",
+		architecture: "amd64",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "=== platform ===")
+	assert.Contains(t, out, "linux/amd64")
+}
+
+func TestRunAll_PlatformFails(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "platform"
+	allowedPlatforms = "linux/amd64"
+
+	imageRef := createTestImage(t, testImageOptions{
+		os:           "linux",
+		architecture: "arm64",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	assert.Contains(t, out, "=== platform ===")
+	assert.Contains(t, out, "not in the allowed list")
+}
+
+func TestRunAll_PlatformFailsWhenNoPlatformsProvided(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "platform"
+	// allowedPlatforms is "" after reset
+
+	imageRef := createTestImage(t, testImageOptions{
+		os:           "linux",
+		architecture: "amd64",
+	})
+
+	err := runAll(allCmd, imageRef)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--allowed-platforms is required")
+}
+
+func TestRunAll_PlatformWithConfig(t *testing.T) {
+	resetAllGlobals()
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := "checks:\n  platform:\n    allowed-platforms: \"linux/amd64,linux/arm64\"\n"
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+
+	imageRef := createTestImage(t, testImageOptions{
+		os:           "linux",
+		architecture: "amd64",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "=== platform ===")
+}
+
+func TestDetermineChecks_PlatformInConfig(t *testing.T) {
+	cfg := &allConfig{
+		Checks: allChecksConfig{
+			Platform: &platformCheckConfig{
+				AllowedPlatforms: "linux/amd64",
+			},
+		},
+	}
+
+	checks := determineChecks(cfg, nil, nil)
+	names := make([]string, 0, len(checks))
+	for _, c := range checks {
+		names = append(names, c.name)
+	}
+
+	assert.Contains(t, names, "platform")
+	assert.NotContains(t, names, "age")
+	assert.NotContains(t, names, "registry")
+}
+
+func TestRunAll_PlatformWithInlineConfig(t *testing.T) {
+	resetAllGlobals()
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := "checks:\n  platform:\n    allowed-platforms:\n      - linux/amd64\n      - linux/arm64\n"
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+
+	imageRef := createTestImage(t, testImageOptions{
+		os:           "linux",
+		architecture: "arm64",
+	})
+
+	// arm64 is in the allowed list -> should pass
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "linux/arm64")
 }

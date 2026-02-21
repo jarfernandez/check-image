@@ -110,6 +110,10 @@ if [[ -n "${INPUT_ALLOWED_PORTS}" ]]; then
   CMD_ARGS+=("--allowed-ports" "${INPUT_ALLOWED_PORTS}")
 fi
 
+if [[ -n "${INPUT_ALLOWED_PLATFORMS}" ]]; then
+  CMD_ARGS+=("--allowed-platforms" "${INPUT_ALLOWED_PLATFORMS}")
+fi
+
 if [[ -n "${INPUT_REGISTRY_POLICY}" ]]; then
   CMD_ARGS+=("--registry-policy" "${INPUT_REGISTRY_POLICY}")
 fi

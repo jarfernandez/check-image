@@ -102,6 +102,12 @@ type InvalidLabelDetail struct {
 	Reason          string `json:"reason"`
 }
 
+// PlatformDetails holds details for the platform check.
+type PlatformDetails struct {
+	Platform         string   `json:"platform"`
+	AllowedPlatforms []string `json:"allowed-platforms"`
+}
+
 // EntrypointDetails holds details for the entrypoint check.
 type EntrypointDetails struct {
 	HasEntrypoint    bool     `json:"has-entrypoint"`

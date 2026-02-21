@@ -13,7 +13,7 @@ import (
 )
 
 // validCheckNames lists all check names recognized by the all command.
-var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint"}
+var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint", "platform"}
 
 // allConfig represents the configuration file structure for the all command.
 type allConfig struct {
@@ -30,6 +30,7 @@ type allChecksConfig struct {
 	Healthcheck *healthcheckCheckConfig `json:"healthcheck,omitempty"  yaml:"healthcheck,omitempty"`
 	Labels      *labelsCheckConfig      `json:"labels,omitempty"       yaml:"labels,omitempty"`
 	Entrypoint  *entrypointCheckConfig  `json:"entrypoint,omitempty"   yaml:"entrypoint,omitempty"`
+	Platform    *platformCheckConfig    `json:"platform,omitempty"     yaml:"platform,omitempty"`
 }
 
 type ageCheckConfig struct {
@@ -67,6 +68,10 @@ type labelsCheckConfig struct {
 	LabelsPolicy any `json:"labels-policy,omitempty" yaml:"labels-policy,omitempty"`
 }
 
+type platformCheckConfig struct {
+	AllowedPlatforms any `json:"allowed-platforms,omitempty" yaml:"allowed-platforms,omitempty"`
+}
+
 // checkRunner represents a single check to be executed.
 type checkRunner struct {
 	name string
@@ -83,13 +88,18 @@ var allCmd = &cobra.Command{
 	Short: "Run all validation checks on a container image",
 	Long: `Run all validation checks on a container image at once.
 
-By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint).
+By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform).
 Use --config to specify which checks to run and their parameters.
 Use --include to run only specific checks.
 Use --skip to skip specific checks.
 Use --fail-fast to stop on the first check failure.
 
 Note: --include and --skip are mutually exclusive.
+
+Some checks require additional configuration: registry needs --registry-policy,
+labels needs --labels-policy, and platform needs --allowed-platforms. These can
+be provided via CLI flags or the --config file. If enabled but not configured,
+they fail with an execution error.
 
 Precedence rules:
   1. Without --config: all checks run with defaults, except those in --skip
@@ -104,11 +114,12 @@ The 'image' argument supports multiple formats:
   - OCI tarball: oci-archive:/path/to/image.tar:tag
   - Docker tarball: docker-archive:/path/to/image.tar:tag`,
 	Example: `  check-image all nginx:latest --include age,size,root-user --max-age 30 --max-size 200
-  check-image all nginx:latest --skip registry,secrets,labels
+  check-image all nginx:latest --skip registry,secrets,labels,platform
+  check-image all nginx:latest --allowed-platforms linux/amd64,linux/arm64 --skip registry,labels
   check-image all nginx:latest --config config/config.json
   check-image all nginx:latest -c config/config.yaml --max-age 20 --skip secrets
   check-image all oci:/path/to/layout:1.0 --include age,size,root-user,ports,healthcheck
-  check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry,secrets,labels
+  check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry,secrets,labels,platform
   check-image all nginx:latest --fail-fast --skip registry --config config/config.yaml --output json
   cat config/config.json | check-image all nginx:latest --config -`,
 	Args: cobra.ExactArgs(1),
@@ -124,20 +135,21 @@ The 'image' argument supports multiple formats:
 func init() {
 	rootCmd.AddCommand(allCmd)
 
-	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to configuration file (JSON or YAML) (optional)")
-	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint) (optional)")
-	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint) (optional)")
+	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Configuration file (JSON or YAML) (optional)")
+	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform) (optional)")
+	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
 	allCmd.Flags().StringVarP(&allowedPorts, "allowed-ports", "p", "", "Comma-separated list of allowed ports or @<file> with JSON or YAML array (optional)")
 	allCmd.Flags().StringVarP(&registryPolicy, "registry-policy", "r", "", "Registry policy file (JSON or YAML)")
-	allCmd.Flags().StringVarP(&secretsPolicy, "secrets-policy", "s", "", "Path to secrets policy file (JSON or YAML) (optional)")
+	allCmd.Flags().StringVarP(&secretsPolicy, "secrets-policy", "s", "", "Secrets policy file (JSON or YAML) (optional)")
 	allCmd.Flags().BoolVar(&skipEnvVars, "skip-env-vars", false, "Skip environment variable checks in secrets detection (optional)")
 	allCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks in secrets detection (optional)")
-	allCmd.Flags().StringVar(&labelsPolicy, "labels-policy", "", "Labels policy file (JSON or YAML) (optional)")
+	allCmd.Flags().StringVar(&labelsPolicy, "labels-policy", "", "Labels policy file (JSON or YAML)")
 	allCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first check failure (optional)")
 	allCmd.Flags().BoolVar(&allowShellForm, "allow-shell-form", false, "Allow shell form for entrypoint or cmd (optional)")
+	allCmd.Flags().StringVar(&allowedPlatforms, "allowed-platforms", "", "Comma-separated list of allowed platforms or @<file> with JSON or YAML array")
 }
 
 // parseCheckNameList parses a comma-separated list of check names and validates
@@ -191,6 +203,7 @@ func applyConfigValues(cmd *cobra.Command, cfg *allConfig) {
 	applySecretsConfig(cmd, cfg.Checks.Secrets)
 	applyLabelsConfig(cmd, cfg.Checks.Labels)
 	applyEntrypointConfig(cmd, cfg.Checks.Entrypoint)
+	applyPlatformConfig(cmd, cfg.Checks.Platform)
 }
 
 func applyAgeConfig(cmd *cobra.Command, cfg *ageCheckConfig) {
@@ -345,6 +358,28 @@ func applyEntrypointConfig(cmd *cobra.Command, cfg *entrypointCheckConfig) {
 	}
 }
 
+func applyPlatformConfig(cmd *cobra.Command, cfg *platformCheckConfig) {
+	if cfg != nil && cfg.AllowedPlatforms != nil && !cmd.Flags().Changed("allowed-platforms") {
+		allowedPlatforms = formatAllowedPlatforms(cfg.AllowedPlatforms)
+	}
+}
+
+// formatAllowedPlatforms converts the allowed-platforms config value to a comma-separated string.
+func formatAllowedPlatforms(v any) string {
+	switch platforms := v.(type) {
+	case []any:
+		parts := make([]string, 0, len(platforms))
+		for _, p := range platforms {
+			parts = append(parts, fmt.Sprintf("%v", p))
+		}
+		return strings.Join(parts, ",")
+	case string:
+		return platforms
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
 func formatLabelsPolicy(v any) (string, error) {
 	switch policy := v.(type) {
 	case string:
@@ -400,6 +435,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 			{"healthcheck", cfg.Checks.Healthcheck != nil, runHealthcheck},
 			{"labels", cfg.Checks.Labels != nil, runLabels},
 			{"entrypoint", cfg.Checks.Entrypoint != nil, runEntrypoint},
+			{"platform", cfg.Checks.Platform != nil, runPlatformForAll},
 		}
 	} else {
 		// Without config: run all checks
@@ -413,6 +449,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 			{"healthcheck", true, runHealthcheck},
 			{"labels", true, runLabels},
 			{"entrypoint", true, runEntrypoint},
+			{"platform", true, runPlatformForAll},
 		}
 	}
 
@@ -441,6 +478,16 @@ func runPortsForAll(imageName string) (*output.CheckResult, error) {
 		return nil, fmt.Errorf("invalid allowed ports: %w", err)
 	}
 	return runPorts(imageName)
+}
+
+// runPlatformForAll wraps runPlatform to parse allowed platforms first.
+func runPlatformForAll(imageName string) (*output.CheckResult, error) {
+	var err error
+	allowedPlatformsList, err = parseAllowedPlatforms()
+	if err != nil {
+		return nil, fmt.Errorf("invalid allowed platforms: %w", err)
+	}
+	return runPlatform(imageName)
 }
 
 func runAll(cmd *cobra.Command, imageName string) error {
@@ -512,6 +559,9 @@ func validateRequiredFlags(checks []checkRunner) error {
 		}
 		if c.name == "labels" && labelsPolicy == "" {
 			return fmt.Errorf("--labels-policy is required when the labels check is enabled")
+		}
+		if c.name == "platform" && allowedPlatforms == "" {
+			return fmt.Errorf("--allowed-platforms is required when the platform check is enabled")
 		}
 	}
 	return nil

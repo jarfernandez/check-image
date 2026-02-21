@@ -23,6 +23,9 @@
       "labels-policy": "config/labels-policy.json"
     },
     "healthcheck": {},
-    "entrypoint": {}
+    "entrypoint": {},
+    "platform": {
+      "allowed-platforms": "@config/allowed-platforms.json"
+    }
   }
 }
