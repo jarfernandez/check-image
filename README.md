@@ -145,7 +145,7 @@ Check Image is available as a GitHub Action for validating container images dire
     image: nginx:latest
 ```
 
-This runs all 8 checks with default settings. Checks that require policy files (registry, labels) will report an error unless their policies are provided.
+This runs all 9 checks with default settings. Checks that require policy files (registry, labels) will report an error unless their policies are provided.
 
 ### With a Config File
 
@@ -232,6 +232,7 @@ The action captures full JSON output for programmatic use in subsequent steps:
 | `secrets-policy` | No | - | Path to secrets policy file |
 | `skip-env-vars` | No | `false` | Skip environment variable checks |
 | `skip-files` | No | `false` | Skip file system checks |
+| `allow-shell-form` | No | `false` | Allow shell form for entrypoint or cmd |
 | `log-level` | No | `info` | Log level |
 | `version` | No | `0.13.0` <!-- x-release-please-version --> | check-image version to use |
 
@@ -406,6 +407,24 @@ The command scans:
 - Environment variables for sensitive patterns (password, secret, token, key, etc.)
 - Files across all image layers for common secret files (SSH keys, cloud credentials, password files, etc.)
 
+#### `entrypoint`
+Validates that the image has a startup command defined (ENTRYPOINT or CMD) and uses exec form.
+
+```bash
+check-image entrypoint <image> [--allow-shell-form]
+```
+
+Options:
+- `--allow-shell-form`: Allow shell form without failing (default: exec form required)
+
+The command checks that:
+- At least one of ENTRYPOINT or CMD is defined in the image configuration
+- Neither uses shell form (`/bin/sh -c ...` or `/bin/bash -c ...`) unless `--allow-shell-form` is set
+
+Exec form (`["nginx", "-g", "daemon off;"]`) is preferred over shell form because it avoids an intermediate shell process, ensures signals (e.g. SIGTERM) reach the real process directly, and eliminates unintended shell interpretation.
+
+When `--allow-shell-form` is set and shell form is detected, the check passes and the result details include `"shell-form-allowed": true` for transparency.
+
 #### `labels`
 Validates that the image has required labels (OCI annotations) with correct values.
 
@@ -430,8 +449,8 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
-- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels)
-- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels)
+- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
 - `--max-layers`, `-y`: Maximum number of layers (default: 20)
@@ -441,12 +460,13 @@ Options:
 - `--secrets-policy`, `-s`: Secrets policy file (JSON or YAML)
 - `--skip-env-vars`: Skip environment variable checks in secrets detection
 - `--skip-files`: Skip file system checks in secrets detection
+- `--allow-shell-form`: Allow shell form for entrypoint or cmd
 - `--fail-fast`: Stop on first check failure (default: false)
 
 Note: `--include` and `--skip` are mutually exclusive.
 
 Precedence rules:
-1. Without `--config`: all 8 checks run with defaults, except those in `--skip`
+1. Without `--config`: all 9 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
 3. `--include` overrides config file check selection (runs only specified checks)
 4. CLI flags override config file values
@@ -559,8 +579,8 @@ check-image version -o json
 {
   "version": "v0.12.1",
   "commit": "a1b2c3d",
-  "built_at": "2026-02-18T12:34:56Z",
-  "go_version": "go1.26.0",
+  "built-at": "2026-02-18T12:34:56Z",
+  "go-version": "go1.26.0",
   "platform": "linux/amd64"
 }
 ```
@@ -870,7 +890,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 90.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 90.6% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -899,7 +919,7 @@ go tool cover -html=coverage.out
 - **internal/secrets**: 95.8% coverage
 - **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 81.9% coverage
+- **cmd/check-image/commands**: 81.6% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

@@ -16,3 +16,4 @@ checks:
   labels:
     labels-policy: config/labels-policy.yaml
   healthcheck: {}
+  entrypoint: {}

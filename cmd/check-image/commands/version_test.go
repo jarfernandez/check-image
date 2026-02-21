@@ -103,8 +103,8 @@ func TestVersionCommand_Full_JSON(t *testing.T) {
 
 	assert.Contains(t, got, `"version": "v1.2.3"`)
 	assert.Contains(t, got, `"commit": "abc1234"`)
-	assert.Contains(t, got, `"built_at": "2026-02-18T12:34:56Z"`)
-	assert.Contains(t, got, `"go_version": "`+runtime.Version()+`"`)
+	assert.Contains(t, got, `"built-at": "2026-02-18T12:34:56Z"`)
+	assert.Contains(t, got, `"go-version": "`+runtime.Version()+`"`)
 	assert.Contains(t, got, `"platform": "`+runtime.GOOS+"/"+runtime.GOARCH+`"`)
 }
 
@@ -121,8 +121,8 @@ func TestVersionCommand_Short_JSON(t *testing.T) {
 	assert.Contains(t, got, `"version": "v1.2.3"`)
 	// Full build fields must NOT appear in --short JSON output
 	assert.NotContains(t, got, `"commit"`)
-	assert.NotContains(t, got, `"built_at"`)
-	assert.NotContains(t, got, `"go_version"`)
+	assert.NotContains(t, got, `"built-at"`)
+	assert.NotContains(t, got, `"go-version"`)
 	assert.NotContains(t, got, `"platform"`)
 }
 

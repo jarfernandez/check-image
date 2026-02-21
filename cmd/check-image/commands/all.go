@@ -13,7 +13,7 @@ import (
 )
 
 // validCheckNames lists all check names recognized by the all command.
-var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels"}
+var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint"}
 
 // allConfig represents the configuration file structure for the all command.
 type allConfig struct {
@@ -27,8 +27,9 @@ type allChecksConfig struct {
 	Registry    *registryCheckConfig    `json:"registry,omitempty"  yaml:"registry,omitempty"`
 	RootUser    *rootUserCheckConfig    `json:"root-user,omitempty" yaml:"root-user,omitempty"`
 	Secrets     *secretsCheckConfig     `json:"secrets,omitempty"   yaml:"secrets,omitempty"`
-	Healthcheck *healthcheckCheckConfig `json:"healthcheck,omitempty" yaml:"healthcheck,omitempty"`
-	Labels      *labelsCheckConfig      `json:"labels,omitempty"      yaml:"labels,omitempty"`
+	Healthcheck *healthcheckCheckConfig `json:"healthcheck,omitempty"  yaml:"healthcheck,omitempty"`
+	Labels      *labelsCheckConfig      `json:"labels,omitempty"       yaml:"labels,omitempty"`
+	Entrypoint  *entrypointCheckConfig  `json:"entrypoint,omitempty"   yaml:"entrypoint,omitempty"`
 }
 
 type ageCheckConfig struct {
@@ -51,6 +52,10 @@ type registryCheckConfig struct {
 type rootUserCheckConfig struct{}
 
 type healthcheckCheckConfig struct{}
+
+type entrypointCheckConfig struct {
+	AllowShellForm *bool `json:"allow-shell-form,omitempty" yaml:"allow-shell-form,omitempty"`
+}
 
 type secretsCheckConfig struct {
 	SecretsPolicy any   `json:"secrets-policy,omitempty" yaml:"secrets-policy,omitempty"`
@@ -78,7 +83,7 @@ var allCmd = &cobra.Command{
 	Short: "Run all validation checks on a container image",
 	Long: `Run all validation checks on a container image at once.
 
-By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels).
+By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint).
 Use --config to specify which checks to run and their parameters.
 Use --include to run only specific checks.
 Use --skip to skip specific checks.
@@ -120,8 +125,8 @@ func init() {
 	rootCmd.AddCommand(allCmd)
 
 	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to configuration file (JSON or YAML) (optional)")
-	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels) (optional)")
-	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels) (optional)")
+	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint) (optional)")
+	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
@@ -132,6 +137,7 @@ func init() {
 	allCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks in secrets detection (optional)")
 	allCmd.Flags().StringVar(&labelsPolicy, "labels-policy", "", "Labels policy file (JSON or YAML) (optional)")
 	allCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first check failure (optional)")
+	allCmd.Flags().BoolVar(&allowShellForm, "allow-shell-form", false, "Allow shell form for entrypoint or cmd (optional)")
 }
 
 // parseCheckNameList parses a comma-separated list of check names and validates
@@ -184,6 +190,7 @@ func applyConfigValues(cmd *cobra.Command, cfg *allConfig) {
 	applyRegistryConfig(cmd, cfg.Checks.Registry)
 	applySecretsConfig(cmd, cfg.Checks.Secrets)
 	applyLabelsConfig(cmd, cfg.Checks.Labels)
+	applyEntrypointConfig(cmd, cfg.Checks.Entrypoint)
 }
 
 func applyAgeConfig(cmd *cobra.Command, cfg *ageCheckConfig) {
@@ -332,6 +339,12 @@ func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) {
 	}
 }
 
+func applyEntrypointConfig(cmd *cobra.Command, cfg *entrypointCheckConfig) {
+	if cfg != nil && cfg.AllowShellForm != nil && !cmd.Flags().Changed("allow-shell-form") {
+		allowShellForm = *cfg.AllowShellForm
+	}
+}
+
 func formatLabelsPolicy(v any) (string, error) {
 	switch policy := v.(type) {
 	case string:
@@ -386,6 +399,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 			{"secrets", cfg.Checks.Secrets != nil, runSecrets},
 			{"healthcheck", cfg.Checks.Healthcheck != nil, runHealthcheck},
 			{"labels", cfg.Checks.Labels != nil, runLabels},
+			{"entrypoint", cfg.Checks.Entrypoint != nil, runEntrypoint},
 		}
 	} else {
 		// Without config: run all checks
@@ -398,6 +412,7 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 			{"secrets", true, runSecrets},
 			{"healthcheck", true, runHealthcheck},
 			{"labels", true, runLabels},
+			{"entrypoint", true, runEntrypoint},
 		}
 	}
 

@@ -62,6 +62,10 @@ inputs:
     description: 'Skip file system checks in secrets detection'
     required: false
     default: 'false'
+  allow-shell-form:
+    description: 'Allow shell form for entrypoint or cmd without failing'
+    required: false
+    default: 'false'
   log-level:
     description: 'Log level (trace, debug, info, warn, error, fatal, panic)'
     required: false
@@ -100,6 +104,7 @@ runs:
         INPUT_SECRETS_POLICY: ${{ inputs.secrets-policy }}
         INPUT_SKIP_ENV_VARS: ${{ inputs.skip-env-vars }}
         INPUT_SKIP_FILES: ${{ inputs.skip-files }}
+        INPUT_ALLOW_SHELL_FORM: ${{ inputs.allow-shell-form }}
         INPUT_LOG_LEVEL: ${{ inputs.log-level }}
         INPUT_VERSION: ${{ inputs.version }}
       run: "${{ github.action_path }}/entrypoint.sh"

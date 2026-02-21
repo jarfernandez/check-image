@@ -33,6 +33,8 @@ func renderResult(r *output.CheckResult) error {
 		renderHealthcheckText(r)
 	case "labels":
 		renderLabelsText(r)
+	case "entrypoint":
+		renderEntrypointText(r)
 	}
 
 	return nil
@@ -152,6 +154,18 @@ func renderSecretsText(r *output.CheckResult) {
 
 func renderHealthcheckText(r *output.CheckResult) {
 	fmt.Printf("Checking if image %s has a healthcheck defined\n", r.Image)
+	fmt.Println(r.Message)
+}
+
+func renderEntrypointText(r *output.CheckResult) {
+	d := r.Details.(output.EntrypointDetails)
+	fmt.Printf("Checking entrypoint of image %s\n", r.Image)
+	if len(d.Entrypoint) > 0 {
+		fmt.Printf("Entrypoint: %v\n", d.Entrypoint)
+	}
+	if len(d.Cmd) > 0 {
+		fmt.Printf("Cmd: %v\n", d.Cmd)
+	}
 	fmt.Println(r.Message)
 }
 

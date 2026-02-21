@@ -102,6 +102,15 @@ type InvalidLabelDetail struct {
 	Reason          string `json:"reason"`
 }
 
+// EntrypointDetails holds details for the entrypoint check.
+type EntrypointDetails struct {
+	HasEntrypoint    bool     `json:"has-entrypoint"`
+	ExecForm         bool     `json:"exec-form,omitempty"`
+	ShellFormAllowed bool     `json:"shell-form-allowed,omitempty"`
+	Entrypoint       []string `json:"entrypoint,omitempty"`
+	Cmd              []string `json:"cmd,omitempty"`
+}
+
 // AllResult is the aggregated result for the "all" command.
 type AllResult struct {
 	Image   string        `json:"image"`
@@ -128,7 +137,7 @@ type VersionResult struct {
 type BuildInfoResult struct {
 	Version   string `json:"version"`
 	Commit    string `json:"commit"`
-	BuiltAt   string `json:"built_at"`
-	GoVersion string `json:"go_version"`
+	BuiltAt   string `json:"built-at"`
+	GoVersion string `json:"go-version"`
 	Platform  string `json:"platform"`
 }

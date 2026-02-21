@@ -130,6 +130,10 @@ if [[ "${INPUT_SKIP_FILES}" == "true" ]]; then
   CMD_ARGS+=("--skip-files")
 fi
 
+if [[ "${INPUT_ALLOW_SHELL_FORM}" == "true" ]]; then
+  CMD_ARGS+=("--allow-shell-form")
+fi
+
 # --- Handle 'checks' input: pass directly as --include ---
 if [[ -n "${INPUT_CHECKS}" ]]; then
   CMD_ARGS+=("--include" "${INPUT_CHECKS}")
