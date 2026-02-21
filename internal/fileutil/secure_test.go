@@ -110,6 +110,15 @@ func TestReadSecureFile_RelativePath(t *testing.T) {
 	assert.Equal(t, content, data)
 }
 
+// TestReadSecureFile_NonexistentParentDirectory verifies that ReadSecureFile returns
+// an appropriate error when the parent directory of the given path does not exist.
+// This exercises the os.OpenRoot error path in ReadSecureFile.
+func TestReadSecureFile_NonexistentParentDirectory(t *testing.T) {
+	_, err := ReadSecureFile("/nonexistent-parent-dir-xyz-abc/file.txt")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot create root for directory")
+}
+
 func TestReadSecureFile_DifferentPermissions(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.txt")
