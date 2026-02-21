@@ -528,6 +528,57 @@ The Go version and platform are read from the Go runtime and do not require ldfl
 All commands support:
 - `--output`, `-o`: Output format: `text` (default), `json`
 - `--log-level`: Set log level (trace, debug, info, warn, error, fatal, panic)
+- `--username`: Registry username for authentication (env: `CHECK_IMAGE_USERNAME`)
+- `--password`: Registry password or token (env: `CHECK_IMAGE_PASSWORD`). Caution: visible in process list — prefer `--password-stdin` or the env var.
+- `--password-stdin`: Read the registry password from stdin. Cannot be combined with other flags that also read from stdin (`--config -`, `--allowed-ports @-`, etc.)
+
+### Private Registry Authentication
+
+Check Image supports three ways to provide credentials for private registries, applied with the following precedence:
+
+1. **CLI flags** (`--username` / `--password` / `--password-stdin`) — highest priority
+2. **Environment variables** (`CHECK_IMAGE_USERNAME` / `CHECK_IMAGE_PASSWORD`)
+3. **`~/.docker/config.json`** and credential helpers (`authn.DefaultKeychain`) — already works without any changes
+
+The same credentials are applied to all registry requests in that invocation. For per-registry credentials, configure Docker's credential helpers in `~/.docker/config.json` as usual.
+
+**Using flags:**
+```bash
+check-image size my-registry.example.com/private-image:latest \
+  --username myuser \
+  --password mypassword
+```
+
+**Using `--password-stdin` (recommended — avoids password in process list):**
+```bash
+echo "mytoken" | check-image age my-registry.example.com/private-image:latest \
+  --username myuser \
+  --password-stdin
+
+# Or read from a file
+check-image root-user my-registry.example.com/private-image:latest \
+  --username myuser \
+  --password-stdin < ~/.secrets/registry-token
+```
+
+**Using environment variables (recommended for CI/CD):**
+```bash
+export CHECK_IMAGE_USERNAME=myuser
+export CHECK_IMAGE_PASSWORD=mypassword
+check-image healthcheck my-registry.example.com/private-image:latest
+```
+
+**Using `~/.docker/config.json` (already works — no flags needed):**
+```bash
+docker login my-registry.example.com
+check-image secrets my-registry.example.com/private-image:latest
+```
+
+**Important notes:**
+- `--password` and `--password-stdin` are mutually exclusive
+- Specifying `--username` without a password (or vice versa) is an error
+- `--password-stdin` reads the entire stdin input and strips trailing `\r\n` — it cannot be combined with other flags that also consume stdin (`--config -`, `--allowed-ports @-`, etc.)
+- For GHCR (GitHub Container Registry) with a Personal Access Token, use `--username <github-username> --password-stdin` and pipe the PAT
 
 ### JSON Output
 
@@ -941,8 +992,8 @@ go tool cover -html=coverage.out
 - **internal/registry**: 96.8% coverage
 - **internal/secrets**: 95.8% coverage
 - **internal/fileutil**: 89.2% coverage
-- **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 80.9% coverage
+- **internal/imageutil**: 81.4% coverage
+- **cmd/check-image/commands**: 81.4% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

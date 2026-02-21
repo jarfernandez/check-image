@@ -75,7 +75,7 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - **Default Behavior** (no transport prefix): `GetImage()` tries local Docker daemon first, then falls back to remote registry
 - **Explicit Transports**: When a transport prefix is specified, only that source is attempted (no fallback)
 - `GetLocalImage()` retrieves from Docker daemon
-- `GetRemoteImage()` fetches from remote registry with keychain authentication
+- `GetRemoteImage()` fetches from remote registry using `activeKeychain` (see Auth section below)
 - All functions use `github.com/google/go-containerregistry` for image operations
 
 **Supported Transport Syntax** (Skopeo-compatible):
@@ -85,6 +85,35 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - `oci-archive:/path.tar@sha256:abc...` - OCI tarball archive with digest
 - `docker-archive:/path.tar:tag` - Docker tarball archive (saved with `docker save`)
 - `nginx:latest` or `docker.io/nginx:latest` - Default behavior (daemon → registry)
+
+### Registry Authentication
+
+Credentials are resolved with the following precedence (highest first):
+
+| Source | Mechanism |
+|--------|-----------|
+| `--username` / `--password` / `--password-stdin` | Global flags set in `PersistentPreRunE` in `root.go` |
+| `CHECK_IMAGE_USERNAME` / `CHECK_IMAGE_PASSWORD` | Environment variables, read as fallback when flags are empty |
+| `~/.docker/config.json` + credential helpers | `authn.DefaultKeychain` from go-containerregistry — always active as final fallback |
+
+**Implementation files:**
+- `internal/imageutil/auth.go`: `staticKeychain` type, `activeKeychain` package variable (defaults to `authn.DefaultKeychain`), `SetStaticCredentials()`, `ActiveKeychain()`, `ResetKeychain()`
+- `cmd/check-image/commands/root.go` (`PersistentPreRunE`): reads flags/env, validates mutual exclusivity, calls `imageutil.SetStaticCredentials()` when credentials are present
+
+**Keychain chain** (when explicit credentials are provided):
+```
+staticKeychain (explicit username+password)
+    ↓ fallback
+authn.DefaultKeychain (~/.docker/config.json, credential helpers)
+```
+Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
+
+**Key constraints:**
+- `--password` and `--password-stdin` are mutually exclusive
+- Username without password (or vice versa) is an error, regardless of source (flags or env)
+- `--password-stdin` cannot be combined with other stdin-consuming flags (`--config -`, `--allowed-ports @-`, etc.) — the first reader wins
+- Static credentials are applied to all registries in that invocation (no per-registry filtering — use Docker credential helpers for that)
+- `activeKeychain` is a package-level variable (acceptable pattern for a single-threaded CLI); `SetStaticCredentials` is idempotent and overwrites any previously set credentials
 
 ### Validation Commands
 
