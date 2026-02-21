@@ -65,3 +65,31 @@ release:
   draft: false
   prerelease: auto
   mode: append
+
+brews:
+  - name: check-image
+    ids:
+      - check-image
+
+    repository:
+      owner: jarfernandez
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+
+    directory: Formula
+
+    homepage: "https://github.com/jarfernandez/check-image"
+    description: "Validate container images against security and operational standards"
+    license: "MIT"
+
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+
+    commit_msg_template: "Brew formula update for check-image version {{ .Tag }}"
+
+    skip_upload: auto
+
+    test: |
+      system "#{bin}/check-image", "version", "--short"
