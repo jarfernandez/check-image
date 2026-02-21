@@ -793,3 +793,29 @@ func TestRenderLabelsText_EmptyLabels(t *testing.T) {
 	assert.Contains(t, captured, "Missing labels (1):")
 	assert.NotContains(t, captured, "Actual labels")
 }
+
+func TestRenderEntrypointText_WithBothEntrypointAndCmd(t *testing.T) {
+	result := &output.CheckResult{
+		Check:  "entrypoint",
+		Image:  "nginx:latest",
+		Passed: true,
+		Details: output.EntrypointDetails{
+			HasEntrypoint: true,
+			ExecForm:      true,
+			Entrypoint:    []string{"/docker-entrypoint.sh"},
+			Cmd:           []string{"nginx", "-g", "daemon off;"},
+		},
+		Message: "Image has a valid exec-form entrypoint",
+	}
+
+	captured := captureStdout(t, func() {
+		renderEntrypointText(result)
+	})
+
+	assert.Contains(t, captured, "Checking entrypoint of image nginx:latest")
+	assert.Contains(t, captured, "Entrypoint:")
+	assert.Contains(t, captured, "/docker-entrypoint.sh")
+	assert.Contains(t, captured, "Cmd:")
+	assert.Contains(t, captured, "nginx")
+	assert.Contains(t, captured, "Image has a valid exec-form entrypoint")
+}

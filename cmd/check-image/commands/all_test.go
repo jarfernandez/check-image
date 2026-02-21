@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -1907,4 +1908,168 @@ func TestRunAll_PlatformWithInlineConfig(t *testing.T) {
 
 	assert.Equal(t, ValidationSucceeded, Result)
 	assert.Contains(t, out, "linux/arm64")
+}
+
+// TestRenderAllJSON_AllPassing tests renderAllJSON when all checks pass.
+func TestRenderAllJSON_AllPassing(t *testing.T) {
+	resetAllGlobals()
+	Result = ValidationSucceeded
+
+	results := []output.CheckResult{
+		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+		{Check: "size", Image: "nginx:latest", Passed: true, Message: "Image size ok"},
+	}
+
+	captured := captureStdout(t, func() {
+		err := renderAllJSON("nginx:latest", results, nil, nil)
+		require.NoError(t, err)
+	})
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal([]byte(captured), &data))
+	assert.Equal(t, "nginx:latest", data["image"])
+	assert.Equal(t, true, data["passed"])
+	summary := data["summary"].(map[string]any)
+	assert.Equal(t, float64(2), summary["total"])
+	assert.Equal(t, float64(2), summary["passed"])
+	assert.Equal(t, float64(0), summary["failed"])
+	assert.Equal(t, float64(0), summary["errored"])
+	assert.Nil(t, summary["skipped"]) // no skipped checks
+}
+
+// TestRenderAllJSON_WithFailures tests renderAllJSON when some checks fail or error.
+func TestRenderAllJSON_WithFailures(t *testing.T) {
+	resetAllGlobals()
+	Result = ValidationFailed
+
+	results := []output.CheckResult{
+		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+		{Check: "root-user", Image: "nginx:latest", Passed: false, Message: "Image runs as root"},
+		{Check: "size", Image: "nginx:latest", Passed: false, Message: "check failed with error: some error", Error: "some error"},
+	}
+
+	captured := captureStdout(t, func() {
+		err := renderAllJSON("nginx:latest", results, nil, nil)
+		require.NoError(t, err)
+	})
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal([]byte(captured), &data))
+	assert.Equal(t, false, data["passed"])
+	summary := data["summary"].(map[string]any)
+	assert.Equal(t, float64(3), summary["total"])
+	assert.Equal(t, float64(1), summary["passed"])
+	assert.Equal(t, float64(1), summary["failed"])
+	assert.Equal(t, float64(1), summary["errored"])
+}
+
+// TestRenderAllJSON_WithSkipMap tests renderAllJSON with a skip map.
+func TestRenderAllJSON_WithSkipMap(t *testing.T) {
+	resetAllGlobals()
+	Result = ValidationSucceeded
+
+	results := []output.CheckResult{
+		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+	}
+	skipMap := map[string]bool{"registry": true, "secrets": true}
+
+	captured := captureStdout(t, func() {
+		err := renderAllJSON("nginx:latest", results, skipMap, nil)
+		require.NoError(t, err)
+	})
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal([]byte(captured), &data))
+	assert.Equal(t, true, data["passed"])
+	summary := data["summary"].(map[string]any)
+	skipped := summary["skipped"].([]any)
+	assert.Contains(t, skipped, "registry")
+	assert.Contains(t, skipped, "secrets")
+}
+
+// TestRenderAllJSON_WithIncludeMap tests renderAllJSON with an include map.
+func TestRenderAllJSON_WithIncludeMap(t *testing.T) {
+	resetAllGlobals()
+	Result = ValidationSucceeded
+
+	results := []output.CheckResult{
+		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+	}
+	includeMap := map[string]bool{"age": true}
+
+	captured := captureStdout(t, func() {
+		err := renderAllJSON("nginx:latest", results, nil, includeMap)
+		require.NoError(t, err)
+	})
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal([]byte(captured), &data))
+	assert.Equal(t, true, data["passed"])
+	summary := data["summary"].(map[string]any)
+	// All checks except "age" should appear in skipped
+	skipped := summary["skipped"].([]any)
+	assert.NotContains(t, skipped, "age")
+	assert.Contains(t, skipped, "size")
+	assert.Contains(t, skipped, "registry")
+}
+
+// TestApplyRegistryConfig_InvalidPolicyType tests that applyRegistryConfig handles
+// an invalid policy type gracefully by logging an error and leaving registryPolicy unchanged.
+func TestApplyRegistryConfig_InvalidPolicyType(t *testing.T) {
+	origRegistryPolicy := registryPolicy
+	defer func() { registryPolicy = origRegistryPolicy }()
+
+	registryPolicy = "original-policy.json"
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("registry-policy", "", "")
+
+	// Pass an integer as RegistryPolicy to trigger the default case in formatRegistryPolicy
+	cfg := &registryCheckConfig{RegistryPolicy: 42}
+
+	applyRegistryConfig(cmd, cfg)
+
+	// registryPolicy should NOT have changed (function returns early on error)
+	assert.Equal(t, "original-policy.json", registryPolicy)
+}
+
+// TestApplyLabelsConfig_InvalidPolicyType tests that applyLabelsConfig handles
+// an invalid policy type gracefully by logging an error and leaving labelsPolicy unchanged.
+func TestApplyLabelsConfig_InvalidPolicyType(t *testing.T) {
+	origLabelsPolicy := labelsPolicy
+	defer func() { labelsPolicy = origLabelsPolicy }()
+
+	labelsPolicy = "original-labels-policy.json"
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("labels-policy", "", "")
+
+	// Pass an integer as LabelsPolicy to trigger the default case in formatLabelsPolicy
+	cfg := &labelsCheckConfig{LabelsPolicy: 42}
+
+	applyLabelsConfig(cmd, cfg)
+
+	// labelsPolicy should NOT have changed (function returns early on error)
+	assert.Equal(t, "original-labels-policy.json", labelsPolicy)
+}
+
+// TestRunAll_EntrypointWithCmdField tests that the entrypoint check renders
+// both Entrypoint and Cmd fields when an image defines both.
+func TestRunAll_EntrypointWithCmdField(t *testing.T) {
+	resetAllGlobals()
+	includeChecks = "entrypoint"
+
+	imageRef := createTestImage(t, testImageOptions{
+		entrypoint: []string{"/docker-entrypoint.sh"},
+		cmd:        []string{"nginx", "-g", "daemon off;"},
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "Entrypoint:")
+	assert.Contains(t, out, "Cmd:")
 }

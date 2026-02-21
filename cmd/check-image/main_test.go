@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jarfernandez/check-image/cmd/check-image/commands"
+	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -112,4 +113,45 @@ func TestRun_PreservesState(t *testing.T) {
 	_ = run(&buf)
 
 	assert.Equal(t, initialResult, commands.Result, "run() should not modify the Result")
+}
+
+// TestRun_JSONMode verifies that in JSON mode (OutputFmt=FormatJSON) the run()
+// function returns the correct exit codes. Note: commands.Execute() resets OutputFmt
+// via PersistentPreRunE, so the text-suppression branches in run() cannot be exercised
+// from this package and are covered by end-to-end tests instead.
+func TestRun_JSONMode(t *testing.T) {
+	tests := []struct {
+		name         string
+		result       commands.ValidationResult
+		expectedExit int
+	}{
+		{
+			name:         "ValidationFailed in JSON mode returns exit 1",
+			result:       commands.ValidationFailed,
+			expectedExit: 1,
+		},
+		{
+			name:         "ValidationSucceeded in JSON mode returns exit 0",
+			result:       commands.ValidationSucceeded,
+			expectedExit: 0,
+		},
+		{
+			name:         "ExecutionError in JSON mode returns exit 2",
+			result:       commands.ExecutionError,
+			expectedExit: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commands.Result = tt.result
+			commands.OutputFmt = output.FormatJSON
+			defer func() { commands.OutputFmt = output.FormatText }()
+
+			var buf bytes.Buffer
+			exitCode := run(&buf)
+
+			assert.Equal(t, tt.expectedExit, exitCode)
+		})
+	}
 }

@@ -160,6 +160,55 @@ func TestExtractOCIArchive_InvalidGzip(t *testing.T) {
 	assert.Contains(t, err.Error(), "error creating gzip reader")
 }
 
+// TestExtractRegularFile_SizeMismatch verifies the size mismatch error path in
+// extractRegularFile. We pass a fake tar.Header claiming 100 bytes while the
+// tarReader only has 5 bytes of actual content for the entry.
+func TestExtractRegularFile_SizeMismatch(t *testing.T) {
+	tmpDir := t.TempDir()
+	tarPath := filepath.Join(tmpDir, "test.tar")
+
+	// Create a tar with a 5-byte file
+	content := []byte("hello")
+	f, err := os.Create(tarPath)
+	require.NoError(t, err)
+	tw := tar.NewWriter(f)
+	err = tw.WriteHeader(&tar.Header{
+		Name:     "file.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0644,
+		Size:     int64(len(content)),
+	})
+	require.NoError(t, err)
+	_, err = tw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, f.Close())
+
+	// Open the tar and advance to the file entry
+	tarFile, err := os.Open(tarPath)
+	require.NoError(t, err)
+	defer tarFile.Close()
+
+	tarReader := tar.NewReader(tarFile)
+	_, err = tarReader.Next()
+	require.NoError(t, err)
+
+	// Pass a fake header that claims the file is 100 bytes (larger than actual 5 bytes).
+	// io.Copy will read 5 bytes from the tar reader (its actual limit) and return
+	// written=5. The mismatch with fakeHeader.Size=100 triggers the size mismatch error.
+	fakeHeader := &tar.Header{
+		Name:     "file.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0644,
+		Size:     100,
+	}
+
+	targetPath := filepath.Join(tmpDir, "extracted.txt")
+	err = extractRegularFile(tarReader, targetPath, fakeHeader)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "size mismatch")
+}
+
 func TestExtractOCIArchive_SkipsSymlinks(t *testing.T) {
 	tmpDir := t.TempDir()
 	tarPath := filepath.Join(tmpDir, "symlink.tar")
