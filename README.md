@@ -956,11 +956,14 @@ This project uses GitHub Actions for continuous integration and automated releas
 Every pull request and push to `main` automatically runs:
 
 - **Tests**: Full test suite on Linux, macOS, and Windows
-- **Linting**: `golangci-lint` with strict checks
+- **Linting**: `golangci-lint`, `gofmt`, `go vet`, and `go mod tidy` verification
 - **Build Verification**: Cross-compilation for 5 platforms (Linux/macOS/Windows on amd64/arm64)
-- **PR Title Validation**: Enforces Conventional Commits format
+- **PR Title Validation**: Enforces Conventional Commits format (PRs only)
+- **CodeQL Analysis**: Static security analysis for Go code (also runs on a weekly schedule)
 
 All checks must pass before merging to `main`.
+
+The GitHub Action is tested in a dedicated workflow (`test-action.yml`) that triggers on pull requests that modify `action.yml` or `entrypoint.sh`.
 
 ### Release Process
 
@@ -980,11 +983,14 @@ Releases are fully automated using [release-please](https://github.com/googleapi
      - `BREAKING CHANGE:` → major version bump (0.1.0 → 1.0.0)
    - Creates/updates a "Release PR" with updated CHANGELOG.md, README.md version references, and action.yml default version
 
-3. **Release**: When the Release PR is merged:
-   - Git tag is created (e.g., `v0.2.0`)
-   - GoReleaser builds binaries for all platforms
-   - GitHub Release is created with binaries and changelog
-   - Version is injected into binaries via ldflags
+3. **Release**: When the Release PR is merged, three jobs run in sequence:
+   - **release-please job**: Creates the git tag and GitHub Release with the changelog
+   - **goreleaser job**: Builds binaries for all platforms and uploads them to the release; version is injected via ldflags
+   - **docker job**:
+     - Lints `Dockerfile` with hadolint
+     - Builds a single-arch image (`linux/amd64`) for Trivy security scanning (CRITICAL/HIGH vulnerabilities)
+     - Validates the image with check-image itself (dogfooding: size, root-user, ports, secrets)
+     - Builds and pushes a multi-arch image (`linux/amd64`, `linux/arm64`) to GHCR with semver tags (`major.minor.patch`, `major.minor`, `major`, `latest`)
 
 ### Supported Platforms
 
