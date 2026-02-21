@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0](https://github.com/jarfernandez/check-image/compare/v0.16.0...v0.17.0) (2026-02-21)
+
+
+### Features
+
+* Add Homebrew tap distribution ([#91](https://github.com/jarfernandez/check-image/issues/91)) ([95456fe](https://github.com/jarfernandez/check-image/commit/95456fe7e3a52469f46dadb49b5cef018e2ef842))
+
 ## [0.16.0](https://github.com/jarfernandez/check-image/compare/v0.15.0...v0.16.0) (2026-02-21)
 
 
