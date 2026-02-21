@@ -286,14 +286,27 @@ In `internal/secrets/`:
 - **Dogfooding**: The release workflow's docker job uses `uses: ./` to validate `check-image:scan` after Trivy. The docker job depends on goreleaser (`needs: [release-please, goreleaser]`) so the binary is available for download
 - **Testing**: `.github/workflows/test-action.yml` tests the action using `uses: ./` against real images
 
-### Release Pipeline
-Single workflow in `.github/workflows/release-please.yml` with three chained jobs:
+### CI/CD Workflows
 
-1. **release-please job**: Runs on every push to `main`. Creates/updates a release PR with changelog and version bump. When the release PR is merged, creates the git tag and GitHub release. Exports `releases_created` and `tag_name` as outputs.
-2. **goreleaser job**: Depends on release-please. Only runs when `releases_created == 'true'`. Checks out the tag, builds binaries for linux/darwin/windows (amd64/arm64), and uploads them to the GitHub release via `mode: append`.
-3. **docker job**: Depends on both release-please and goreleaser (needs binaries available for the check-image action). Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), validates image with check-image (dogfooding: size, root-user, ports, secrets), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
+Four workflows in `.github/workflows/`:
 
-All jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
+#### `ci.yml` — Continuous Integration
+Runs on every push to `main` and on pull requests. Four parallel jobs:
+1. **validate-pr**: (PRs only) Validates PR title follows Conventional Commits format using `action-semantic-pull-request`.
+2. **test**: Runs `go test ./...` with `-race` and coverage on ubuntu/macos/windows matrix. Uploads coverage to Codecov (ubuntu only).
+3. **lint**: Runs `golangci-lint`, `gofmt`, `go vet`, and verifies `go.mod` is tidy.
+4. **build**: Cross-compiles for linux/darwin/windows × amd64/arm64 to verify compilation.
+
+#### `codeql.yml` — Security Analysis
+Runs on push to `main`, PRs to `main`, and weekly (Monday 06:00 UTC). Performs CodeQL static analysis on Go code with `security-extended` queries.
+
+#### `release-please.yml` — Release Pipeline
+Runs on every push to `main`. Three chained jobs:
+1. **release-please**: Creates/updates a release PR with changelog and version bump. On merge, creates the git tag and GitHub release. Exports `releases_created` and `tag_name`.
+2. **goreleaser**: Depends on release-please. Only runs when `releases_created == 'true'`. Builds binaries for linux/darwin (amd64/arm64) and windows (amd64 only), uploads to the GitHub release via `mode: append`.
+3. **docker**: Depends on both release-please and goreleaser. Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), validates image with check-image (dogfooding: size, root-user, ports, secrets), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
+
+All release jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
 
 **Permissions**: `contents: write`, `pull-requests: write`, `packages: write` (packages required for GHCR push).
 
