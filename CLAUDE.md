@@ -146,12 +146,15 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - Continue-on-error (default): if a check returns an error, logs it, sets `Result = ValidationFailed`, and continues with the next check
 - Fail-fast (`--fail-fast`): stops execution on the first check that fails (validation failure or execution error)
 
-**version**: Shows the check-image version
-- No flags (uses global `--output` flag for JSON support)
-- Returns the version string from `internal/version.Version`
-- Defaults to "dev" if no version is set
-- In JSON mode: outputs `{"version": "v0.4.0"}`
-- Version is injected at build time using ldflags: `-ldflags "-X check-image/internal/version.Version=v0.1.0"`
+**version**: Shows the check-image version with full build information
+- Flags: `--short` (print only the version number)
+- Uses global `--output` flag for JSON support
+- Calls `ver.GetBuildInfo()` which returns version, commit, build date, Go version, and platform
+- `Version`, `Commit`, `BuildDate` are injected at build time via ldflags; `GoVersion` and `Platform` are read from the `runtime` package (no ldflags injection needed)
+- Default (no `--short`) text output is a multi-line block; JSON uses `output.BuildInfoResult`
+- With `--short`: text outputs just the version string; JSON uses `output.VersionResult` (single `version` field)
+- GoReleaser template variables: `{{.ShortCommit}}` (7-char hash) and `{{.Date}}` (RFC3339 UTC) for `Commit` and `BuildDate`
+- Docker build args: `VERSION`, `COMMIT`, `BUILD_DATE` (defaults: `dev`, `none`, `unknown`)
 
 ### Configuration Files
 Sample configuration files are in `config/`:

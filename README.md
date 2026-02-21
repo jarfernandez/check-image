@@ -416,54 +416,10 @@ check-image labels <image> --labels-policy <file>
 Options:
 - `--labels-policy`: Path to labels policy file (JSON or YAML, required)
 
-Policy file format:
-```yaml
-required-labels:
-  # Existence check - label must be present
-  - name: "maintainer"
-
-  # Exact value match
-  - name: "org.opencontainers.image.vendor"
-    value: "MyCompany"
-
-  # Pattern match (regex)
-  - name: "org.opencontainers.image.version"
-    pattern: "^v?\\d+\\.\\d+\\.\\d+$"
-```
-
 The command validates three types of requirements:
 - **Existence check**: Label must be present with any value (only `name` specified)
 - **Exact value match**: Label value must exactly match the specified string (`name` and `value`)
 - **Pattern match**: Label value must match the regular expression (`name` and `pattern`)
-
-Example JSON output:
-```json
-{
-  "check": "labels",
-  "image": "nginx:latest",
-  "passed": false,
-  "message": "Image does not meet label requirements",
-  "details": {
-    "required-labels": [
-      {"name": "maintainer"},
-      {"name": "org.opencontainers.image.version", "pattern": "^v?\\\\d+\\\\.\\\\d+\\\\.\\\\d+$"}
-    ],
-    "actual-labels": {
-      "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
-    },
-    "missing-labels": ["org.opencontainers.image.version"],
-    "invalid-labels": []
-  }
-}
-```
-
-Common OCI standard labels:
-- `org.opencontainers.image.created` - Image creation timestamp
-- `org.opencontainers.image.version` - Version of the packaged software
-- `org.opencontainers.image.vendor` - Name of the distributing entity
-- `org.opencontainers.image.source` - URL to the source code repository
-- `org.opencontainers.image.revision` - Source control revision identifier
-- `org.opencontainers.image.licenses` - License(s) under which the image is distributed
 
 #### `all`
 Runs all validation checks on a container image at once.
@@ -496,41 +452,42 @@ Precedence rules:
 4. CLI flags override config file values
 5. `--include` and `--skip` always take precedence over the config file
 
-Examples:
-```bash
-# Run all checks with defaults
-check-image all nginx:latest
-
-# Run all checks with custom limits
-check-image all nginx:latest --max-age 30 --max-size 200
-
-# Run only specific checks
-check-image all nginx:latest --include age,size,root-user
-
-# Skip specific checks
-check-image all nginx:latest --skip registry,secrets
-
-# Use a configuration file
-check-image all nginx:latest --config config/config.json
-
-# Config file with CLI overrides and skip
-check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
-
-# Stop on first check failure
-check-image all nginx:latest --fail-fast --skip registry
-```
-
 #### `version`
-Shows the check-image version.
+Shows the check-image version with full build information.
 
 ```bash
 check-image version
 ```
 
-The version can be set at build time using ldflags:
-```bash
-go build -ldflags "-X github.com/jarfernandez/check-image/internal/version.Version=v0.1.0" ./cmd/check-image
 ```
+check-image version v0.12.1
+commit:     a1b2c3d
+built at:   2026-02-18T12:34:56Z
+go version: go1.26.0
+platform:   linux/amd64
+```
+
+Options:
+- `--short`: Print only the version number
+
+```bash
+check-image version --short
+```
+
+```
+v0.12.1
+```
+
+The version and build metadata are injected at build time using ldflags:
+```bash
+go build \
+  -ldflags "-X github.com/jarfernandez/check-image/internal/version.Version=v0.1.0 \
+            -X github.com/jarfernandez/check-image/internal/version.Commit=abc1234 \
+            -X github.com/jarfernandez/check-image/internal/version.BuildDate=2026-02-18T12:34:56Z" \
+  ./cmd/check-image
+```
+
+The Go version and platform are read from the Go runtime and do not require ldflags injection.
 
 ### Global Flags
 
@@ -562,7 +519,7 @@ check-image age nginx:latest -o json
 
 **All command:**
 ```bash
-check-image all nginx:latest --skip registry -o json
+check-image all nginx:latest --skip registry,labels -o json
 ```
 ```json
 {
@@ -574,26 +531,47 @@ check-image all nginx:latest --skip registry -o json
       "image": "nginx:latest",
       "passed": true,
       "message": "Image is less than 90 days old",
-      "details": { "created-at": "...", "age-days": 75, "max-age": 90 }
+      "details": {
+        "created-at": "2026-02-04T23:53:09Z",
+        "age-days": 15.975077092155601,
+        "max-age": 90
+      }
     }
   ],
   "summary": {
-    "total": 5,
-    "passed": 4,
-    "failed": 1,
+    "total": 6,
+    "passed": 3,
+    "failed": 3,
     "errored": 0,
-    "skipped": ["registry"]
+    "skipped": [
+      "registry",
+      "labels"
+    ]
   }
 }
 ```
 
-**Version command:**
+**Version command (full):**
 ```bash
 check-image version -o json
 ```
 ```json
 {
-  "version": "v0.4.0"
+  "version": "v0.12.1",
+  "commit": "a1b2c3d",
+  "built_at": "2026-02-18T12:34:56Z",
+  "go_version": "go1.26.0",
+  "platform": "linux/amd64"
+}
+```
+
+**Version command (short):**
+```bash
+check-image version --short -o json
+```
+```json
+{
+  "version": "v0.12.1"
 }
 ```
 
@@ -892,7 +870,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 90.4% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 90.3% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -917,11 +895,11 @@ go tool cover -html=coverage.out
 - **internal/version**: 100.0% coverage
 - **internal/output**: 100.0% coverage
 - **internal/labels**: 98.1% coverage
-- **internal/registry**: 97.3% coverage
-- **internal/secrets**: 95.9% coverage
+- **internal/registry**: 96.8% coverage
+- **internal/secrets**: 95.8% coverage
 - **internal/fileutil**: 89.2% coverage
 - **internal/imageutil**: 81.0% coverage
-- **cmd/check-image/commands**: 81.8% coverage
+- **cmd/check-image/commands**: 81.9% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

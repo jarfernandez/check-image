@@ -98,16 +98,14 @@ The 'image' argument supports multiple formats:
   - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
   - OCI tarball: oci-archive:/path/to/image.tar:tag
   - Docker tarball: docker-archive:/path/to/image.tar:tag`,
-	Example: `  check-image all nginx:latest
-  check-image all nginx:latest --max-age 30 --max-size 200
-  check-image all nginx:latest --include age,size,root-user
-  check-image all nginx:latest --skip registry,secrets
+	Example: `  check-image all nginx:latest --include age,size,root-user --max-age 30 --max-size 200
+  check-image all nginx:latest --skip registry,secrets,labels
   check-image all nginx:latest --config config/config.json
-  check-image all nginx:latest -c config/config.yaml --max-age 30 --skip secrets
-  check-image all oci:/path/to/layout:1.0
-  check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry
-  check-image all nginx:latest --fail-fast --skip registry
-  cat config.json | check-image all nginx:latest --config -`,
+  check-image all nginx:latest -c config/config.yaml --max-age 20 --skip secrets
+  check-image all oci:/path/to/layout:1.0 --include age,size,root-user,ports,healthcheck
+  check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry,secrets,labels
+  check-image all nginx:latest --fail-fast --skip registry --config config/config.yaml --output json
+  cat config/config.json | check-image all nginx:latest --config -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := runAll(cmd, args[0]); err != nil {
