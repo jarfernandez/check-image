@@ -2,7 +2,6 @@ package imageutil
 
 import (
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	cr "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
@@ -53,7 +52,7 @@ func GetRemoteImage(imageName string) (cr.Image, error) {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	kc := authn.DefaultKeychain
+	kc := activeKeychain
 	image, err := remote.Image(ref, remote.WithAuthFromKeychain(kc))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the remote image: %w", err)

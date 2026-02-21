@@ -2,8 +2,11 @@ package commands
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
+	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/mattn/go-isatty"
 	log "github.com/sirupsen/logrus"
@@ -23,6 +26,9 @@ var Result = ValidationSkipped
 
 var logLevel string
 var outputFormat string
+var registryUsername string
+var registryPassword string
+var registryPasswordStdin bool
 
 // OutputFmt holds the parsed output format after PersistentPreRunE.
 var OutputFmt output.Format
@@ -47,6 +53,43 @@ var rootCmd = &cobra.Command{
 		}
 		OutputFmt = f
 
+		// Resolve registry credentials: CLI flags > env vars > DefaultKeychain
+		username := registryUsername
+		password := registryPassword
+
+		if registryPasswordStdin && password != "" {
+			return fmt.Errorf("--password and --password-stdin are mutually exclusive")
+		}
+
+		if registryPasswordStdin {
+			data, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				return fmt.Errorf("error reading password from stdin: %w", err)
+			}
+			password = strings.TrimRight(string(data), "\r\n")
+		}
+
+		if username == "" {
+			username = os.Getenv("CHECK_IMAGE_USERNAME")
+		}
+		if password == "" {
+			password = os.Getenv("CHECK_IMAGE_PASSWORD")
+		}
+
+		if username != "" && password == "" {
+			return fmt.Errorf("registry password required when username is set " +
+				"(use --password, --password-stdin, or CHECK_IMAGE_PASSWORD)")
+		}
+		if password != "" && username == "" {
+			return fmt.Errorf("registry username required when password is set " +
+				"(use --username or CHECK_IMAGE_USERNAME)")
+		}
+
+		if username != "" {
+			imageutil.SetStaticCredentials(username, password)
+			log.Debugln("Using explicit registry credentials for user:", username)
+		}
+
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -65,6 +108,9 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "info", "Sets the log level (trace, debug, info, warn, error, fatal, panic) (optional)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "text", "Output format: text, json (optional)")
+	rootCmd.PersistentFlags().StringVar(&registryUsername, "username", "", "Registry username for authentication (env: CHECK_IMAGE_USERNAME)")
+	rootCmd.PersistentFlags().StringVar(&registryPassword, "password", "", "Registry password or token for authentication (env: CHECK_IMAGE_PASSWORD). Caution: visible in process list. Prefer --password-stdin or env var.")
+	rootCmd.PersistentFlags().BoolVar(&registryPasswordStdin, "password-stdin", false, "Read registry password from stdin. Cannot be combined with other flags that also read from stdin (--config -, --allowed-ports @-, etc.)")
 }
 
 // UpdateResult updates the global Result with proper precedence.

@@ -1,8 +1,11 @@
 package commands
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
+	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -202,4 +205,278 @@ func TestRootCommandOutputFormat(t *testing.T) {
 			}
 		})
 	}
+}
+
+// resetAuthState resets all authentication-related global state to defaults.
+// Call this via t.Cleanup in any test that modifies auth state.
+func resetAuthState(t *testing.T) {
+	t.Helper()
+	registryUsername = ""
+	registryPassword = ""
+	registryPasswordStdin = false
+	imageutil.ResetKeychain()
+	os.Unsetenv("CHECK_IMAGE_USERNAME")
+	os.Unsetenv("CHECK_IMAGE_PASSWORD")
+}
+
+func TestRootCommandAuthFlags_Exist(t *testing.T) {
+	usernameFlag := rootCmd.PersistentFlags().Lookup("username")
+	require.NotNil(t, usernameFlag, "flag --username must exist")
+	assert.Equal(t, "", usernameFlag.DefValue)
+
+	passwordFlag := rootCmd.PersistentFlags().Lookup("password")
+	require.NotNil(t, passwordFlag, "flag --password must exist")
+	assert.Equal(t, "", passwordFlag.DefValue)
+
+	passwordStdinFlag := rootCmd.PersistentFlags().Lookup("password-stdin")
+	require.NotNil(t, passwordStdinFlag, "flag --password-stdin must exist")
+	assert.Equal(t, "false", passwordStdinFlag.DefValue)
+}
+
+func TestRootCommandAuth_PasswordAndPasswordStdinMutuallyExclusive(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "user"
+	registryPassword = "pass"
+	registryPasswordStdin = true
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--password and --password-stdin are mutually exclusive")
+}
+
+func TestRootCommandAuth_UsernameWithoutPassword(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "user"
+	registryPassword = ""
+	registryPasswordStdin = false
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "registry password required when username is set")
+}
+
+func TestRootCommandAuth_PasswordWithoutUsername(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = ""
+	registryPassword = "pass"
+	registryPasswordStdin = false
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "registry username required when password is set")
+}
+
+func TestRootCommandAuth_ValidCredentialsViaFlags(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "myuser"
+	registryPassword = "mypass"
+	registryPasswordStdin = false
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	// Verify the keychain was updated by checking it resolves the credentials
+	auth, resolveErr := imageutil.ActiveKeychain().Resolve(nil)
+	require.NoError(t, resolveErr)
+	cfg, authErr := auth.Authorization()
+	require.NoError(t, authErr)
+	assert.Equal(t, "myuser", cfg.Username)
+	assert.Equal(t, "mypass", cfg.Password)
+}
+
+func TestRootCommandAuth_ValidCredentialsViaEnvVars(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = ""
+	registryPassword = ""
+	registryPasswordStdin = false
+
+	t.Setenv("CHECK_IMAGE_USERNAME", "envuser")
+	t.Setenv("CHECK_IMAGE_PASSWORD", "envpass")
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	auth, resolveErr := imageutil.ActiveKeychain().Resolve(nil)
+	require.NoError(t, resolveErr)
+	cfg, authErr := auth.Authorization()
+	require.NoError(t, authErr)
+	assert.Equal(t, "envuser", cfg.Username)
+	assert.Equal(t, "envpass", cfg.Password)
+}
+
+func TestRootCommandAuth_FlagsTakePrecedenceOverEnvVars(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "flaguser"
+	registryPassword = "flagpass"
+	registryPasswordStdin = false
+
+	t.Setenv("CHECK_IMAGE_USERNAME", "envuser")
+	t.Setenv("CHECK_IMAGE_PASSWORD", "envpass")
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	auth, resolveErr := imageutil.ActiveKeychain().Resolve(nil)
+	require.NoError(t, resolveErr)
+	cfg, authErr := auth.Authorization()
+	require.NoError(t, authErr)
+	assert.Equal(t, "flaguser", cfg.Username)
+	assert.Equal(t, "flagpass", cfg.Password)
+}
+
+func TestRootCommandAuth_EnvUsernameWithoutPassword(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = ""
+	registryPassword = ""
+	registryPasswordStdin = false
+
+	t.Setenv("CHECK_IMAGE_USERNAME", "envuser")
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "registry password required when username is set")
+}
+
+func TestRootCommandAuth_EnvPasswordWithoutUsername(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = ""
+	registryPassword = ""
+	registryPasswordStdin = false
+
+	t.Setenv("CHECK_IMAGE_PASSWORD", "envpass")
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "registry username required when password is set")
+}
+
+func TestRootCommandAuth_NoCredentials_UsesDefaultKeychain(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = ""
+	registryPassword = ""
+	registryPasswordStdin = false
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+	// When no credentials are set, the activeKeychain should remain as DefaultKeychain
+	// (SetStaticCredentials is not called), so no error occurs
+}
+
+func TestRootCommandAuth_PasswordStdin_ReadsFromStdin(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	// Create a pipe to simulate stdin
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	origStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = origStdin
+		r.Close()
+	})
+
+	// Write password to the write-end of the pipe then close it
+	_, err = fmt.Fprintln(w, "stdinpass")
+	require.NoError(t, err)
+	w.Close()
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "stdinuser"
+	registryPassword = ""
+	registryPasswordStdin = true
+
+	err = rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	auth, resolveErr := imageutil.ActiveKeychain().Resolve(nil)
+	require.NoError(t, resolveErr)
+	cfg, authErr := auth.Authorization()
+	require.NoError(t, authErr)
+	assert.Equal(t, "stdinuser", cfg.Username)
+	assert.Equal(t, "stdinpass", cfg.Password) // trailing newline stripped
+}
+
+func TestRootCommandAuth_PasswordStdin_StripsTrailingNewlines(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	origStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = origStdin
+		r.Close()
+	})
+
+	// Write password with \r\n (Windows-style) line ending
+	_, err = fmt.Fprint(w, "tokenvalue\r\n")
+	require.NoError(t, err)
+	w.Close()
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "tokenuser"
+	registryPassword = ""
+	registryPasswordStdin = true
+
+	err = rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	auth, resolveErr := imageutil.ActiveKeychain().Resolve(nil)
+	require.NoError(t, resolveErr)
+	cfg, authErr := auth.Authorization()
+	require.NoError(t, authErr)
+	assert.Equal(t, "tokenvalue", cfg.Password)
+}
+
+func TestRootCommandAuth_MixedFlagAndEnv_UsernameFromFlag_PasswordFromEnv(t *testing.T) {
+	t.Cleanup(func() { resetAuthState(t) })
+
+	logLevel = "info"
+	outputFormat = "text"
+	registryUsername = "flaguser"
+	registryPassword = ""
+	registryPasswordStdin = false
+
+	t.Setenv("CHECK_IMAGE_PASSWORD", "envpass")
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	auth, resolveErr := imageutil.ActiveKeychain().Resolve(nil)
+	require.NoError(t, resolveErr)
+	cfg, authErr := auth.Authorization()
+	require.NoError(t, authErr)
+	assert.Equal(t, "flaguser", cfg.Username)
+	assert.Equal(t, "envpass", cfg.Password)
 }
