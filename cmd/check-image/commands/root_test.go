@@ -158,6 +158,51 @@ func TestRootCommandOutputFlag(t *testing.T) {
 	assert.Equal(t, "text", flag.DefValue)
 }
 
+func TestRootCommandColorFlag(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("color")
+	assert.NotNil(t, flag)
+	assert.Equal(t, "auto", flag.DefValue)
+}
+
+func TestRootCommandColorMode(t *testing.T) {
+	tests := []struct {
+		name    string
+		mode    string
+		wantErr bool
+	}{
+		{name: "auto mode", mode: "auto"},
+		{name: "always mode", mode: "always"},
+		{name: "never mode", mode: "never"},
+		{name: "invalid mode", mode: "rainbow", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origColor := colorMode
+			origFormat := outputFormat
+			origLevel := logLevel
+			defer func() {
+				colorMode = origColor
+				outputFormat = origFormat
+				logLevel = origLevel
+			}()
+
+			logLevel = "info"
+			outputFormat = "text"
+			colorMode = tt.mode
+
+			err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "unsupported color mode")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestRootCommandOutputFormat(t *testing.T) {
 	tests := []struct {
 		name       string

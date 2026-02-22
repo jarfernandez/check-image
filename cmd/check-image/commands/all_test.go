@@ -571,6 +571,7 @@ func TestApplyPlatformConfig(t *testing.T) {
 func resetAllGlobals() {
 	Result = ValidationSkipped
 	OutputFmt = output.FormatText
+	colorMode = "auto"
 	maxAge = 90
 	maxSize = 500
 	maxLayers = 20

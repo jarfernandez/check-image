@@ -44,39 +44,39 @@ func renderResult(r *output.CheckResult) error {
 
 func renderAgeText(r *output.CheckResult) {
 	d := r.Details.(output.AgeDetails)
-	fmt.Printf("Checking age of image %s\n", r.Image)
-	fmt.Printf("Image creation date: %s\n", d.CreatedAt)
-	fmt.Printf("Image age: %.0f days\n", d.AgeDays)
-	fmt.Println(r.Message)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking age of image %s", r.Image)))
+	fmt.Printf("Image creation date: %s\n", valueStyle.Render(d.CreatedAt))
+	fmt.Printf("Image age: %s\n", valueStyle.Render(fmt.Sprintf("%.0f days", d.AgeDays)))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderSizeText(r *output.CheckResult) {
 	d := r.Details.(output.SizeDetails)
-	fmt.Printf("Checking size and layers of image %s\n", r.Image)
-	fmt.Printf("Number of layers: %d\n", d.LayerCount)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking size and layers of image %s", r.Image)))
+	fmt.Printf("Number of layers: %s\n", valueStyle.Render(fmt.Sprintf("%d", d.LayerCount)))
 	// #nosec G115 -- LayerCount is always non-negative (derived from layer enumeration)
 	if uint(d.LayerCount) > d.MaxLayers {
-		fmt.Printf("Image has more than %d layers\n", d.MaxLayers)
+		fmt.Printf("Image has more than %s layers\n", valueStyle.Render(fmt.Sprintf("%d", d.MaxLayers)))
 	}
 	for _, l := range d.Layers {
-		fmt.Printf("  Layer %d: %d bytes\n", l.Index, l.Bytes)
+		fmt.Printf("  Layer %d: %s\n", l.Index, dimStyle.Render(fmt.Sprintf("%d bytes", l.Bytes)))
 	}
-	fmt.Printf("Total size: %d bytes (%.2f MB)\n", d.TotalBytes, d.TotalMB)
-	fmt.Println(r.Message)
+	fmt.Printf("Total size: %s\n", valueStyle.Render(fmt.Sprintf("%d bytes (%.2f MB)", d.TotalBytes, d.TotalMB)))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderPortsText(r *output.CheckResult) {
 	d := r.Details.(output.PortsDetails)
-	fmt.Printf("Checking ports of image %s\n", r.Image)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking ports of image %s", r.Image)))
 
 	if len(d.ExposedPorts) == 0 {
-		fmt.Println("No ports are exposed in this image")
+		fmt.Println(statusPrefix(r.Passed) + "No ports are exposed in this image")
 		return
 	}
 
-	fmt.Println("Exposed ports:")
+	fmt.Println(keyStyle.Render("Exposed ports:"))
 	for _, port := range d.ExposedPorts {
-		fmt.Printf("  - %d\n", port)
+		fmt.Printf("  - %s\n", valueStyle.Render(fmt.Sprintf("%d", port)))
 	}
 
 	if len(d.AllowedPorts) == 0 {
@@ -85,48 +85,48 @@ func renderPortsText(r *output.CheckResult) {
 	}
 
 	if len(d.UnauthorizedPorts) > 0 {
-		fmt.Println("The following ports are not in the allowed list:")
+		fmt.Println(keyStyle.Render("The following ports are not in the allowed list:"))
 		for _, port := range d.UnauthorizedPorts {
-			fmt.Printf("  - %d\n", port)
+			fmt.Printf("  - %s\n", FailStyle.Render(fmt.Sprintf("%d", port)))
 		}
 	}
 
 	if r.Message != "" {
-		fmt.Println(r.Message)
+		fmt.Println(statusPrefix(r.Passed) + r.Message)
 	}
 }
 
 func renderRegistryText(r *output.CheckResult) {
 	d := r.Details.(output.RegistryDetails)
-	fmt.Printf("Checking registry of image %s\n", r.Image)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking registry of image %s", r.Image)))
 
 	if d.Skipped {
-		fmt.Println("Registry validation skipped (not applicable for this transport)")
+		fmt.Println(dimStyle.Render("Registry validation skipped (not applicable for this transport)"))
 		return
 	}
 
-	fmt.Printf("Image registry: %s\n", d.Registry)
-	fmt.Println(r.Message)
+	fmt.Printf("Image registry: %s\n", valueStyle.Render(d.Registry))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderRootUserText(r *output.CheckResult) {
-	fmt.Printf("Checking if image %s is configured to run as a non-root user\n", r.Image)
-	fmt.Println(r.Message)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking if image %s is configured to run as a non-root user", r.Image)))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderSecretsText(r *output.CheckResult) {
 	d := r.Details.(output.SecretsDetails)
-	fmt.Printf("Checking secrets in image %s\n", r.Image)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking secrets in image %s", r.Image)))
 
 	if len(d.EnvVarFindings) > 0 {
-		fmt.Println("\nEnvironment Variables:")
+		fmt.Printf("\n%s\n", keyStyle.Render("Environment Variables:"))
 		for _, finding := range d.EnvVarFindings {
-			fmt.Printf("  - %s (%s)\n", finding.Name, finding.Description)
+			fmt.Printf("  - %s (%s)\n", FailStyle.Render(finding.Name), finding.Description)
 		}
 	}
 
 	if len(d.FileFindings) > 0 {
-		fmt.Println("\nFiles with Sensitive Patterns:")
+		fmt.Printf("\n%s\n", keyStyle.Render("Files with Sensitive Patterns:"))
 
 		// Group findings by layer for better readability
 		layerMap := make(map[int][]output.FileFinding)
@@ -138,53 +138,53 @@ func renderSecretsText(r *output.CheckResult) {
 			if findings, ok := layerMap[layerIdx]; ok {
 				fmt.Printf("  Layer %d:\n", layerIdx+1)
 				for _, finding := range findings {
-					fmt.Printf("    - %s (%s)\n", finding.Path, finding.Description)
+					fmt.Printf("    - %s (%s)\n", FailStyle.Render(finding.Path), finding.Description)
 				}
 			}
 		}
 	}
 
-	fmt.Printf("\nTotal findings: %d", d.TotalFindings)
+	fmt.Printf("\nTotal findings: %s", valueStyle.Render(fmt.Sprintf("%d", d.TotalFindings)))
 	if d.EnvVarCount >= 0 && d.FileCount >= 0 && (d.EnvVarCount > 0 || d.FileCount > 0 || d.TotalFindings > 0) {
 		fmt.Printf(" (%d environment variables, %d files)\n", d.EnvVarCount, d.FileCount)
 	} else {
 		fmt.Println()
 	}
 
-	fmt.Println(r.Message)
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderHealthcheckText(r *output.CheckResult) {
-	fmt.Printf("Checking if image %s has a healthcheck defined\n", r.Image)
-	fmt.Println(r.Message)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking if image %s has a healthcheck defined", r.Image)))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderEntrypointText(r *output.CheckResult) {
 	d := r.Details.(output.EntrypointDetails)
-	fmt.Printf("Checking entrypoint of image %s\n", r.Image)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking entrypoint of image %s", r.Image)))
 	if len(d.Entrypoint) > 0 {
-		fmt.Printf("Entrypoint: %v\n", d.Entrypoint)
+		fmt.Printf("Entrypoint: %s\n", valueStyle.Render(fmt.Sprintf("%v", d.Entrypoint)))
 	}
 	if len(d.Cmd) > 0 {
-		fmt.Printf("Cmd: %v\n", d.Cmd)
+		fmt.Printf("Cmd: %s\n", valueStyle.Render(fmt.Sprintf("%v", d.Cmd)))
 	}
-	fmt.Println(r.Message)
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderPlatformText(r *output.CheckResult) {
 	d := r.Details.(output.PlatformDetails)
-	fmt.Printf("Checking platform of image %s\n", r.Image)
-	fmt.Printf("Image platform: %s\n", d.Platform)
-	fmt.Println(r.Message)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking platform of image %s", r.Image)))
+	fmt.Printf("Image platform: %s\n", valueStyle.Render(d.Platform))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderLabelsText(r *output.CheckResult) {
 	d := r.Details.(output.LabelsDetails)
-	fmt.Printf("Checking labels of image %s\n", r.Image)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking labels of image %s", r.Image)))
 
 	// Show required labels
 	if len(d.RequiredLabels) > 0 {
-		fmt.Println("\nRequired labels:")
+		fmt.Printf("\n%s\n", keyStyle.Render("Required labels:"))
 		for _, req := range d.RequiredLabels {
 			switch {
 			case req.Pattern != "":
@@ -199,7 +199,7 @@ func renderLabelsText(r *output.CheckResult) {
 
 	// Show actual labels from image
 	if len(d.ActualLabels) > 0 {
-		fmt.Printf("\nActual labels (%d):\n", len(d.ActualLabels))
+		fmt.Printf("\n%s\n", keyStyle.Render(fmt.Sprintf("Actual labels (%d):", len(d.ActualLabels))))
 		// Sort keys for deterministic output
 		keys := make([]string, 0, len(d.ActualLabels))
 		for k := range d.ActualLabels {
@@ -215,19 +215,19 @@ func renderLabelsText(r *output.CheckResult) {
 
 	// Show missing labels
 	if len(d.MissingLabels) > 0 {
-		fmt.Printf("\nMissing labels (%d):\n", len(d.MissingLabels))
+		fmt.Printf("\n%s\n", keyStyle.Render(fmt.Sprintf("Missing labels (%d):", len(d.MissingLabels))))
 		for _, name := range d.MissingLabels {
-			fmt.Printf("  - %s\n", name)
+			fmt.Printf("  - %s\n", FailStyle.Render(name))
 		}
 	}
 
 	// Show invalid labels
 	if len(d.InvalidLabels) > 0 {
-		fmt.Printf("\nInvalid labels (%d):\n", len(d.InvalidLabels))
+		fmt.Printf("\n%s\n", keyStyle.Render(fmt.Sprintf("Invalid labels (%d):", len(d.InvalidLabels))))
 		for _, inv := range d.InvalidLabels {
-			fmt.Printf("  - %s: %s\n", inv.Name, inv.Reason)
+			fmt.Printf("  - %s: %s\n", FailStyle.Render(inv.Name), inv.Reason)
 		}
 	}
 
-	fmt.Printf("\n%s\n", r.Message)
+	fmt.Printf("\n%s\n", statusPrefix(r.Passed)+r.Message)
 }
