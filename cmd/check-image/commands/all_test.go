@@ -974,7 +974,7 @@ func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	assert.Contains(t, output, "── secrets")
 }
 
-func TestFormatRegistryPolicy(t *testing.T) {
+func TestInlinePolicyToTempFile_RegistryPolicy(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       any
@@ -1004,8 +1004,6 @@ func TestFormatRegistryPolicy(t *testing.T) {
 				data, err := os.ReadFile(result)
 				require.NoError(t, err)
 				assert.Contains(t, string(data), "trusted-registries")
-				// Cleanup temp file
-				os.Remove(result)
 			},
 		},
 		{
@@ -1018,7 +1016,8 @@ func TestFormatRegistryPolicy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := formatRegistryPolicy(tt.input)
+			result, cleanup, err := inlinePolicyToTempFile("registry-policy", tt.input)
+			t.Cleanup(cleanup)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -1036,7 +1035,7 @@ func TestFormatRegistryPolicy(t *testing.T) {
 	}
 }
 
-func TestFormatSecretsPolicy(t *testing.T) {
+func TestInlinePolicyToTempFile_SecretsPolicy(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       any
@@ -1067,8 +1066,6 @@ func TestFormatSecretsPolicy(t *testing.T) {
 				data, err := os.ReadFile(result)
 				require.NoError(t, err)
 				assert.Contains(t, string(data), "check-env-vars")
-				// Cleanup temp file
-				os.Remove(result)
 			},
 		},
 		{
@@ -1081,7 +1078,8 @@ func TestFormatSecretsPolicy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := formatSecretsPolicy(tt.input)
+			result, cleanup, err := inlinePolicyToTempFile("secrets-policy", tt.input)
+			t.Cleanup(cleanup)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -1230,7 +1228,7 @@ func TestLoadAllConfig_InlinePolicy(t *testing.T) {
 	assert.Contains(t, secretsObj, "check-env-vars")
 }
 
-func TestFormatLabelsPolicy(t *testing.T) {
+func TestInlinePolicyToTempFile_LabelsPolicy(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       any
@@ -1264,8 +1262,6 @@ func TestFormatLabelsPolicy(t *testing.T) {
 				require.NoError(t, err)
 				assert.Contains(t, string(data), "required-labels")
 				assert.Contains(t, string(data), "maintainer")
-				// Cleanup temp file
-				os.Remove(result)
 			},
 		},
 		{
@@ -1278,7 +1274,8 @@ func TestFormatLabelsPolicy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := formatLabelsPolicy(tt.input)
+			result, cleanup, err := inlinePolicyToTempFile("labels-policy", tt.input)
+			t.Cleanup(cleanup)
 
 			if tt.wantErr {
 				require.Error(t, err)

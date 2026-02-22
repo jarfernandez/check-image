@@ -195,15 +195,22 @@ func loadAllConfig(path string) (*allConfig, error) {
 
 // applyConfigValues applies configuration file values to package-level variables,
 // but only for flags that were not explicitly set on the CLI.
-func applyConfigValues(cmd *cobra.Command, cfg *allConfig) {
+// It returns a cleanup function that removes any temporary files created for
+// inline policy objects; the caller must defer the returned function.
+func applyConfigValues(cmd *cobra.Command, cfg *allConfig) func() {
 	applyAgeConfig(cmd, cfg.Checks.Age)
 	applySizeConfig(cmd, cfg.Checks.Size)
 	applyPortsConfig(cmd, cfg.Checks.Ports)
-	applyRegistryConfig(cmd, cfg.Checks.Registry)
-	applySecretsConfig(cmd, cfg.Checks.Secrets)
-	applyLabelsConfig(cmd, cfg.Checks.Labels)
+	cleanupRegistry := applyRegistryConfig(cmd, cfg.Checks.Registry)
+	cleanupSecrets := applySecretsConfig(cmd, cfg.Checks.Secrets)
+	cleanupLabels := applyLabelsConfig(cmd, cfg.Checks.Labels)
 	applyEntrypointConfig(cmd, cfg.Checks.Entrypoint)
 	applyPlatformConfig(cmd, cfg.Checks.Platform)
+	return func() {
+		cleanupRegistry()
+		cleanupSecrets()
+		cleanupLabels()
+	}
 }
 
 func applyAgeConfig(cmd *cobra.Command, cfg *ageCheckConfig) {
@@ -230,28 +237,32 @@ func applyPortsConfig(cmd *cobra.Command, cfg *portsCheckConfig) {
 	}
 }
 
-func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) {
+func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) func() {
 	if cfg != nil && cfg.RegistryPolicy != nil && !cmd.Flags().Changed("registry-policy") {
-		formatted, err := formatRegistryPolicy(cfg.RegistryPolicy)
+		path, cleanup, err := inlinePolicyToTempFile("registry-policy", cfg.RegistryPolicy)
 		if err != nil {
 			log.Errorf("Failed to format registry policy: %v", err)
-			return
+			return func() {}
 		}
-		registryPolicy = formatted
+		registryPolicy = path
+		return cleanup
 	}
+	return func() {}
 }
 
-func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) {
+func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) func() {
 	if cfg == nil {
-		return
+		return func() {}
 	}
+	cleanup := func() {}
 	if cfg.SecretsPolicy != nil && !cmd.Flags().Changed("secrets-policy") {
-		formatted, err := formatSecretsPolicy(cfg.SecretsPolicy)
+		path, cl, err := inlinePolicyToTempFile("secrets-policy", cfg.SecretsPolicy)
 		if err != nil {
 			log.Errorf("Failed to format secrets policy: %v", err)
-			return
+		} else {
+			secretsPolicy = path
+			cleanup = cl
 		}
-		secretsPolicy = formatted
 	}
 	if cfg.SkipEnvVars != nil && !cmd.Flags().Changed("skip-env-vars") {
 		skipEnvVars = *cfg.SkipEnvVars
@@ -259,6 +270,7 @@ func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) {
 	if cfg.SkipFiles != nil && !cmd.Flags().Changed("skip-files") {
 		skipFiles = *cfg.SkipFiles
 	}
+	return cleanup
 }
 
 // formatAllowedPorts converts the allowed-ports config value to a comma-separated string.
@@ -277,79 +289,54 @@ func formatAllowedPorts(v any) string {
 	}
 }
 
-// formatRegistryPolicy converts inline policy object to temp file path
-func formatRegistryPolicy(v any) (string, error) {
+// inlinePolicyToTempFile converts an inline policy object (map[string]any) to a
+// temporary JSON file so it can be passed to the policy loaders that expect a
+// file path. If v is already a string it is returned as-is with a no-op cleanup.
+// The caller must invoke the returned cleanup function when done (typically via defer).
+func inlinePolicyToTempFile(prefix string, v any) (path string, cleanup func(), err error) {
 	switch policy := v.(type) {
 	case string:
-		return policy, nil // Already a file path
+		return policy, func() {}, nil
 	case map[string]any:
-		// Marshal to JSON and create temp file
 		data, err := json.Marshal(policy)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal inline registry policy: %w", err)
+			return "", func() {}, fmt.Errorf("failed to marshal inline %s: %w", prefix, err)
 		}
-
-		tmpFile, err := os.CreateTemp("", "registry-policy-*.json")
+		tmpFile, err := os.CreateTemp("", prefix+"-*.json")
 		if err != nil {
-			return "", fmt.Errorf("failed to create temp file for inline policy: %w", err)
+			return "", func() {}, fmt.Errorf("failed to create temp file for inline %s: %w", prefix, err)
 		}
-		defer func() {
-			if closeErr := tmpFile.Close(); closeErr != nil {
-				log.Warnf("failed to close temp file: %v", closeErr)
-			}
-		}()
-
+		name := tmpFile.Name()
 		if _, err := tmpFile.Write(data); err != nil {
-			return "", fmt.Errorf("failed to write inline policy to temp file: %w", err)
+			_ = tmpFile.Close()
+			_ = os.Remove(name)
+			return "", func() {}, fmt.Errorf("failed to write inline %s to temp file: %w", prefix, err)
 		}
-
-		return tmpFile.Name(), nil
+		if err := tmpFile.Close(); err != nil {
+			_ = os.Remove(name)
+			return "", func() {}, fmt.Errorf("failed to close temp file for inline %s: %w", prefix, err)
+		}
+		return name, func() {
+			if removeErr := os.Remove(name); removeErr != nil && !os.IsNotExist(removeErr) {
+				log.Warnf("failed to remove temp file %s: %v", name, removeErr)
+			}
+		}, nil
 	default:
-		return "", fmt.Errorf("registry-policy must be either a string (file path) or an object (inline policy), got %T", v)
+		return "", func() {}, fmt.Errorf("%s must be either a string (file path) or an object (inline policy), got %T", prefix, v)
 	}
 }
 
-// formatSecretsPolicy converts inline policy object to temp file path
-func formatSecretsPolicy(v any) (string, error) {
-	switch policy := v.(type) {
-	case string:
-		return policy, nil // Already a file path
-	case map[string]any:
-		// Marshal to JSON and create temp file
-		data, err := json.Marshal(policy)
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal inline secrets policy: %w", err)
-		}
-
-		tmpFile, err := os.CreateTemp("", "secrets-policy-*.json")
-		if err != nil {
-			return "", fmt.Errorf("failed to create temp file for inline policy: %w", err)
-		}
-		defer func() {
-			if closeErr := tmpFile.Close(); closeErr != nil {
-				log.Warnf("failed to close temp file: %v", closeErr)
-			}
-		}()
-
-		if _, err := tmpFile.Write(data); err != nil {
-			return "", fmt.Errorf("failed to write inline policy to temp file: %w", err)
-		}
-
-		return tmpFile.Name(), nil
-	default:
-		return "", fmt.Errorf("secrets-policy must be either a string (file path) or an object (inline policy), got %T", v)
-	}
-}
-
-func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) {
+func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) func() {
 	if cfg != nil && cfg.LabelsPolicy != nil && !cmd.Flags().Changed("labels-policy") {
-		formatted, err := formatLabelsPolicy(cfg.LabelsPolicy)
+		path, cleanup, err := inlinePolicyToTempFile("labels-policy", cfg.LabelsPolicy)
 		if err != nil {
 			log.Errorf("Failed to format labels policy: %v", err)
-			return
+			return func() {}
 		}
-		labelsPolicy = formatted
+		labelsPolicy = path
+		return cleanup
 	}
+	return func() {}
 }
 
 func applyEntrypointConfig(cmd *cobra.Command, cfg *entrypointCheckConfig) {
@@ -377,37 +364,6 @@ func formatAllowedPlatforms(v any) string {
 		return platforms
 	default:
 		return fmt.Sprintf("%v", v)
-	}
-}
-
-func formatLabelsPolicy(v any) (string, error) {
-	switch policy := v.(type) {
-	case string:
-		return policy, nil // Already a file path
-	case map[string]any:
-		// Marshal to JSON and create temp file
-		data, err := json.Marshal(policy)
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal inline labels policy: %w", err)
-		}
-
-		tmpFile, err := os.CreateTemp("", "labels-policy-*.json")
-		if err != nil {
-			return "", fmt.Errorf("failed to create temp file for inline policy: %w", err)
-		}
-		defer func() {
-			if closeErr := tmpFile.Close(); closeErr != nil {
-				log.Warnf("failed to close temp file: %v", closeErr)
-			}
-		}()
-
-		if _, err := tmpFile.Write(data); err != nil {
-			return "", fmt.Errorf("failed to write inline policy to temp file: %w", err)
-		}
-
-		return tmpFile.Name(), nil
-	default:
-		return "", fmt.Errorf("labels-policy must be either a string (file path) or an object (inline policy), got %T", v)
 	}
 }
 
@@ -511,7 +467,8 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		if err != nil {
 			return err
 		}
-		applyConfigValues(cmd, cfg)
+		cleanup := applyConfigValues(cmd, cfg)
+		defer cleanup()
 	}
 
 	checks := determineChecks(cfg, skipMap, includeMap)
