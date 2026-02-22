@@ -24,7 +24,7 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Set the version you want to install (or use 'latest' tag from releases page)
-VERSION=0.17.1 # x-release-please-version
+VERSION=0.18.0 # x-release-please-version
 
 # macOS (Apple Silicon)
 curl -sL "https://github.com/jarfernandez/check-image/releases/download/v${VERSION}/check-image_${VERSION}_darwin_arm64.tar.gz" | tar xz
@@ -47,7 +47,7 @@ sudo mv check-image /usr/local/bin/
 # and extract to a directory in your PATH
 ```
 
-Pre-built binaries include the correct version number (e.g., `check-image version --short` returns `v0.17.1`). <!-- x-release-please-version -->
+Pre-built binaries include the correct version number (e.g., `check-image version --short` returns `v0.18.0`). <!-- x-release-please-version -->
 
 ### Install with Homebrew
 
@@ -73,7 +73,7 @@ brew upgrade check-image
 go install github.com/jarfernandez/check-image/cmd/check-image@latest
 
 # Or install a specific version
-go install github.com/jarfernandez/check-image/cmd/check-image@v0.17.1 # x-release-please-version
+go install github.com/jarfernandez/check-image/cmd/check-image@v0.18.0 # x-release-please-version
 ```
 
 This will install the `check-image` binary to your `GOBIN` directory.
@@ -145,7 +145,7 @@ Without the Docker socket mounted (the default), check-image automatically uses 
 **Using a specific version:**
 
 ```bash
-docker pull ghcr.io/jarfernandez/check-image:0.17.1 # x-release-please-version
+docker pull ghcr.io/jarfernandez/check-image:0.18.0 # x-release-please-version
 ```
 
 ## GitHub Action
@@ -155,7 +155,7 @@ Check Image is available as a GitHub Action for validating container images dire
 ### Basic Usage
 
 ```yaml
-- uses: jarfernandez/check-image@v0.17.1 # x-release-please-version
+- uses: jarfernandez/check-image@v0.18.0 # x-release-please-version
   with:
     image: nginx:latest
 ```
@@ -165,7 +165,7 @@ This runs all 10 checks with default settings. Checks that require additional co
 ### With a Config File
 
 ```yaml
-- uses: jarfernandez/check-image@v0.17.1 # x-release-please-version
+- uses: jarfernandez/check-image@v0.18.0 # x-release-please-version
   with:
     image: myorg/myapp:${{ github.sha }}
     config: .check-image/config.yaml
@@ -176,7 +176,7 @@ The config file determines which checks to run and their parameters. See [All Ch
 ### Running Specific Checks
 
 ```yaml
-- uses: jarfernandez/check-image@v0.17.1 # x-release-please-version
+- uses: jarfernandez/check-image@v0.18.0 # x-release-please-version
   with:
     image: nginx:latest
     checks: age,size,root-user
@@ -187,7 +187,7 @@ The config file determines which checks to run and their parameters. See [All Ch
 ### With Policy Files
 
 ```yaml
-- uses: jarfernandez/check-image@v0.17.1 # x-release-please-version
+- uses: jarfernandez/check-image@v0.18.0 # x-release-please-version
   with:
     image: ghcr.io/myorg/app:latest
     registry-policy: policies/registry-policy.yaml
@@ -200,7 +200,7 @@ The config file determines which checks to run and their parameters. See [All Ch
 Use `continue-on-error` to prevent the action from failing the workflow:
 
 ```yaml
-- uses: jarfernandez/check-image@v0.17.1 # x-release-please-version
+- uses: jarfernandez/check-image@v0.18.0 # x-release-please-version
   id: check
   continue-on-error: true
   with:
@@ -217,7 +217,7 @@ Use `continue-on-error` to prevent the action from failing the workflow:
 The action captures full JSON output for programmatic use in subsequent steps:
 
 ```yaml
-- uses: jarfernandez/check-image@v0.17.1 # x-release-please-version
+- uses: jarfernandez/check-image@v0.18.0 # x-release-please-version
   id: check
   continue-on-error: true
   with:
@@ -250,7 +250,7 @@ The action captures full JSON output for programmatic use in subsequent steps:
 | `skip-files` | No | `false` | Skip file system checks |
 | `allow-shell-form` | No | `false` | Allow shell form for entrypoint or cmd |
 | `log-level` | No | `info` | Log level |
-| `version` | No | `0.17.1` <!-- x-release-please-version --> | check-image version to use |
+| `version` | No | `0.18.0` <!-- x-release-please-version --> | check-image version to use |
 
 ### Outputs
 
