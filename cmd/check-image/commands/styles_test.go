@@ -16,6 +16,24 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestSectionHeader_ContainsName(t *testing.T) {
+	header := sectionHeader("size")
+	assert.Contains(t, header, "size")
+	assert.Contains(t, header, "──")
+}
+
+func TestSectionHeader_FallbackWidth(t *testing.T) {
+	// bytes.Buffer is not a TTY → terminalWidth() falls back to defaultTermWidth.
+	// In "never" mode there are no ANSI codes, so rune count equals visible width.
+	var buf bytes.Buffer
+	initRenderer("never", &buf)
+	t.Cleanup(func() { initRenderer("never", os.Stdout) })
+
+	header := sectionHeader("age")
+	assert.Contains(t, header, "── age")
+	assert.Equal(t, defaultTermWidth, len([]rune(header)))
+}
+
 func TestInitRenderer_Never(t *testing.T) {
 	var buf bytes.Buffer
 	initRenderer("never", &buf)

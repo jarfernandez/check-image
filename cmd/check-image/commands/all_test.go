@@ -627,11 +627,11 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, output, "=== age ===")
-	assert.Contains(t, output, "=== size ===")
-	assert.Contains(t, output, "=== root-user ===")
-	assert.Contains(t, output, "=== secrets ===")
-	assert.NotContains(t, output, "=== registry ===")
+	assert.Contains(t, output, "── age")
+	assert.Contains(t, output, "── size")
+	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── secrets")
+	assert.NotContains(t, output, "── registry")
 }
 
 func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
@@ -652,10 +652,10 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 
 	assert.Equal(t, ValidationFailed, Result)
 	// Verify other checks still ran
-	assert.Contains(t, output, "=== age ===")
-	assert.Contains(t, output, "=== size ===")
-	assert.Contains(t, output, "=== root-user ===")
-	assert.Contains(t, output, "=== secrets ===")
+	assert.Contains(t, output, "── age")
+	assert.Contains(t, output, "── size")
+	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── secrets")
 }
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
@@ -675,8 +675,8 @@ func TestRunAll_SkipFailingCheck(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.NotContains(t, output, "=== root-user ===")
-	assert.NotContains(t, output, "=== registry ===")
+	assert.NotContains(t, output, "── root-user")
+	assert.NotContains(t, output, "── registry")
 }
 
 func TestRunAll_ConfigSelectsSubset(t *testing.T) {
@@ -706,12 +706,12 @@ func TestRunAll_ConfigSelectsSubset(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, output, "=== age ===")
-	assert.Contains(t, output, "=== root-user ===")
-	assert.NotContains(t, output, "=== size ===")
-	assert.NotContains(t, output, "=== ports ===")
-	assert.NotContains(t, output, "=== registry ===")
-	assert.NotContains(t, output, "=== secrets ===")
+	assert.Contains(t, output, "── age")
+	assert.Contains(t, output, "── root-user")
+	assert.NotContains(t, output, "── size")
+	assert.NotContains(t, output, "── ports")
+	assert.NotContains(t, output, "── registry")
+	assert.NotContains(t, output, "── secrets")
 	assert.Contains(t, output, "Running 2 checks")
 }
 
@@ -745,9 +745,9 @@ func TestRunAll_ConfigPlusSkip(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, output, "=== age ===")
-	assert.Contains(t, output, "=== root-user ===")
-	assert.NotContains(t, output, "=== size ===")
+	assert.Contains(t, output, "── age")
+	assert.Contains(t, output, "── root-user")
+	assert.NotContains(t, output, "── size")
 	assert.Contains(t, output, "Running 2 checks")
 }
 
@@ -917,9 +917,9 @@ func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 
 	assert.Equal(t, ValidationFailed, Result)
 	// root-user should have run and failed
-	assert.Contains(t, output, "=== root-user ===")
+	assert.Contains(t, output, "── root-user")
 	// secrets comes after root-user, should NOT have run
-	assert.NotContains(t, output, "=== secrets ===")
+	assert.NotContains(t, output, "── secrets")
 }
 
 func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
@@ -943,10 +943,10 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 
 	assert.Equal(t, ExecutionError, Result)
 	// ports should have run (and errored)
-	assert.Contains(t, output, "=== ports ===")
+	assert.Contains(t, output, "── ports")
 	// root-user and secrets come after ports, should NOT have run
-	assert.NotContains(t, output, "=== root-user ===")
-	assert.NotContains(t, output, "=== secrets ===")
+	assert.NotContains(t, output, "── root-user")
+	assert.NotContains(t, output, "── secrets")
 }
 
 func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
@@ -968,10 +968,10 @@ func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 
 	assert.Equal(t, ValidationFailed, Result)
 	// All checks should have run despite root-user failure
-	assert.Contains(t, output, "=== age ===")
-	assert.Contains(t, output, "=== size ===")
-	assert.Contains(t, output, "=== root-user ===")
-	assert.Contains(t, output, "=== secrets ===")
+	assert.Contains(t, output, "── age")
+	assert.Contains(t, output, "── size")
+	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── secrets")
 }
 
 func TestFormatRegistryPolicy(t *testing.T) {
@@ -1426,7 +1426,7 @@ func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "=== healthcheck ===")
+	assert.Contains(t, out, "── healthcheck")
 	assert.Contains(t, out, "Image has a healthcheck defined")
 }
 
@@ -1446,7 +1446,7 @@ func TestRunAll_HealthcheckFailsWithoutHealthcheck(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationFailed, Result)
-	assert.Contains(t, out, "=== healthcheck ===")
+	assert.Contains(t, out, "── healthcheck")
 	assert.Contains(t, out, "Image does not have a healthcheck defined")
 }
 
@@ -1605,14 +1605,14 @@ func TestRunAll_IncludeSelectsSubset(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "=== age ===")
-	assert.Contains(t, out, "=== root-user ===")
-	assert.NotContains(t, out, "=== size ===")
-	assert.NotContains(t, out, "=== ports ===")
-	assert.NotContains(t, out, "=== registry ===")
-	assert.NotContains(t, out, "=== secrets ===")
-	assert.NotContains(t, out, "=== healthcheck ===")
-	assert.NotContains(t, out, "=== labels ===")
+	assert.Contains(t, out, "── age")
+	assert.Contains(t, out, "── root-user")
+	assert.NotContains(t, out, "── size")
+	assert.NotContains(t, out, "── ports")
+	assert.NotContains(t, out, "── registry")
+	assert.NotContains(t, out, "── secrets")
+	assert.NotContains(t, out, "── healthcheck")
+	assert.NotContains(t, out, "── labels")
 	assert.Contains(t, out, "Running 2 checks")
 }
 
@@ -1645,9 +1645,9 @@ func TestRunAll_IncludeOverridesConfig(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "=== size ===")
-	assert.NotContains(t, out, "=== age ===")
-	assert.NotContains(t, out, "=== root-user ===")
+	assert.Contains(t, out, "── size")
+	assert.NotContains(t, out, "── age")
+	assert.NotContains(t, out, "── root-user")
 	assert.Contains(t, out, "Running 1 checks")
 }
 
@@ -1714,7 +1714,7 @@ func TestRunAll_EntrypointPassesWithExecForm(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "=== entrypoint ===")
+	assert.Contains(t, out, "── entrypoint")
 	assert.Contains(t, out, "exec-form entrypoint")
 }
 
@@ -1751,7 +1751,7 @@ func TestRunAll_EntrypointSkipped(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	assert.NotContains(t, out, "=== entrypoint ===")
+	assert.NotContains(t, out, "── entrypoint")
 }
 
 func TestRunAll_EntrypointWithAllowShellFormViaConfig(t *testing.T) {
@@ -1801,7 +1801,7 @@ func TestRunAll_PlatformPasses(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "=== platform ===")
+	assert.Contains(t, out, "── platform")
 	assert.Contains(t, out, "linux/amd64")
 }
 
@@ -1821,7 +1821,7 @@ func TestRunAll_PlatformFails(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationFailed, Result)
-	assert.Contains(t, out, "=== platform ===")
+	assert.Contains(t, out, "── platform")
 	assert.Contains(t, out, "not in the allowed list")
 }
 
@@ -1862,7 +1862,7 @@ func TestRunAll_PlatformWithConfig(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "=== platform ===")
+	assert.Contains(t, out, "── platform")
 }
 
 func TestDetermineChecks_PlatformInConfig(t *testing.T) {

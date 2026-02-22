@@ -576,7 +576,7 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 		log.Debugf("Running check: %s", check.name)
 
 		if OutputFmt == output.FormatText {
-			fmt.Println(headerStyle.Render(fmt.Sprintf("=== %s ===", check.name)))
+			fmt.Println(sectionHeader(check.name))
 		}
 
 		result, err := check.run(imageName)
