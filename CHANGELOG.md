@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0](https://github.com/jarfernandez/check-image/compare/v0.17.1...v0.18.0) (2026-02-22)
+
+
+### Features
+
+* Add `--color` flag with terminal color support via Lip Gloss ([#96](https://github.com/jarfernandez/check-image/issues/96)) ([e03eaa6](https://github.com/jarfernandez/check-image/commit/e03eaa653d5a1be0b21767298900ed0ef53180c0))
+
 ## [0.17.1](https://github.com/jarfernandez/check-image/compare/v0.17.0...v0.17.1) (2026-02-22)
 
 
