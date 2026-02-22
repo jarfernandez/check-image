@@ -309,11 +309,11 @@ func inlinePolicyToTempFile(prefix string, v any) (path string, cleanup func(), 
 		name := tmpFile.Name()
 		if _, err := tmpFile.Write(data); err != nil {
 			_ = tmpFile.Close()
-			_ = os.Remove(name) //nolint:gosec // name comes from os.CreateTemp, not user input
+			_ = os.Remove(name) // #nosec G703 -- name comes from os.CreateTemp, not user input
 			return "", func() {}, fmt.Errorf("failed to write inline %s to temp file: %w", prefix, err)
 		}
 		if err := tmpFile.Close(); err != nil {
-			_ = os.Remove(name) //nolint:gosec // name comes from os.CreateTemp, not user input
+			_ = os.Remove(name) // #nosec G703 -- name comes from os.CreateTemp, not user input
 			return "", func() {}, fmt.Errorf("failed to close temp file for inline %s: %w", prefix, err)
 		}
 		return name, func() {
