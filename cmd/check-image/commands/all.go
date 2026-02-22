@@ -539,7 +539,8 @@ func runAll(cmd *cobra.Command, imageName string) error {
 	}
 
 	if OutputFmt == output.FormatText {
-		fmt.Printf("Running %d checks on image %s\n\n", len(checks), imageName)
+		fmt.Println(headerStyle.Render(fmt.Sprintf("Running %d checks on image %s", len(checks), imageName)))
+		fmt.Println()
 	}
 
 	results := executeChecks(checks, imageName)
@@ -575,7 +576,7 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 		log.Debugf("Running check: %s", check.name)
 
 		if OutputFmt == output.FormatText {
-			fmt.Printf("=== %s ===\n", check.name)
+			fmt.Println(sectionHeader(check.name))
 		}
 
 		result, err := check.run(imageName)

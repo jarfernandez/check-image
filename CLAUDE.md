@@ -54,10 +54,13 @@ The `UpdateResult()` helper in `root.go` enforces this precedence. The iota orde
 
 ### Output Format
 - Controlled by the `--output`/`-o` global flag (values: `text` default, `json`)
+- Color output controlled by the `--color` global flag (values: `auto` default, `always`, `never`); only applies to `--output=text`
 - `internal/output/format.go`: Defines `Format` type, `ParseFormat()`, and `RenderJSON()` helper
 - `internal/output/results.go`: Result structs (`CheckResult`, `AgeDetails`, `SizeDetails`, `PortsDetails`, `RegistryDetails`, `RootUserDetails`, `HealthcheckDetails`, `SecretsDetails`, `LabelsDetails`, `AllResult`, `Summary`, `VersionResult`)
 - `cmd/check-image/commands/render.go`: Text renderers for each check; `renderResult()` dispatches to JSON or text based on `OutputFmt`
+- `cmd/check-image/commands/styles.go`: Lip Gloss styles (`PassStyle`, `FailStyle`, `headerStyle`, `keyStyle`, `valueStyle`, `dimStyle`); `initRenderer(colorMode, out)` configures the renderer and updates all styles; `statusPrefix(passed)` returns colored ✓/✗; called from `PersistentPreRunE` after `--color` is parsed
 - In JSON mode, `main.go` suppresses the final "Validation succeeded/failed" text message (it's already in the JSON)
+- `--color` resolution order: `NO_COLOR` env var overrides everything (including `always`) → `never` → `always` (respecting `NO_COLOR`) → `auto` (TTY + `NO_COLOR` + `CLICOLOR_FORCE` via termenv)
 
 ### Image Retrieval Strategy
 The `imageutil` package implements a transport-aware retrieval strategy with fallback support:
@@ -411,7 +414,7 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 92.2% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 92.3% overall coverage.
 - Every new feature must include complete unit tests. Existing tests affected by the change must be updated.
 - After adding or modifying tests, run the full test suite (`go test ./...`) to confirm nothing is broken.
 - Before committing, run end-to-end verification of both the new feature and any related functionality that may have been affected.

@@ -18,7 +18,7 @@ func run(stdout io.Writer) int {
 	// The detailed error message is already logged to stderr by Execute().
 	if commands.Result == commands.ExecutionError {
 		if commands.OutputFmt != output.FormatJSON {
-			if _, err := fmt.Fprintln(stdout, "Execution error"); err != nil {
+			if _, err := fmt.Fprintln(stdout, commands.FailStyle.Render("Execution error")); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 			}
 		}
@@ -34,14 +34,14 @@ func run(stdout io.Writer) int {
 	}
 
 	if commands.Result == commands.ValidationFailed {
-		if _, err := fmt.Fprintln(stdout, "Validation failed"); err != nil {
+		if _, err := fmt.Fprintln(stdout, commands.FailStyle.Render("Validation failed")); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 		}
 		return 1
 	}
 
 	if commands.Result == commands.ValidationSucceeded {
-		if _, err := fmt.Fprintln(stdout, "Validation succeeded"); err != nil {
+		if _, err := fmt.Fprintln(stdout, commands.PassStyle.Render("Validation succeeded")); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 		}
 	}

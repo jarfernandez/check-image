@@ -26,6 +26,7 @@ var Result = ValidationSkipped
 
 var logLevel string
 var outputFormat string
+var colorMode string
 var registryUsername string
 var registryPassword string
 var registryPasswordStdin bool
@@ -52,6 +53,14 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		OutputFmt = f
+
+		switch colorMode {
+		case "auto", "always", "never":
+			// valid
+		default:
+			return fmt.Errorf("unsupported color mode %q, valid values are: auto, always, never", colorMode)
+		}
+		initRenderer(colorMode, os.Stdout)
 
 		// Resolve registry credentials: CLI flags > env vars > DefaultKeychain
 		username := registryUsername
@@ -108,6 +117,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "info", "Sets the log level (trace, debug, info, warn, error, fatal, panic) (optional)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "text", "Output format: text, json (optional)")
+	rootCmd.PersistentFlags().StringVar(&colorMode, "color", "auto", "Color output: auto, always, never (only applies to --output=text) (optional)")
 	rootCmd.PersistentFlags().StringVar(&registryUsername, "username", "", "Registry username for authentication (env: CHECK_IMAGE_USERNAME)")
 	rootCmd.PersistentFlags().StringVar(&registryPassword, "password", "", "Registry password or token for authentication (env: CHECK_IMAGE_PASSWORD). Caution: visible in process list. Prefer --password-stdin or env var.")
 	rootCmd.PersistentFlags().BoolVar(&registryPasswordStdin, "password-stdin", false, "Read registry password from stdin. Cannot be combined with other flags that also read from stdin (--config -, --allowed-ports @-, etc.)")
