@@ -90,7 +90,7 @@ go install ./cmd/check-image
 
 This is useful for development. The version will show as `dev`.
 
-### Docker
+## Docker
 
 Check Image is available as a multi-arch Docker image (linux/amd64, linux/arm64) from GitHub Container Registry:
 
