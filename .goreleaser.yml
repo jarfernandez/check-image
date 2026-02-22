@@ -37,13 +37,13 @@ builds:
         goarch: arm64
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: >-
       check-image_{{.Version}}_{{.Os}}_{{.Arch}}
 
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
     files:
       - LICENSE
@@ -68,9 +68,6 @@ release:
 
 brews:
   - name: check-image
-    ids:
-      - check-image
-
     repository:
       owner: jarfernandez
       name: homebrew-tap
