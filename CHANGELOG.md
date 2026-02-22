@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1](https://github.com/jarfernandez/check-image/compare/v0.17.0...v0.17.1) (2026-02-22)
+
+
+### Bug Fixes
+
+* Fix GoReleaser brews config and archive format deprecations ([#93](https://github.com/jarfernandez/check-image/issues/93)) ([0a1e71b](https://github.com/jarfernandez/check-image/commit/0a1e71bb223b4058d3b975654a748f5e0f0b1e73))
+
 ## [0.17.0](https://github.com/jarfernandez/check-image/compare/v0.16.0...v0.17.0) (2026-02-21)
 
 
