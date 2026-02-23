@@ -663,6 +663,36 @@ func TestRenderSecretsText_MultipleLayers(t *testing.T) {
 	assert.Contains(t, captured, "/layer2/secret3")
 }
 
+func TestRenderSecretsText_SparseLayerIndices(t *testing.T) {
+	// Findings in layers 0 and 20 with only 2 map entries.
+	// The old len(layerMap)+10 loop (range 0..11) would silently drop layer 20.
+	result := &output.CheckResult{
+		Check:  "secrets",
+		Image:  "app:latest",
+		Passed: false,
+		Details: output.SecretsDetails{
+			EnvVarFindings: []output.EnvVarFinding{},
+			FileFindings: []output.FileFinding{
+				{LayerIndex: 0, Path: "/layer0/secret", Description: "First layer secret"},
+				{LayerIndex: 20, Path: "/layer20/secret", Description: "High layer secret"},
+			},
+			TotalFindings: 2,
+			EnvVarCount:   0,
+			FileCount:     2,
+		},
+		Message: "Secrets found",
+	}
+
+	captured := captureStdout(t, func() {
+		renderSecretsText(result)
+	})
+
+	assert.Contains(t, captured, "Layer 1:")
+	assert.Contains(t, captured, "/layer0/secret (First layer secret)")
+	assert.Contains(t, captured, "Layer 21:")
+	assert.Contains(t, captured, "/layer20/secret (High layer secret)")
+}
+
 func TestRenderLabelsText_AllValid(t *testing.T) {
 	result := &output.CheckResult{
 		Check:  "labels",
