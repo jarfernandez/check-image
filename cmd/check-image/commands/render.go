@@ -16,6 +16,13 @@ func renderResult(r *output.CheckResult) error {
 		return output.RenderJSON(os.Stdout, r)
 	}
 
+	// Error results have no Details; guard here to prevent a nil type assertion
+	// panic in the check-specific renderers below.
+	if r.Error != "" {
+		fmt.Println(FailStyle.Render(r.Message))
+		return nil
+	}
+
 	switch r.Check {
 	case "age":
 		renderAgeText(r)

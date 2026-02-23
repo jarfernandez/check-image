@@ -152,6 +152,28 @@ func TestRenderResult_TextMode(t *testing.T) {
 	}
 }
 
+func TestRenderResult_TextMode_ErrorResult(t *testing.T) {
+	// Regression test for F-02: a result with Error set has Details == nil.
+	// renderResult must not panic with a bare type assertion.
+	OutputFmt = output.FormatText
+
+	result := &output.CheckResult{
+		Check:   "age",
+		Image:   "nginx:latest",
+		Passed:  false,
+		Message: "check failed with error: image not found",
+		Error:   "image not found",
+		// Details intentionally nil
+	}
+
+	captured := captureStdout(t, func() {
+		err := renderResult(result)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, captured, "check failed with error: image not found")
+}
+
 func TestRenderResult_JSONMode(t *testing.T) {
 	// Set JSON output mode
 	OutputFmt = output.FormatJSON
