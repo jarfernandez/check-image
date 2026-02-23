@@ -141,12 +141,19 @@ func renderSecretsText(r *output.CheckResult) {
 			layerMap[finding.LayerIndex] = append(layerMap[finding.LayerIndex], finding)
 		}
 
-		for layerIdx := 0; layerIdx < len(layerMap)+10; layerIdx++ {
-			if findings, ok := layerMap[layerIdx]; ok {
-				fmt.Printf("  Layer %d:\n", layerIdx+1)
-				for _, finding := range findings {
-					fmt.Printf("    - %s (%s)\n", FailStyle.Render(finding.Path), finding.Description)
-				}
+		// Collect and sort layer indices so findings are always printed in order,
+		// regardless of how sparse the layer indices are.
+		layerIndices := make([]int, 0, len(layerMap))
+		for idx := range layerMap {
+			layerIndices = append(layerIndices, idx)
+		}
+		sort.Ints(layerIndices)
+
+		for _, layerIdx := range layerIndices {
+			findings := layerMap[layerIdx]
+			fmt.Printf("  Layer %d:\n", layerIdx+1)
+			for _, finding := range findings {
+				fmt.Printf("    - %s (%s)\n", FailStyle.Render(finding.Path), finding.Description)
 			}
 		}
 	}
