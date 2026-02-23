@@ -20,10 +20,11 @@ var (
 	PassStyle lipgloss.Style
 	FailStyle lipgloss.Style
 
-	headerStyle lipgloss.Style
-	keyStyle    lipgloss.Style
-	valueStyle  lipgloss.Style
-	dimStyle    lipgloss.Style
+	headerStyle  lipgloss.Style
+	sectionStyle lipgloss.Style
+	keyStyle     lipgloss.Style
+	valueStyle   lipgloss.Style
+	dimStyle     lipgloss.Style
 )
 
 // termOut stores the output writer supplied to initRenderer for terminal width detection.
@@ -50,6 +51,7 @@ func initRenderer(colorMode string, out io.Writer) {
 	PassStyle = r.NewStyle().Foreground(lipgloss.Color("2")) // green
 	FailStyle = r.NewStyle().Foreground(lipgloss.Color("1")) // red
 	headerStyle = r.NewStyle().Bold(true)
+	sectionStyle = r.NewStyle().Bold(true).Foreground(lipgloss.Color("12")) // bright blue
 	keyStyle = r.NewStyle().Bold(true)
 	valueStyle = r.NewStyle().Foreground(lipgloss.Color("6")) // cyan
 	dimStyle = r.NewStyle().Faint(true)
@@ -84,11 +86,8 @@ func sectionHeader(name string) string {
 		rightLen = 2
 	}
 
-	left := dimStyle.Render(leftPrefix)
-	middle := headerStyle.Render(name)
-	right := dimStyle.Render(rightPrefix + strings.Repeat("─", rightLen))
-
-	return left + middle + right
+	line := leftPrefix + name + rightPrefix + strings.Repeat("─", rightLen)
+	return sectionStyle.Render(line)
 }
 
 // statusPrefix returns a colored ✓ or ✗ symbol followed by a space.
