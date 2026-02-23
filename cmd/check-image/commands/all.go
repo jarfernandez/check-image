@@ -74,8 +74,9 @@ type platformCheckConfig struct {
 
 // checkRunner represents a single check to be executed.
 type checkRunner struct {
-	name string
-	run  func(imageName string) (*output.CheckResult, error)
+	name   string
+	run    func(imageName string) (*output.CheckResult, error)
+	render func(r *output.CheckResult) // text renderer; paired with run at definition time
 }
 
 var configFile string
@@ -372,9 +373,10 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 	var checks []checkRunner
 
 	type checkDef struct {
-		name    string
-		enabled bool
-		runFunc func(string) (*output.CheckResult, error)
+		name       string
+		enabled    bool
+		runFunc    func(string) (*output.CheckResult, error)
+		renderFunc func(*output.CheckResult)
 	}
 
 	var defs []checkDef
@@ -382,30 +384,30 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 	if cfg != nil {
 		// With config: only run checks present in the config
 		defs = []checkDef{
-			{"age", cfg.Checks.Age != nil, runAge},
-			{"size", cfg.Checks.Size != nil, runSize},
-			{"ports", cfg.Checks.Ports != nil, runPortsForAll},
-			{"registry", cfg.Checks.Registry != nil, runRegistry},
-			{"root-user", cfg.Checks.RootUser != nil, runRootUser},
-			{"secrets", cfg.Checks.Secrets != nil, runSecrets},
-			{"healthcheck", cfg.Checks.Healthcheck != nil, runHealthcheck},
-			{"labels", cfg.Checks.Labels != nil, runLabels},
-			{"entrypoint", cfg.Checks.Entrypoint != nil, runEntrypoint},
-			{"platform", cfg.Checks.Platform != nil, runPlatformForAll},
+			{"age", cfg.Checks.Age != nil, runAge, renderAgeText},
+			{"size", cfg.Checks.Size != nil, runSize, renderSizeText},
+			{"ports", cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
+			{"registry", cfg.Checks.Registry != nil, runRegistry, renderRegistryText},
+			{"root-user", cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
+			{"secrets", cfg.Checks.Secrets != nil, runSecrets, renderSecretsText},
+			{"healthcheck", cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
+			{"labels", cfg.Checks.Labels != nil, runLabels, renderLabelsText},
+			{"entrypoint", cfg.Checks.Entrypoint != nil, runEntrypoint, renderEntrypointText},
+			{"platform", cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
 		}
 	} else {
 		// Without config: run all checks
 		defs = []checkDef{
-			{"age", true, runAge},
-			{"size", true, runSize},
-			{"ports", true, runPortsForAll},
-			{"registry", true, runRegistry},
-			{"root-user", true, runRootUser},
-			{"secrets", true, runSecrets},
-			{"healthcheck", true, runHealthcheck},
-			{"labels", true, runLabels},
-			{"entrypoint", true, runEntrypoint},
-			{"platform", true, runPlatformForAll},
+			{"age", true, runAge, renderAgeText},
+			{"size", true, runSize, renderSizeText},
+			{"ports", true, runPortsForAll, renderPortsText},
+			{"registry", true, runRegistry, renderRegistryText},
+			{"root-user", true, runRootUser, renderRootUserText},
+			{"secrets", true, runSecrets, renderSecretsText},
+			{"healthcheck", true, runHealthcheck, renderHealthcheckText},
+			{"labels", true, runLabels, renderLabelsText},
+			{"entrypoint", true, runEntrypoint, renderEntrypointText},
+			{"platform", true, runPlatformForAll, renderPlatformText},
 		}
 	}
 
@@ -413,12 +415,12 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 		if includeMap != nil {
 			// --include mode: only run checks explicitly listed
 			if includeMap[def.name] {
-				checks = append(checks, checkRunner{name: def.name, run: def.runFunc})
+				checks = append(checks, checkRunner{name: def.name, run: def.runFunc, render: def.renderFunc})
 			}
 		} else {
 			// Default/skip mode: use config/default enablement minus skip
 			if def.enabled && !skipMap[def.name] {
-				checks = append(checks, checkRunner{name: def.name, run: def.runFunc})
+				checks = append(checks, checkRunner{name: def.name, run: def.runFunc, render: def.renderFunc})
 			}
 		}
 	}
@@ -552,10 +554,8 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 		} else {
 			results = append(results, *result)
 
-			if OutputFmt == output.FormatText {
-				if renderErr := renderResult(result); renderErr != nil {
-					log.Errorf("Failed to render result for %s: %v", check.name, renderErr)
-				}
+			if OutputFmt == output.FormatText && check.render != nil {
+				check.render(result)
 			}
 
 			if result.Passed {

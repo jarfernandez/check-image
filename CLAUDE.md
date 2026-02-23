@@ -414,7 +414,7 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 92.7% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 92.5% overall coverage.
 - Every new feature must include complete unit tests. Existing tests affected by the change must be updated.
 - After adding or modifying tests, run the full test suite (`go test ./...`) to confirm nothing is broken.
 - Before committing, run end-to-end verification of both the new feature and any related functionality that may have been affected.
