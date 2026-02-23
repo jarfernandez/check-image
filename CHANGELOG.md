@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0](https://github.com/jarfernandez/check-image/compare/v0.18.0...v0.19.0) (2026-02-23)
+
+
+### Features
+
+* Add colored section separators to the `all` command output ([#103](https://github.com/jarfernandez/check-image/issues/103)) ([6e49bc5](https://github.com/jarfernandez/check-image/commit/6e49bc50f524571fad8a02b27948cbd42422eaa8))
+
+
+### Bug Fixes
+
+* Eliminate temp file leak and deduplicate inline policy formatters ([#98](https://github.com/jarfernandez/check-image/issues/98)) ([7976514](https://github.com/jarfernandez/check-image/commit/797651432b3f086270a1420d815533b40442d7ad))
+* Guard renderResult against nil Details panic on error results ([#100](https://github.com/jarfernandez/check-image/issues/100)) ([dbb5076](https://github.com/jarfernandez/check-image/commit/dbb5076ad6a94c0d17eb8e06f8b7b212d1f8a6d5))
+* Replace magic +10 layer loop with sorted key iteration in secrets renderer ([#101](https://github.com/jarfernandez/check-image/issues/101)) ([15413c6](https://github.com/jarfernandez/check-image/commit/15413c6cde792b275d9dd125cab821f042e871c6))
+
 ## [0.18.0](https://github.com/jarfernandez/check-image/compare/v0.17.1...v0.18.0) (2026-02-22)
 
 
