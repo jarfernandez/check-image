@@ -46,11 +46,7 @@ Precedence rules:
   4. CLI flags override config file values
   5. --include and --skip always take precedence over the config file
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image all nginx:latest --include age,size,root-user --max-age 30 --max-size 200
   check-image all nginx:latest --skip registry,secrets,labels,platform
   check-image all nginx:latest --allowed-platforms linux/amd64,linux/arm64 --skip registry,labels

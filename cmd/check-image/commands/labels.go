@@ -20,11 +20,7 @@ var labelsCmd = &cobra.Command{
 The labels validation checks that required OCI/Docker labels exist in the image
 and optionally validates their values against exact matches or regex patterns.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image labels nginx:latest --labels-policy labels-policy.json
   check-image labels nginx:latest --labels-policy labels-policy.yaml
   check-image labels nginx:latest --labels-policy labels-policy.yaml -o json

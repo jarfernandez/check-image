@@ -13,11 +13,7 @@ var healthcheckCmd = &cobra.Command{
 	Short: "Validate that the image has a healthcheck defined",
 	Long: `Validate that the image has a healthcheck defined.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image healthcheck nginx:latest
   check-image healthcheck nginx:latest -o json
   check-image healthcheck oci:/path/to/layout:1.0

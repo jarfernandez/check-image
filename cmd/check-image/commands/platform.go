@@ -26,11 +26,7 @@ var platformCmd = &cobra.Command{
 	Short: "Validate that the image platform is in the allowed list",
 	Long: `Validate that the image platform is in the allowed list.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image platform nginx:latest --allowed-platforms linux/amd64,linux/arm64
   check-image platform nginx:latest --allowed-platforms @config/allowed-platforms.json
   check-image platform nginx:latest --allowed-platforms @config/allowed-platforms.yaml

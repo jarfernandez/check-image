@@ -16,11 +16,7 @@ var ageCmd = &cobra.Command{
 	Short: "Validate container image age",
 	Long: `Validate the age of a container image.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image age nginx:latest
   check-image age nginx:latest --max-age 30
   check-image age oci:/path/to/layout:1.0

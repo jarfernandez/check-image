@@ -17,11 +17,7 @@ var registryCmd = &cobra.Command{
 	Short: "Validate that the image registry is trusted",
 	Long: `Validate that the image registry is trusted.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag
+` + imageArgFormatsDoc + `
 
 Note: Registry validation is only applicable for registry images and will be skipped for other transports.`,
 	Example: `  check-image registry nginx:latest --registry-policy registry-policy.json

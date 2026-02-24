@@ -19,11 +19,7 @@ var sizeCmd = &cobra.Command{
 	Short: "Validate container image size and number of layers",
 	Long: `Validate the size and number of layers of a container image.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image size nginx:latest
   check-image size nginx:latest --max-size 300 --max-layers 15
   check-image size oci:/path/to/layout:1.0

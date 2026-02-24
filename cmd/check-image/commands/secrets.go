@@ -22,11 +22,7 @@ var secretsCmd = &cobra.Command{
 	Long: `Validate that the image does not contain sensitive data (passwords, tokens, keys).
 Scans both environment variables and files across all image layers.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image secrets nginx:latest
   check-image secrets nginx:latest --secrets-policy secrets-policy.json
   check-image secrets nginx:latest --secrets-policy secrets-policy.yaml
