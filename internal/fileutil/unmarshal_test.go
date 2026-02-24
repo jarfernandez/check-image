@@ -16,7 +16,7 @@ type testConfig struct {
 	Count   int      `json:"count" yaml:"count"`
 }
 
-func TestUnmarshalConfigFile_JSON(t *testing.T) {
+func TestUnmarshalConfigData_JSON(t *testing.T) {
 	tests := []struct {
 		name        string
 		content     string
@@ -80,7 +80,7 @@ func TestUnmarshalConfigFile_JSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg testConfig
-			err := UnmarshalConfigFile([]byte(tt.content), &cfg, tt.fileName)
+			err := UnmarshalConfigData([]byte(tt.content), &cfg, tt.fileName)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -98,7 +98,7 @@ func TestUnmarshalConfigFile_JSON(t *testing.T) {
 	}
 }
 
-func TestUnmarshalConfigFile_YAML(t *testing.T) {
+func TestUnmarshalConfigData_YAML(t *testing.T) {
 	tests := []struct {
 		name        string
 		content     string
@@ -179,7 +179,7 @@ enabled: true`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg testConfig
-			err := UnmarshalConfigFile([]byte(tt.content), &cfg, tt.fileName)
+			err := UnmarshalConfigData([]byte(tt.content), &cfg, tt.fileName)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -197,7 +197,7 @@ enabled: true`,
 	}
 }
 
-func TestUnmarshalConfigFile_FormatDetection(t *testing.T) {
+func TestUnmarshalConfigData_FormatDetection(t *testing.T) {
 	yamlContent := `name: yaml-config
 enabled: true`
 
@@ -257,7 +257,7 @@ enabled: true`
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg testConfig
-			err := UnmarshalConfigFile([]byte(tt.content), &cfg, tt.fileName)
+			err := UnmarshalConfigData([]byte(tt.content), &cfg, tt.fileName)
 			require.NoError(t, err)
 			if tt.validate != nil {
 				tt.validate(t, &cfg)
@@ -266,7 +266,7 @@ enabled: true`
 	}
 }
 
-func TestUnmarshalConfigFile_TypeMismatch(t *testing.T) {
+func TestUnmarshalConfigData_TypeMismatch(t *testing.T) {
 	tests := []struct {
 		name     string
 		content  string
@@ -291,7 +291,7 @@ enabled: not-a-bool`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg testConfig
-			err := UnmarshalConfigFile([]byte(tt.content), &cfg, tt.fileName)
+			err := UnmarshalConfigData([]byte(tt.content), &cfg, tt.fileName)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -301,7 +301,7 @@ enabled: not-a-bool`,
 	}
 }
 
-func TestUnmarshalConfigFile_Integration(t *testing.T) {
+func TestUnmarshalConfigData_Integration(t *testing.T) {
 	// Test actual file reading flow
 	tmpDir := t.TempDir()
 
@@ -320,7 +320,7 @@ func TestUnmarshalConfigFile_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		var cfg testConfig
-		err = UnmarshalConfigFile(data, &cfg, jsonFile)
+		err = UnmarshalConfigData(data, &cfg, jsonFile)
 		require.NoError(t, err)
 		assert.Equal(t, "integration", cfg.Name)
 		assert.True(t, cfg.Enabled)
@@ -331,7 +331,7 @@ func TestUnmarshalConfigFile_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		var cfg testConfig
-		err = UnmarshalConfigFile(data, &cfg, yamlFile)
+		err = UnmarshalConfigData(data, &cfg, yamlFile)
 		require.NoError(t, err)
 		assert.Equal(t, "integration", cfg.Name)
 		assert.True(t, cfg.Enabled)
