@@ -17,11 +17,7 @@ var entrypointCmd = &cobra.Command{
 
 By default the check fails if shell form is detected. Use --allow-shell-form to allow it.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image entrypoint nginx:latest
   check-image entrypoint nginx:latest -o json
   check-image entrypoint nginx:latest --allow-shell-form

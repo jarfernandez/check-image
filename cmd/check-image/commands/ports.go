@@ -27,11 +27,7 @@ var portsCmd = &cobra.Command{
 	Short: "Validate that the image does not expose unauthorized ports",
 	Long: `Validate that the image does not expose unauthorized ports.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image ports nginx:latest --allowed-ports 80,443
   check-image ports nginx:latest --allowed-ports @allowed-ports.json
   check-image ports nginx:latest --allowed-ports @allowed-ports.yaml

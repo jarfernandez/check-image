@@ -13,11 +13,7 @@ var rootUserCmd = &cobra.Command{
 	Short: "Validate that the image is configured to run the container as a non-root user",
 	Long: `Validate that the image is configured to run the container as a non-root user.
 
-The 'image' argument supports multiple formats:
-  - Registry image (daemon with registry fallback): image:tag, registry/namespace/image:tag
-  - OCI layout directory: oci:/path/to/layout:tag or oci:/path/to/layout@sha256:digest
-  - OCI tarball: oci-archive:/path/to/image.tar:tag
-  - Docker tarball: docker-archive:/path/to/image.tar:tag`,
+` + imageArgFormatsDoc,
 	Example: `  check-image root-user nginx:latest
   check-image root-user oci:/path/to/layout:1.0
   check-image root-user oci-archive:/path/to/image.tar:latest
