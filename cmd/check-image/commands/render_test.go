@@ -152,6 +152,27 @@ func TestRenderResult_TextMode(t *testing.T) {
 	}
 }
 
+func TestRenderResult_TextMode_UnknownCheck(t *testing.T) {
+	// The default branch surfaces check names that have no registered renderer
+	// so that a missing case is immediately visible instead of producing silent
+	// empty output.
+	OutputFmt = output.FormatText
+
+	result := &output.CheckResult{
+		Check:   "unknown-future-check",
+		Image:   "nginx:latest",
+		Passed:  true,
+		Message: "all good",
+	}
+
+	captured := captureStdout(t, func() {
+		err := renderResult(result)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, captured, `no text renderer for check "unknown-future-check"`)
+}
+
 func TestRenderResult_TextMode_ErrorResult(t *testing.T) {
 	// Regression test for F-02: a result with Error set has Details == nil.
 	// renderResult must not panic with a bare type assertion.

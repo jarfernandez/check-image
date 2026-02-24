@@ -44,6 +44,8 @@ func renderResult(r *output.CheckResult) error {
 		renderEntrypointText(r)
 	case "platform":
 		renderPlatformText(r)
+	default:
+		fmt.Printf("(no text renderer for check %q)\n", r.Check)
 	}
 
 	return nil
