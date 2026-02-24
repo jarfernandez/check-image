@@ -49,7 +49,7 @@ The 'image' argument supports multiple formats:
 
 func init() {
 	rootCmd.AddCommand(ageCmd)
-	ageCmd.Flags().UintVarP(&maxAge, "max-age", "a", 90, "Maximum age in days (optional)")
+	ageCmd.Flags().UintVarP(&maxAge, "max-age", "a", defaultMaxAgeDays, "Maximum age in days (optional)")
 }
 
 func runAge(imageName string) (*output.CheckResult, error) {

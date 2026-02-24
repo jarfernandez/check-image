@@ -52,8 +52,8 @@ The 'image' argument supports multiple formats:
 
 func init() {
 	rootCmd.AddCommand(sizeCmd)
-	sizeCmd.Flags().UintVarP(&maxSize, "max-size", "m", 500, "Maximum size in megabytes (optional)")
-	sizeCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", 20, "Maximum number of layers (optional)")
+	sizeCmd.Flags().UintVarP(&maxSize, "max-size", "m", defaultMaxSizeMB, "Maximum size in megabytes (optional)")
+	sizeCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", defaultMaxLayerCount, "Maximum number of layers (optional)")
 }
 
 func runSize(imageName string) (*output.CheckResult, error) {
