@@ -152,7 +152,7 @@ func applySizeConfig(cmd *cobra.Command, cfg *sizeCheckConfig) {
 
 func applyPortsConfig(cmd *cobra.Command, cfg *portsCheckConfig) {
 	if cfg != nil && cfg.AllowedPorts != nil && !cmd.Flags().Changed("allowed-ports") {
-		allowedPorts = formatAllowedPorts(cfg.AllowedPorts)
+		allowedPorts = formatAllowedList(cfg.AllowedPorts)
 	}
 }
 
@@ -213,37 +213,23 @@ func applyEntrypointConfig(cmd *cobra.Command, cfg *entrypointCheckConfig) {
 
 func applyPlatformConfig(cmd *cobra.Command, cfg *platformCheckConfig) {
 	if cfg != nil && cfg.AllowedPlatforms != nil && !cmd.Flags().Changed("allowed-platforms") {
-		allowedPlatforms = formatAllowedPlatforms(cfg.AllowedPlatforms)
+		allowedPlatforms = formatAllowedList(cfg.AllowedPlatforms)
 	}
 }
 
-// formatAllowedPorts converts the allowed-ports config value to a comma-separated string.
-func formatAllowedPorts(v any) string {
-	switch ports := v.(type) {
+// formatAllowedList converts a config value ([]any or string) to a comma-separated string.
+// It is used for allowed-ports and allowed-platforms config fields, which can be specified
+// as either a slice (e.g. [80, 443]) or a pre-joined string (e.g. "80,443").
+func formatAllowedList(v any) string {
+	switch items := v.(type) {
 	case []any:
-		parts := make([]string, 0, len(ports))
-		for _, p := range ports {
+		parts := make([]string, 0, len(items))
+		for _, p := range items {
 			parts = append(parts, fmt.Sprintf("%v", p))
 		}
 		return strings.Join(parts, ",")
 	case string:
-		return ports
-	default:
-		return fmt.Sprintf("%v", v)
-	}
-}
-
-// formatAllowedPlatforms converts the allowed-platforms config value to a comma-separated string.
-func formatAllowedPlatforms(v any) string {
-	switch platforms := v.(type) {
-	case []any:
-		parts := make([]string, 0, len(platforms))
-		for _, p := range platforms {
-			parts = append(parts, fmt.Sprintf("%v", p))
-		}
-		return strings.Join(parts, ",")
-	case string:
-		return platforms
+		return items
 	default:
 		return fmt.Sprintf("%v", v)
 	}

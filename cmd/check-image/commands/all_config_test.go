@@ -294,20 +294,16 @@ func TestApplyConfigValues(t *testing.T) {
 	})
 }
 
-func TestFormatAllowedPorts(t *testing.T) {
+func TestFormatAllowedList(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    any
 		expected string
 	}{
+		// Numeric slices (ports use case)
 		{
 			name:     "slice of numbers",
 			input:    []any{float64(80), float64(443)},
-			expected: "80,443",
-		},
-		{
-			name:     "string value",
-			input:    "80,443",
 			expected: "80,443",
 		},
 		{
@@ -320,47 +316,33 @@ func TestFormatAllowedPorts(t *testing.T) {
 			input:    []any{float64(8080)},
 			expected: "8080",
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := formatAllowedPorts(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestFormatAllowedPlatforms(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    any
-		expected string
-	}{
+		// String slices (platforms use case)
 		{
 			name:     "slice of platforms",
 			input:    []any{"linux/amd64", "linux/arm64"},
 			expected: "linux/amd64,linux/arm64",
 		},
 		{
-			name:     "string value",
-			input:    "linux/amd64,linux/arm64",
-			expected: "linux/amd64,linux/arm64",
-		},
-		{
-			name:     "empty slice",
-			input:    []any{},
-			expected: "",
-		},
-		{
 			name:     "single platform with variant",
 			input:    []any{"linux/arm/v7"},
 			expected: "linux/arm/v7",
+		},
+		// Passthrough string
+		{
+			name:     "string passthrough ports",
+			input:    "80,443",
+			expected: "80,443",
+		},
+		{
+			name:     "string passthrough platforms",
+			input:    "linux/amd64,linux/arm64",
+			expected: "linux/amd64,linux/arm64",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatAllowedPlatforms(tt.input)
+			result := formatAllowedList(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
