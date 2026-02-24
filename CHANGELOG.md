@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1](https://github.com/jarfernandez/check-image/compare/v0.19.0...v0.19.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* Embed `render` function in `checkRunner` and add `default` branch to `renderResult` ([#104](https://github.com/jarfernandez/check-image/issues/104)) ([07e6b04](https://github.com/jarfernandez/check-image/commit/07e6b04326b3f5035901f03cf81ae13a577e7455))
+
+
+### Code Refactoring
+
+* Split `all.go` into `all_config.go` and `all_orchestration.go` ([#109](https://github.com/jarfernandez/check-image/issues/109)) ([e9a53e5](https://github.com/jarfernandez/check-image/commit/e9a53e548028286ab6b6f81a85528b48ae0a0d1a))
+
 ## [0.19.0](https://github.com/jarfernandez/check-image/compare/v0.18.0...v0.19.0) (2026-02-23)
 
 
