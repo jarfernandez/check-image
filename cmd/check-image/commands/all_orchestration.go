@@ -90,50 +90,38 @@ func init() {
 	allCmd.Flags().StringVar(&allowedPlatforms, "allowed-platforms", "", "Comma-separated list of allowed platforms or @<file> with JSON or YAML array")
 }
 
+type checkDef struct {
+	name       string
+	enabled    bool
+	runFunc    func(string) (*output.CheckResult, error)
+	renderFunc func(*output.CheckResult)
+}
+
+// buildCheckDefs returns the full list of checks with their enabled state.
+// When cfg is nil every check is enabled; otherwise only checks present in the
+// config file are enabled. Short-circuit evaluation of || ensures cfg.Checks
+// fields are never accessed when cfg is nil.
+func buildCheckDefs(cfg *allConfig) []checkDef {
+	noCfg := cfg == nil
+	return []checkDef{
+		{"age", noCfg || cfg.Checks.Age != nil, runAge, renderAgeText},
+		{"size", noCfg || cfg.Checks.Size != nil, runSize, renderSizeText},
+		{"ports", noCfg || cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
+		{"registry", noCfg || cfg.Checks.Registry != nil, runRegistry, renderRegistryText},
+		{"root-user", noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
+		{"secrets", noCfg || cfg.Checks.Secrets != nil, runSecrets, renderSecretsText},
+		{"healthcheck", noCfg || cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
+		{"labels", noCfg || cfg.Checks.Labels != nil, runLabels, renderLabelsText},
+		{"entrypoint", noCfg || cfg.Checks.Entrypoint != nil, runEntrypoint, renderEntrypointText},
+		{"platform", noCfg || cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
+	}
+}
+
 // determineChecks decides which checks to run based on config, skip list, and include list.
 func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[string]bool) []checkRunner {
 	var checks []checkRunner
 
-	type checkDef struct {
-		name       string
-		enabled    bool
-		runFunc    func(string) (*output.CheckResult, error)
-		renderFunc func(*output.CheckResult)
-	}
-
-	var defs []checkDef
-
-	if cfg != nil {
-		// With config: only run checks present in the config
-		defs = []checkDef{
-			{"age", cfg.Checks.Age != nil, runAge, renderAgeText},
-			{"size", cfg.Checks.Size != nil, runSize, renderSizeText},
-			{"ports", cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
-			{"registry", cfg.Checks.Registry != nil, runRegistry, renderRegistryText},
-			{"root-user", cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
-			{"secrets", cfg.Checks.Secrets != nil, runSecrets, renderSecretsText},
-			{"healthcheck", cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
-			{"labels", cfg.Checks.Labels != nil, runLabels, renderLabelsText},
-			{"entrypoint", cfg.Checks.Entrypoint != nil, runEntrypoint, renderEntrypointText},
-			{"platform", cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
-		}
-	} else {
-		// Without config: run all checks
-		defs = []checkDef{
-			{"age", true, runAge, renderAgeText},
-			{"size", true, runSize, renderSizeText},
-			{"ports", true, runPortsForAll, renderPortsText},
-			{"registry", true, runRegistry, renderRegistryText},
-			{"root-user", true, runRootUser, renderRootUserText},
-			{"secrets", true, runSecrets, renderSecretsText},
-			{"healthcheck", true, runHealthcheck, renderHealthcheckText},
-			{"labels", true, runLabels, renderLabelsText},
-			{"entrypoint", true, runEntrypoint, renderEntrypointText},
-			{"platform", true, runPlatformForAll, renderPlatformText},
-		}
-	}
-
-	for _, def := range defs {
+	for _, def := range buildCheckDefs(cfg) {
 		if includeMap != nil {
 			// --include mode: only run checks explicitly listed
 			if includeMap[def.name] {
