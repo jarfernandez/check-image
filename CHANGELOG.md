@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.2](https://github.com/jarfernandez/check-image/compare/v0.19.1...v0.19.2) (2026-02-25)
+
+
+### Code Refactoring
+
+* Extract default flag values into named constants ([#112](https://github.com/jarfernandez/check-image/issues/112)) ([f0e3ce1](https://github.com/jarfernandez/check-image/commit/f0e3ce14f01ec4a37c765bf35cad892b4c705fa9))
+* Extract repeated image-transport help into `imageArgFormatsDoc` constant ([#115](https://github.com/jarfernandez/check-image/issues/115)) ([0619227](https://github.com/jarfernandez/check-image/commit/06192276c4579b3622f3b05204ccdd8be9219596))
+* Extract shared `RunE` body into `runCheckCmd` helper ([#116](https://github.com/jarfernandez/check-image/issues/116)) ([e16d64c](https://github.com/jarfernandez/check-image/commit/e16d64c358d0eb57bc87521a237d26f39f509da9))
+* Merge `formatAllowedPorts` and `formatAllowedPlatforms` into `formatAllowedList` ([#113](https://github.com/jarfernandez/check-image/issues/113)) ([c2debd6](https://github.com/jarfernandez/check-image/commit/c2debd6f63a082f22eca6a45535be8a34cc51a68))
+* Remove dead `UnmarshalConfigFile` function ([#110](https://github.com/jarfernandez/check-image/issues/110)) ([3d09679](https://github.com/jarfernandez/check-image/commit/3d09679364ded786cb0511a03ba765e8d4e0c6db))
+* Unify duplicate `defs` slices in `determineChecks` ([#114](https://github.com/jarfernandez/check-image/issues/114)) ([69c760d](https://github.com/jarfernandez/check-image/commit/69c760d48d605bf15d16b1c371e1319c99563e13))
+
 ## [0.19.1](https://github.com/jarfernandez/check-image/compare/v0.19.0...v0.19.1) (2026-02-24)
 
 
