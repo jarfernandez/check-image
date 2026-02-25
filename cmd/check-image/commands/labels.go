@@ -28,22 +28,7 @@ and optionally validates their values against exact matches or regex patterns.
   cat labels-policy.yaml | check-image labels nginx:latest --labels-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result, err := runLabels(args[0])
-		if err != nil {
-			return fmt.Errorf("check labels operation failed: %w", err)
-		}
-
-		if err := renderResult(result); err != nil {
-			return err
-		}
-
-		if result.Passed {
-			UpdateResult(ValidationSucceeded)
-		} else {
-			UpdateResult(ValidationFailed)
-		}
-
-		return nil
+		return runCheckCmd("labels", runLabels, args[0])
 	},
 }
 

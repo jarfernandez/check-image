@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
@@ -26,22 +24,7 @@ By default the check fails if shell form is detected. Use --allow-shell-form to 
   check-image entrypoint docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result, err := runEntrypoint(args[0])
-		if err != nil {
-			return fmt.Errorf("check entrypoint operation failed: %w", err)
-		}
-
-		if err := renderResult(result); err != nil {
-			return err
-		}
-
-		if result.Passed {
-			UpdateResult(ValidationSucceeded)
-		} else {
-			UpdateResult(ValidationFailed)
-		}
-
-		return nil
+		return runCheckCmd("entrypoint", runEntrypoint, args[0])
 	},
 }
 

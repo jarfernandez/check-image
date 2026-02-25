@@ -44,22 +44,7 @@ var platformCmd = &cobra.Command{
 
 		log.Debugln("Allowed platforms:", allowedPlatformsList)
 
-		result, err := runPlatform(args[0])
-		if err != nil {
-			return fmt.Errorf("check platform operation failed: %w", err)
-		}
-
-		if err := renderResult(result); err != nil {
-			return err
-		}
-
-		if result.Passed {
-			UpdateResult(ValidationSucceeded)
-		} else {
-			UpdateResult(ValidationFailed)
-		}
-
-		return nil
+		return runCheckCmd("platform", runPlatform, args[0])
 	},
 }
 

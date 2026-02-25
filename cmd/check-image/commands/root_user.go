@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
@@ -20,22 +18,7 @@ var rootUserCmd = &cobra.Command{
   check-image root-user docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result, err := runRootUser(args[0])
-		if err != nil {
-			return fmt.Errorf("check root-user operation failed: %w", err)
-		}
-
-		if err := renderResult(result); err != nil {
-			return err
-		}
-
-		if result.Passed {
-			UpdateResult(ValidationSucceeded)
-		} else {
-			UpdateResult(ValidationFailed)
-		}
-
-		return nil
+		return runCheckCmd("root-user", runRootUser, args[0])
 	},
 }
 
