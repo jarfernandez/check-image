@@ -45,22 +45,7 @@ var portsCmd = &cobra.Command{
 
 		log.Debugln("Allowed ports:", allowedPortsList)
 
-		result, err := runPorts(args[0])
-		if err != nil {
-			return fmt.Errorf("check ports operation failed: %w", err)
-		}
-
-		if err := renderResult(result); err != nil {
-			return err
-		}
-
-		if result.Passed {
-			UpdateResult(ValidationSucceeded)
-		} else {
-			UpdateResult(ValidationFailed)
-		}
-
-		return nil
+		return runCheckCmd("ports", runPorts, args[0])
 	},
 }
 
