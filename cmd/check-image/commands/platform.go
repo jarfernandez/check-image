@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jarfernandez/check-image/internal/fileutil"
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	log "github.com/sirupsen/logrus"
@@ -61,18 +60,10 @@ func parseAllowedPlatforms() ([]string, error) {
 	}
 
 	if after, ok := strings.CutPrefix(allowedPlatforms, "@"); ok {
-		path := after
-
-		data, err := fileutil.ReadFileOrStdin(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read platforms file: %w", err)
-		}
-
 		var platformsFromFile allowedPlatformsFile
-		if err := fileutil.UnmarshalConfigData(data, &platformsFromFile, path); err != nil {
+		if err := parseAllowedListFromFile(after, &platformsFromFile); err != nil {
 			return nil, err
 		}
-
 		return platformsFromFile.AllowedPlatforms, nil
 	}
 
