@@ -156,17 +156,27 @@ func applyPortsConfig(cmd *cobra.Command, cfg *portsCheckConfig) {
 	}
 }
 
-func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) func() {
-	if cfg != nil && cfg.RegistryPolicy != nil && !cmd.Flags().Changed("registry-policy") {
-		path, cleanup, err := inlinePolicyToTempFile("registry-policy", cfg.RegistryPolicy)
-		if err != nil {
-			log.Errorf("Failed to format registry policy: %v", err)
-			return func() {}
-		}
-		registryPolicy = path
-		return cleanup
+// applyInlinePolicy resolves an inline policy value to a temp-file path and sets
+// *target. Returns a cleanup func. If policyVal is nil or flagName was explicitly
+// set on the CLI, it is a no-op.
+func applyInlinePolicy(cmd *cobra.Command, flagName string, policyVal any, target *string) func() {
+	if policyVal == nil || cmd.Flags().Changed(flagName) {
+		return func() {}
 	}
-	return func() {}
+	path, cleanup, err := inlinePolicyToTempFile(flagName, policyVal)
+	if err != nil {
+		log.Errorf("Failed to format %s: %v", flagName, err)
+		return func() {}
+	}
+	*target = path
+	return cleanup
+}
+
+func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) func() {
+	if cfg == nil {
+		return func() {}
+	}
+	return applyInlinePolicy(cmd, "registry-policy", cfg.RegistryPolicy, &registryPolicy)
 }
 
 func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) func() {
@@ -193,16 +203,10 @@ func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) func() {
 }
 
 func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) func() {
-	if cfg != nil && cfg.LabelsPolicy != nil && !cmd.Flags().Changed("labels-policy") {
-		path, cleanup, err := inlinePolicyToTempFile("labels-policy", cfg.LabelsPolicy)
-		if err != nil {
-			log.Errorf("Failed to format labels policy: %v", err)
-			return func() {}
-		}
-		labelsPolicy = path
-		return cleanup
+	if cfg == nil {
+		return func() {}
 	}
-	return func() {}
+	return applyInlinePolicy(cmd, "labels-policy", cfg.LabelsPolicy, &labelsPolicy)
 }
 
 func applyEntrypointConfig(cmd *cobra.Command, cfg *entrypointCheckConfig) {
