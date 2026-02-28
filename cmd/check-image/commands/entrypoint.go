@@ -24,7 +24,7 @@ By default the check fails if shell form is detected. Use --allow-shell-form to 
   check-image entrypoint docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd("entrypoint", runEntrypoint, args[0])
+		return runCheckCmd(checkEntrypoint, runEntrypoint, args[0])
 	},
 }
 
@@ -46,7 +46,7 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 	hasEntrypoint := len(ep) > 0 || len(cmd) > 0
 	if !hasEntrypoint {
 		return &output.CheckResult{
-			Check:   "entrypoint",
+			Check:   checkEntrypoint,
 			Image:   imageName,
 			Passed:  false,
 			Message: "Image has no entrypoint or cmd defined",
@@ -81,7 +81,7 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "entrypoint",
+		Check:   checkEntrypoint,
 		Image:   imageName,
 		Passed:  passed,
 		Message: msg,

@@ -17,7 +17,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Age check",
 			result: &output.CheckResult{
-				Check:  "age",
+				Check:  checkAge,
 				Image:  "nginx:latest",
 				Passed: true,
 				Details: output.AgeDetails{
@@ -31,7 +31,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Size check",
 			result: &output.CheckResult{
-				Check:  "size",
+				Check:  checkSize,
 				Image:  "alpine:latest",
 				Passed: true,
 				Details: output.SizeDetails{
@@ -51,7 +51,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Ports check",
 			result: &output.CheckResult{
-				Check:  "ports",
+				Check:  checkPorts,
 				Image:  "nginx:latest",
 				Passed: false,
 				Details: output.PortsDetails{
@@ -66,7 +66,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Registry check",
 			result: &output.CheckResult{
-				Check:  "registry",
+				Check:  checkRegistry,
 				Image:  "docker.io/nginx:latest",
 				Passed: true,
 				Details: output.RegistryDetails{
@@ -80,7 +80,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Root user check",
 			result: &output.CheckResult{
-				Check:   "root-user",
+				Check:   checkRootUser,
 				Image:   "nginx:latest",
 				Passed:  true,
 				Message: "Image runs as non-root user",
@@ -90,7 +90,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Secrets check",
 			result: &output.CheckResult{
-				Check:  "secrets",
+				Check:  checkSecrets,
 				Image:  "myapp:latest",
 				Passed: false,
 				Details: output.SecretsDetails{
@@ -111,7 +111,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 		{
 			name: "Labels check",
 			result: &output.CheckResult{
-				Check:  "labels",
+				Check:  checkLabels,
 				Image:  "nginx:latest",
 				Passed: false,
 				Details: output.LabelsDetails{
@@ -179,7 +179,7 @@ func TestRenderResult_TextMode_ErrorResult(t *testing.T) {
 	OutputFmt = output.FormatText
 
 	result := &output.CheckResult{
-		Check:   "age",
+		Check:   checkAge,
 		Image:   "nginx:latest",
 		Passed:  false,
 		Message: "check failed with error: image not found",
@@ -200,7 +200,7 @@ func TestRenderResult_JSONMode(t *testing.T) {
 	OutputFmt = output.FormatJSON
 
 	result := &output.CheckResult{
-		Check:  "age",
+		Check:  checkAge,
 		Image:  "nginx:latest",
 		Passed: true,
 		Details: output.AgeDetails{
@@ -223,7 +223,7 @@ func TestRenderResult_JSONMode(t *testing.T) {
 
 func TestRenderAgeText_ValidImage(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "age",
+		Check:  checkAge,
 		Image:  "nginx:latest",
 		Passed: true,
 		Details: output.AgeDetails{
@@ -245,7 +245,7 @@ func TestRenderAgeText_ValidImage(t *testing.T) {
 
 func TestRenderAgeText_OldImage(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "age",
+		Check:  checkAge,
 		Image:  "old-app:v1",
 		Passed: false,
 		Details: output.AgeDetails{
@@ -266,7 +266,7 @@ func TestRenderAgeText_OldImage(t *testing.T) {
 
 func TestRenderSizeText_UnderLimits(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "size",
+		Check:  checkSize,
 		Image:  "alpine:latest",
 		Passed: true,
 		Details: output.SizeDetails{
@@ -295,7 +295,7 @@ func TestRenderSizeText_UnderLimits(t *testing.T) {
 
 func TestRenderSizeText_ExceedsSizeLimit(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "size",
+		Check:  checkSize,
 		Image:  "large-app:latest",
 		Passed: false,
 		Details: output.SizeDetails{
@@ -323,7 +323,7 @@ func TestRenderSizeText_ExceedsSizeLimit(t *testing.T) {
 
 func TestRenderSizeText_ExceedsLayersLimit(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "size",
+		Check:  checkSize,
 		Image:  "many-layers:latest",
 		Passed: false,
 		Details: output.SizeDetails{
@@ -349,7 +349,7 @@ func TestRenderSizeText_ExceedsLayersLimit(t *testing.T) {
 
 func TestRenderPortsText_AllAllowed(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "ports",
+		Check:  checkPorts,
 		Image:  "nginx:latest",
 		Passed: true,
 		Details: output.PortsDetails{
@@ -374,7 +374,7 @@ func TestRenderPortsText_AllAllowed(t *testing.T) {
 
 func TestRenderPortsText_SomeForbidden(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "ports",
+		Check:  checkPorts,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.PortsDetails{
@@ -398,7 +398,7 @@ func TestRenderPortsText_SomeForbidden(t *testing.T) {
 
 func TestRenderPortsText_NoPorts(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "ports",
+		Check:  checkPorts,
 		Image:  "distroless:latest",
 		Passed: true,
 		Details: output.PortsDetails{
@@ -420,7 +420,7 @@ func TestRenderPortsText_NoPorts(t *testing.T) {
 
 func TestRenderPortsText_NoAllowedPorts(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "ports",
+		Check:  checkPorts,
 		Image:  "nginx:latest",
 		Passed: false,
 		Details: output.PortsDetails{
@@ -442,7 +442,7 @@ func TestRenderPortsText_NoAllowedPorts(t *testing.T) {
 
 func TestRenderRegistryText_Trusted(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "registry",
+		Check:  checkRegistry,
 		Image:  "docker.io/nginx:latest",
 		Passed: true,
 		Details: output.RegistryDetails{
@@ -463,7 +463,7 @@ func TestRenderRegistryText_Trusted(t *testing.T) {
 
 func TestRenderRegistryText_Untrusted(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "registry",
+		Check:  checkRegistry,
 		Image:  "untrusted.io/app:latest",
 		Passed: false,
 		Details: output.RegistryDetails{
@@ -484,7 +484,7 @@ func TestRenderRegistryText_Untrusted(t *testing.T) {
 
 func TestRenderRegistryText_Skipped(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "registry",
+		Check:  checkRegistry,
 		Image:  "oci:/local/path:tag",
 		Passed: true,
 		Details: output.RegistryDetails{
@@ -505,7 +505,7 @@ func TestRenderRegistryText_Skipped(t *testing.T) {
 
 func TestRenderRootUserText_NonRoot(t *testing.T) {
 	result := &output.CheckResult{
-		Check:   "root-user",
+		Check:   checkRootUser,
 		Image:   "nginx:latest",
 		Passed:  true,
 		Message: "Image runs as non-root user",
@@ -521,7 +521,7 @@ func TestRenderRootUserText_NonRoot(t *testing.T) {
 
 func TestRenderRootUserText_Root(t *testing.T) {
 	result := &output.CheckResult{
-		Check:   "root-user",
+		Check:   checkRootUser,
 		Image:   "old-app:v1",
 		Passed:  false,
 		Message: "Image runs as root user",
@@ -537,7 +537,7 @@ func TestRenderRootUserText_Root(t *testing.T) {
 
 func TestRenderSecretsText_NoSecrets(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "secrets",
+		Check:  checkSecrets,
 		Image:  "clean-app:latest",
 		Passed: true,
 		Details: output.SecretsDetails{
@@ -563,7 +563,7 @@ func TestRenderSecretsText_NoSecrets(t *testing.T) {
 
 func TestRenderSecretsText_EnvVarsOnly(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "secrets",
+		Check:  checkSecrets,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.SecretsDetails{
@@ -592,7 +592,7 @@ func TestRenderSecretsText_EnvVarsOnly(t *testing.T) {
 
 func TestRenderSecretsText_FilesOnly(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "secrets",
+		Check:  checkSecrets,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.SecretsDetails{
@@ -623,7 +623,7 @@ func TestRenderSecretsText_FilesOnly(t *testing.T) {
 
 func TestRenderSecretsText_Mixed(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "secrets",
+		Check:  checkSecrets,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.SecretsDetails{
@@ -656,7 +656,7 @@ func TestRenderSecretsText_Mixed(t *testing.T) {
 
 func TestRenderSecretsText_MultipleLayers(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "secrets",
+		Check:  checkSecrets,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.SecretsDetails{
@@ -688,7 +688,7 @@ func TestRenderSecretsText_SparseLayerIndices(t *testing.T) {
 	// Findings in layers 0 and 20 with only 2 map entries.
 	// The old len(layerMap)+10 loop (range 0..11) would silently drop layer 20.
 	result := &output.CheckResult{
-		Check:  "secrets",
+		Check:  checkSecrets,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.SecretsDetails{
@@ -716,7 +716,7 @@ func TestRenderSecretsText_SparseLayerIndices(t *testing.T) {
 
 func TestRenderLabelsText_AllValid(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "labels",
+		Check:  checkLabels,
 		Image:  "nginx:latest",
 		Passed: true,
 		Details: output.LabelsDetails{
@@ -752,7 +752,7 @@ func TestRenderLabelsText_AllValid(t *testing.T) {
 
 func TestRenderLabelsText_MissingLabels(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "labels",
+		Check:  checkLabels,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.LabelsDetails{
@@ -780,7 +780,7 @@ func TestRenderLabelsText_MissingLabels(t *testing.T) {
 
 func TestRenderLabelsText_InvalidValues(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "labels",
+		Check:  checkLabels,
 		Image:  "app:latest",
 		Passed: false,
 		Details: output.LabelsDetails{
@@ -813,7 +813,7 @@ func TestRenderLabelsText_InvalidValues(t *testing.T) {
 
 func TestRenderLabelsText_MixedValidationModes(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "labels",
+		Check:  checkLabels,
 		Image:  "app:latest",
 		Passed: true,
 		Details: output.LabelsDetails{
@@ -844,7 +844,7 @@ func TestRenderLabelsText_MixedValidationModes(t *testing.T) {
 
 func TestRenderLabelsText_EmptyLabels(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "labels",
+		Check:  checkLabels,
 		Image:  "minimal:latest",
 		Passed: false,
 		Details: output.LabelsDetails{
@@ -869,7 +869,7 @@ func TestRenderLabelsText_EmptyLabels(t *testing.T) {
 
 func TestRenderEntrypointText_WithBothEntrypointAndCmd(t *testing.T) {
 	result := &output.CheckResult{
-		Check:  "entrypoint",
+		Check:  checkEntrypoint,
 		Image:  "nginx:latest",
 		Passed: true,
 		Details: output.EntrypointDetails{

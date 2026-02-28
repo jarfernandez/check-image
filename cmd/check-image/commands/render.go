@@ -24,25 +24,25 @@ func renderResult(r *output.CheckResult) error {
 	}
 
 	switch r.Check {
-	case "age":
+	case checkAge:
 		renderAgeText(r)
-	case "size":
+	case checkSize:
 		renderSizeText(r)
-	case "ports":
+	case checkPorts:
 		renderPortsText(r)
-	case "registry":
+	case checkRegistry:
 		renderRegistryText(r)
-	case "root-user":
+	case checkRootUser:
 		renderRootUserText(r)
-	case "secrets":
+	case checkSecrets:
 		renderSecretsText(r)
-	case "healthcheck":
+	case checkHealthcheck:
 		renderHealthcheckText(r)
-	case "labels":
+	case checkLabels:
 		renderLabelsText(r)
-	case "entrypoint":
+	case checkEntrypoint:
 		renderEntrypointText(r)
-	case "platform":
+	case checkPlatform:
 		renderPlatformText(r)
 	default:
 		fmt.Printf("(no text renderer for check %q)\n", r.Check)

@@ -19,7 +19,7 @@ var healthcheckCmd = &cobra.Command{
   check-image healthcheck docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd("healthcheck", runHealthcheck, args[0])
+		return runCheckCmd(checkHealthcheck, runHealthcheck, args[0])
 	},
 }
 
@@ -45,7 +45,7 @@ func runHealthcheck(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "healthcheck",
+		Check:   checkHealthcheck,
 		Image:   imageName,
 		Passed:  hasHealthcheck,
 		Message: msg,

@@ -11,8 +11,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Check name constants used as the canonical identifier for each check throughout
+// the commands package: in CheckResult.Check, runCheckCmd calls, buildCheckDefs,
+// validateRequiredFlags, and the text-render dispatch switch.
+const (
+	checkAge         = "age"
+	checkSize        = "size"
+	checkPorts       = "ports"
+	checkRegistry    = "registry"
+	checkRootUser    = "root-user"
+	checkSecrets     = "secrets"
+	checkHealthcheck = "healthcheck"
+	checkLabels      = "labels"
+	checkEntrypoint  = "entrypoint"
+	checkPlatform    = "platform"
+)
+
 // validCheckNames lists all check names recognized by the all command.
-var validCheckNames = []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint", "platform"}
+var validCheckNames = []string{
+	checkAge, checkSize, checkPorts, checkRegistry, checkRootUser,
+	checkSecrets, checkHealthcheck, checkLabels, checkEntrypoint, checkPlatform,
+}
 
 // allConfig represents the configuration file structure for the all command.
 type allConfig struct {
