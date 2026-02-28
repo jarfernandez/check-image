@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -35,34 +34,6 @@ func LoadRegistryPolicy(path string) (*Policy, error) {
 	}
 
 	// Validate that only one mode is specified
-	hasTrusted := len(policy.TrustedRegistries) > 0
-	hasExcluded := len(policy.ExcludedRegistries) > 0
-
-	if hasTrusted && hasExcluded {
-		return nil, fmt.Errorf("policy must specify either trusted-registries or excluded-registries, not both")
-	}
-
-	if !hasTrusted && !hasExcluded {
-		return nil, fmt.Errorf("policy must specify either trusted-registries or excluded-registries")
-	}
-
-	return &policy, nil
-}
-
-// LoadRegistryPolicyFromObject creates a Policy from an inline config object
-func LoadRegistryPolicyFromObject(obj any) (*Policy, error) {
-	// Marshal to JSON then unmarshal to Policy for type conversion
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal policy object: %w", err)
-	}
-
-	var policy Policy
-	if err := json.Unmarshal(data, &policy); err != nil {
-		return nil, fmt.Errorf("invalid policy object: %w", err)
-	}
-
-	// Same validation as LoadRegistryPolicy
 	hasTrusted := len(policy.TrustedRegistries) > 0
 	hasExcluded := len(policy.ExcludedRegistries) > 0
 

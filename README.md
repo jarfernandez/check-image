@@ -1004,9 +1004,9 @@ go tool cover -html=coverage.out
 
 - **internal/version**: 100.0% coverage
 - **internal/output**: 100.0% coverage
-- **internal/labels**: 98.1% coverage
-- **internal/registry**: 96.8% coverage
-- **internal/secrets**: 95.8% coverage
+- **internal/labels**: 100.0% coverage
+- **internal/registry**: 100.0% coverage
+- **internal/secrets**: 96.4% coverage
 - **internal/fileutil**: 89.7% coverage
 - **internal/imageutil**: 82.5% coverage
 - **cmd/check-image/commands**: 91.2% coverage
