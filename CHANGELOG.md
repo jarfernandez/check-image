@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.4](https://github.com/jarfernandez/check-image/compare/v0.19.3...v0.19.4) (2026-02-28)
+
+
+### Code Refactoring
+
+* Replace check name string literals with package-level constants ([#122](https://github.com/jarfernandez/check-image/issues/122)) ([8fd78ca](https://github.com/jarfernandez/check-image/commit/8fd78caa68010d0df9170b1e20299bee6656cc25))
+
 ## [0.19.3](https://github.com/jarfernandez/check-image/compare/v0.19.2...v0.19.3) (2026-02-28)
 
 
