@@ -34,7 +34,7 @@ Scans both environment variables and files across all image layers.
   cat secrets-policy.yaml | check-image secrets nginx:latest --secrets-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd("secrets", runSecrets, args[0])
+		return runCheckCmd(checkSecrets, runSecrets, args[0])
 	},
 }
 
@@ -118,7 +118,7 @@ func runSecrets(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "secrets",
+		Check:   checkSecrets,
 		Image:   imageName,
 		Passed:  passed,
 		Message: msg,

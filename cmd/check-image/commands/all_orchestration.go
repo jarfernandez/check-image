@@ -100,16 +100,16 @@ type checkDef struct {
 func buildCheckDefs(cfg *allConfig) []checkDef {
 	noCfg := cfg == nil
 	return []checkDef{
-		{"age", noCfg || cfg.Checks.Age != nil, runAge, renderAgeText},
-		{"size", noCfg || cfg.Checks.Size != nil, runSize, renderSizeText},
-		{"ports", noCfg || cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
-		{"registry", noCfg || cfg.Checks.Registry != nil, runRegistry, renderRegistryText},
-		{"root-user", noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
-		{"secrets", noCfg || cfg.Checks.Secrets != nil, runSecrets, renderSecretsText},
-		{"healthcheck", noCfg || cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
-		{"labels", noCfg || cfg.Checks.Labels != nil, runLabels, renderLabelsText},
-		{"entrypoint", noCfg || cfg.Checks.Entrypoint != nil, runEntrypoint, renderEntrypointText},
-		{"platform", noCfg || cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
+		{checkAge, noCfg || cfg.Checks.Age != nil, runAge, renderAgeText},
+		{checkSize, noCfg || cfg.Checks.Size != nil, runSize, renderSizeText},
+		{checkPorts, noCfg || cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
+		{checkRegistry, noCfg || cfg.Checks.Registry != nil, runRegistry, renderRegistryText},
+		{checkRootUser, noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
+		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, runSecrets, renderSecretsText},
+		{checkHealthcheck, noCfg || cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
+		{checkLabels, noCfg || cfg.Checks.Labels != nil, runLabels, renderLabelsText},
+		{checkEntrypoint, noCfg || cfg.Checks.Entrypoint != nil, runEntrypoint, renderEntrypointText},
+		{checkPlatform, noCfg || cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
 	}
 }
 
@@ -220,13 +220,13 @@ func runAll(cmd *cobra.Command, imageName string) error {
 // validateRequiredFlags checks that required flags are provided when their checks will run.
 func validateRequiredFlags(checks []checkRunner) error {
 	for _, c := range checks {
-		if c.name == "registry" && registryPolicy == "" {
+		if c.name == checkRegistry && registryPolicy == "" {
 			return fmt.Errorf("--registry-policy is required when the registry check is enabled")
 		}
-		if c.name == "labels" && labelsPolicy == "" {
+		if c.name == checkLabels && labelsPolicy == "" {
 			return fmt.Errorf("--labels-policy is required when the labels check is enabled")
 		}
-		if c.name == "platform" && allowedPlatforms == "" {
+		if c.name == checkPlatform && allowedPlatforms == "" {
 			return fmt.Errorf("--allowed-platforms is required when the platform check is enabled")
 		}
 	}

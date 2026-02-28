@@ -63,7 +63,7 @@ func runRegistry(imageName string) (*output.CheckResult, error) {
 		// Check if this is a non-registry transport
 		if strings.Contains(err.Error(), "not applicable") {
 			return &output.CheckResult{
-				Check:   "registry",
+				Check:   checkRegistry,
 				Image:   imageName,
 				Passed:  true,
 				Message: "Registry validation skipped (not applicable for this transport)",
@@ -88,7 +88,7 @@ func runRegistry(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "registry",
+		Check:   checkRegistry,
 		Image:   imageName,
 		Passed:  allowed,
 		Message: msg,

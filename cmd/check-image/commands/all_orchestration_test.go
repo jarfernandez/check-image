@@ -1091,8 +1091,8 @@ func TestRenderAllJSON_AllPassing(t *testing.T) {
 	Result = ValidationSucceeded
 
 	results := []output.CheckResult{
-		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
-		{Check: "size", Image: "nginx:latest", Passed: true, Message: "Image size ok"},
+		{Check: checkAge, Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+		{Check: checkSize, Image: "nginx:latest", Passed: true, Message: "Image size ok"},
 	}
 
 	captured := captureStdout(t, func() {
@@ -1118,9 +1118,9 @@ func TestRenderAllJSON_WithFailures(t *testing.T) {
 	Result = ValidationFailed
 
 	results := []output.CheckResult{
-		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
-		{Check: "root-user", Image: "nginx:latest", Passed: false, Message: "Image runs as root"},
-		{Check: "size", Image: "nginx:latest", Passed: false, Message: "check failed with error: some error", Error: "some error"},
+		{Check: checkAge, Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+		{Check: checkRootUser, Image: "nginx:latest", Passed: false, Message: "Image runs as root"},
+		{Check: checkSize, Image: "nginx:latest", Passed: false, Message: "check failed with error: some error", Error: "some error"},
 	}
 
 	captured := captureStdout(t, func() {
@@ -1144,7 +1144,7 @@ func TestRenderAllJSON_WithSkipMap(t *testing.T) {
 	Result = ValidationSucceeded
 
 	results := []output.CheckResult{
-		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+		{Check: checkAge, Image: "nginx:latest", Passed: true, Message: "Image is recent"},
 	}
 	skipMap := map[string]bool{"registry": true, "secrets": true}
 
@@ -1168,7 +1168,7 @@ func TestRenderAllJSON_WithIncludeMap(t *testing.T) {
 	Result = ValidationSucceeded
 
 	results := []output.CheckResult{
-		{Check: "age", Image: "nginx:latest", Passed: true, Message: "Image is recent"},
+		{Check: checkAge, Image: "nginx:latest", Passed: true, Message: "Image is recent"},
 	}
 	includeMap := map[string]bool{"age": true}
 

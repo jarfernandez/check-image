@@ -44,7 +44,7 @@ var portsCmd = &cobra.Command{
 
 		log.Debugln("Allowed ports:", allowedPortsList)
 
-		return runCheckCmd("ports", runPorts, args[0])
+		return runCheckCmd(checkPorts, runPorts, args[0])
 	},
 }
 
@@ -111,7 +111,7 @@ func runPorts(imageName string) (*output.CheckResult, error) {
 
 	if len(exposedPorts) == 0 {
 		return &output.CheckResult{
-			Check:   "ports",
+			Check:   checkPorts,
 			Image:   imageName,
 			Passed:  true,
 			Message: "No ports are exposed in this image",
@@ -121,7 +121,7 @@ func runPorts(imageName string) (*output.CheckResult, error) {
 
 	if len(allowedPortsList) == 0 {
 		return &output.CheckResult{
-			Check:   "ports",
+			Check:   checkPorts,
 			Image:   imageName,
 			Passed:  false,
 			Message: "No allowed ports were provided",
@@ -147,7 +147,7 @@ func runPorts(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "ports",
+		Check:   checkPorts,
 		Image:   imageName,
 		Passed:  passed,
 		Message: msg,

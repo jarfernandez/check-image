@@ -27,7 +27,7 @@ var sizeCmd = &cobra.Command{
   check-image size docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd("size", runSize, args[0])
+		return runCheckCmd(checkSize, runSize, args[0])
 	},
 }
 
@@ -82,7 +82,7 @@ func runSize(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "size",
+		Check:   checkSize,
 		Image:   imageName,
 		Passed:  passed,
 		Message: msg,

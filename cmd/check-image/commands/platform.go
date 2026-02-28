@@ -43,7 +43,7 @@ var platformCmd = &cobra.Command{
 
 		log.Debugln("Allowed platforms:", allowedPlatformsList)
 
-		return runCheckCmd("platform", runPlatform, args[0])
+		return runCheckCmd(checkPlatform, runPlatform, args[0])
 	},
 }
 
@@ -101,7 +101,7 @@ func runPlatform(imageName string) (*output.CheckResult, error) {
 
 	if slices.Contains(allowedPlatformsList, platform) {
 		return &output.CheckResult{
-			Check:   "platform",
+			Check:   checkPlatform,
 			Image:   imageName,
 			Passed:  true,
 			Message: fmt.Sprintf("Platform %s is in the allowed list", platform),
@@ -110,7 +110,7 @@ func runPlatform(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "platform",
+		Check:   checkPlatform,
 		Image:   imageName,
 		Passed:  false,
 		Message: fmt.Sprintf("Platform %s is not in the allowed list", platform),

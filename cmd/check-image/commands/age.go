@@ -24,7 +24,7 @@ var ageCmd = &cobra.Command{
   check-image age docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd("age", runAge, args[0])
+		return runCheckCmd(checkAge, runAge, args[0])
 	},
 }
 
@@ -54,7 +54,7 @@ func runAge(imageName string) (*output.CheckResult, error) {
 	}
 
 	return &output.CheckResult{
-		Check:   "age",
+		Check:   checkAge,
 		Image:   imageName,
 		Passed:  passed,
 		Message: msg,
