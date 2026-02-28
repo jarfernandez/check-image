@@ -1,7 +1,6 @@
 package labels
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 
@@ -40,27 +39,6 @@ func LoadLabelsPolicy(path string) (*Policy, error) {
 	// Unmarshal config data (JSON or YAML)
 	if err := fileutil.UnmarshalConfigData(data, &policy, path); err != nil {
 		return nil, err
-	}
-
-	// Validate policy
-	if err := policy.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &policy, nil
-}
-
-// LoadLabelsPolicyFromObject creates a Policy from an inline config object
-func LoadLabelsPolicyFromObject(obj any) (*Policy, error) {
-	// Marshal to JSON then unmarshal to Policy for type conversion
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal policy object: %w", err)
-	}
-
-	var policy Policy
-	if err := json.Unmarshal(data, &policy); err != nil {
-		return nil, fmt.Errorf("invalid policy object: %w", err)
 	}
 
 	// Validate policy
