@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.3](https://github.com/jarfernandez/check-image/compare/v0.19.2...v0.19.3) (2026-02-28)
+
+
+### Code Refactoring
+
+* Extract shared `applyInlinePolicy` helper from `applyRegistryConfig` and `applyLabelsConfig` ([#120](https://github.com/jarfernandez/check-image/issues/120)) ([45352f8](https://github.com/jarfernandez/check-image/commit/45352f804d1ba8ecdb86d8849915ead8badc9930))
+* Extract shared `parseAllowedListFromFile` helper from `ports` and `platform` ([#117](https://github.com/jarfernandez/check-image/issues/117)) ([8afbb2a](https://github.com/jarfernandez/check-image/commit/8afbb2a3cfb2f0f27d33959af49b2800ec66dc77))
+* Remove dead `LoadXPolicyFromObject` functions and their tests ([#121](https://github.com/jarfernandez/check-image/issues/121)) ([122c07f](https://github.com/jarfernandez/check-image/commit/122c07f5c43a0df0a7188e24c7f25fc5cbafbf60))
+
 ## [0.19.2](https://github.com/jarfernandez/check-image/compare/v0.19.1...v0.19.2) (2026-02-25)
 
 
