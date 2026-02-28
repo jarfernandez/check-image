@@ -235,6 +235,17 @@ func formatAllowedList(v any) string {
 	}
 }
 
+// parseAllowedListFromFile reads data from path (may be "-" for stdin) and
+// unmarshals it into dest. It is the shared @file implementation for
+// parseAllowedPorts and parseAllowedPlatforms.
+func parseAllowedListFromFile(path string, dest any) error {
+	data, err := fileutil.ReadFileOrStdin(path)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+	return fileutil.UnmarshalConfigData(data, dest, path)
+}
+
 // inlinePolicyToTempFile converts an inline policy object (map[string]any) to a
 // temporary JSON file so it can be passed to the policy loaders that expect a
 // file path. If v is already a string it is returned as-is with a no-op cleanup.

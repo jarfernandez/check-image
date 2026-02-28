@@ -126,7 +126,7 @@ func TestParseAllowedPlatforms_FromFile(t *testing.T) {
 		allowedPlatforms = "@/nonexistent/platforms.json"
 		_, err := parseAllowedPlatforms()
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to read platforms file")
+		assert.Contains(t, err.Error(), "failed to read file")
 	})
 }
 

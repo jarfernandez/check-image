@@ -181,7 +181,7 @@ func TestParseAllowedPorts_FileNotFound(t *testing.T) {
 
 	_, err := parseAllowedPorts()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to read ports file")
+	assert.Contains(t, err.Error(), "failed to read file")
 }
 
 func TestPortsCommand(t *testing.T) {

@@ -891,3 +891,72 @@ func TestApplyLabelsConfig_InvalidPolicyType(t *testing.T) {
 	// labelsPolicy should NOT have changed (function returns early on error)
 	assert.Equal(t, "original-labels-policy.json", labelsPolicy)
 }
+
+func TestParseAllowedListFromFile(t *testing.T) {
+	type dest struct {
+		Items []string `json:"items" yaml:"items"`
+	}
+
+	tests := []struct {
+		name        string
+		fileName    string
+		content     string
+		wantItems   []string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "valid JSON file",
+			fileName:  "list.json",
+			content:   `{"items": ["a", "b", "c"]}`,
+			wantItems: []string{"a", "b", "c"},
+		},
+		{
+			name:      "valid YAML file",
+			fileName:  "list.yaml",
+			content:   "items:\n  - a\n  - b\n",
+			wantItems: []string{"a", "b"},
+		},
+		{
+			name:        "file not found",
+			fileName:    "",
+			content:     "",
+			wantErr:     true,
+			errContains: "failed to read file",
+		},
+		{
+			name:        "invalid JSON",
+			fileName:    "bad.json",
+			content:     `{invalid}`,
+			wantErr:     true,
+			errContains: "invalid JSON",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var path string
+			if tt.fileName == "" {
+				path = "/nonexistent/path/list.json"
+			} else {
+				tmpDir := t.TempDir()
+				path = filepath.Join(tmpDir, tt.fileName)
+				require.NoError(t, os.WriteFile(path, []byte(tt.content), 0600))
+			}
+
+			var d dest
+			err := parseAllowedListFromFile(path, &d)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantItems, d.Items)
+		})
+	}
+}

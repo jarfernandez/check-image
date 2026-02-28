@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jarfernandez/check-image/internal/fileutil"
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	log "github.com/sirupsen/logrus"
@@ -60,21 +59,10 @@ func parseAllowedPorts() ([]int, error) {
 	}
 
 	if after, ok := strings.CutPrefix(allowedPorts, "@"); ok {
-		path := after
-
-		// Read file or stdin
-		data, err := fileutil.ReadFileOrStdin(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read ports file: %w", err)
-		}
-
 		var portsFromFile allowedPortsFile
-
-		// Unmarshal config data (JSON or YAML)
-		if err := fileutil.UnmarshalConfigData(data, &portsFromFile, path); err != nil {
+		if err := parseAllowedListFromFile(after, &portsFromFile); err != nil {
 			return nil, err
 		}
-
 		return portsFromFile.AllowedPorts, nil
 	}
 
