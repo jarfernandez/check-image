@@ -960,3 +960,120 @@ func TestParseAllowedListFromFile(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyInlinePolicy(t *testing.T) {
+	t.Run("nil policyVal is a no-op", func(t *testing.T) {
+		target := "original"
+		cmd := &cobra.Command{}
+		cmd.Flags().String("my-policy", "", "")
+
+		cleanup := applyInlinePolicy(cmd, "my-policy", nil, &target)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "original", target)
+	})
+
+	t.Run("flag already changed is a no-op", func(t *testing.T) {
+		target := "original"
+		cmd := &cobra.Command{}
+		cmd.Flags().String("my-policy", "", "")
+		require.NoError(t, cmd.Flags().Set("my-policy", "cli-value.json"))
+
+		cleanup := applyInlinePolicy(cmd, "my-policy", "config-value.json", &target)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "original", target)
+	})
+
+	t.Run("string path sets target directly", func(t *testing.T) {
+		target := ""
+		cmd := &cobra.Command{}
+		cmd.Flags().String("my-policy", "", "")
+
+		cleanup := applyInlinePolicy(cmd, "my-policy", "config/policy.json", &target)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "config/policy.json", target)
+	})
+
+	t.Run("inline map creates temp file and sets target", func(t *testing.T) {
+		target := ""
+		cmd := &cobra.Command{}
+		cmd.Flags().String("my-policy", "", "")
+
+		policy := map[string]any{"trusted-registries": []any{"docker.io"}}
+		cleanup := applyInlinePolicy(cmd, "my-policy", policy, &target)
+
+		require.NotEmpty(t, target)
+		assert.Contains(t, target, "my-policy-")
+		assert.Contains(t, target, ".json")
+		data, err := os.ReadFile(target)
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "trusted-registries")
+
+		cleanup()
+		_, err = os.Stat(target)
+		assert.True(t, os.IsNotExist(err), "temp file should be removed by cleanup")
+	})
+
+	t.Run("invalid type logs error and leaves target unchanged", func(t *testing.T) {
+		target := "original"
+		cmd := &cobra.Command{}
+		cmd.Flags().String("my-policy", "", "")
+
+		cleanup := applyInlinePolicy(cmd, "my-policy", 42, &target)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "original", target)
+	})
+}
+
+func TestApplyRegistryConfig(t *testing.T) {
+	t.Run("config value applied when flag not changed", func(t *testing.T) {
+		origRegistryPolicy := registryPolicy
+		defer func() { registryPolicy = origRegistryPolicy }()
+
+		registryPolicy = ""
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("registry-policy", "", "")
+
+		cfg := &registryCheckConfig{RegistryPolicy: "config/registry-policy.yaml"}
+		cleanup := applyRegistryConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "config/registry-policy.yaml", registryPolicy)
+	})
+
+	t.Run("config value skipped when flag changed", func(t *testing.T) {
+		origRegistryPolicy := registryPolicy
+		defer func() { registryPolicy = origRegistryPolicy }()
+
+		registryPolicy = "cli/policy.json"
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("registry-policy", "", "")
+		require.NoError(t, cmd.Flags().Set("registry-policy", "cli/policy.json"))
+
+		cfg := &registryCheckConfig{RegistryPolicy: "config/registry-policy.yaml"}
+		cleanup := applyRegistryConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "cli/policy.json", registryPolicy)
+	})
+
+	t.Run("nil config does nothing", func(t *testing.T) {
+		origRegistryPolicy := registryPolicy
+		defer func() { registryPolicy = origRegistryPolicy }()
+
+		registryPolicy = "original"
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("registry-policy", "", "")
+
+		cleanup := applyRegistryConfig(cmd, nil)
+		t.Cleanup(cleanup)
+
+		assert.Equal(t, "original", registryPolicy)
+	})
+}
