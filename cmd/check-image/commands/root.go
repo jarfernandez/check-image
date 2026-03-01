@@ -125,9 +125,9 @@ func init() {
 
 // UpdateResult updates the global Result with proper precedence.
 // Priority ordering: ValidationSkipped(0) < ValidationSucceeded(1) < ValidationFailed(2) < ExecutionError(3).
-func UpdateResult(new ValidationResult) {
-	if new > Result {
-		Result = new
+func UpdateResult(result ValidationResult) {
+	if result > Result {
+		Result = result
 	}
 }
 
