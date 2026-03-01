@@ -230,7 +230,9 @@ func TestApplyConfigValues(t *testing.T) {
 		cmd.Flags().BoolVar(&skipEnvVars, "skip-env-vars", false, "")
 		cmd.Flags().BoolVar(&skipFiles, "skip-files", false, "")
 
-		applyConfigValues(cmd, cfg)
+		cleanup, err := applyConfigValues(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
 
 		assert.Equal(t, uint(30), maxAge)
 		assert.Equal(t, uint(200), maxSize)
@@ -266,7 +268,9 @@ func TestApplyConfigValues(t *testing.T) {
 		cmd.Flags().UintVar(&maxSize, "max-size", 500, "")
 		require.NoError(t, cmd.Flags().Set("max-age", "60"))
 
-		applyConfigValues(cmd, cfg)
+		cleanup, err := applyConfigValues(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
 
 		// max-age should keep CLI value (60), NOT config value (30)
 		assert.Equal(t, uint(60), maxAge)
@@ -289,7 +293,9 @@ func TestApplyConfigValues(t *testing.T) {
 		cmd := &cobra.Command{}
 		cmd.Flags().UintVar(&maxAge, "max-age", 90, "")
 
-		applyConfigValues(cmd, cfg)
+		cleanup, err := applyConfigValues(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
 		assert.Equal(t, uint(90), maxAge)
 	})
 }
@@ -751,7 +757,9 @@ func TestApplyLabelsConfig(t *testing.T) {
 			LabelsPolicy: "config/labels-policy.yaml",
 		}
 
-		applyLabelsConfig(cmd, cfg)
+		cleanup, err := applyLabelsConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
 		assert.Equal(t, "config/labels-policy.yaml", labelsPolicy)
 	})
 
@@ -772,7 +780,9 @@ func TestApplyLabelsConfig(t *testing.T) {
 			LabelsPolicy: "config/labels-policy.yaml",
 		}
 
-		applyLabelsConfig(cmd, cfg)
+		cleanup, err := applyLabelsConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
 		// Should keep CLI value, not apply config
 		assert.Equal(t, "cli/policy.json", labelsPolicy)
 	})
@@ -786,7 +796,9 @@ func TestApplyLabelsConfig(t *testing.T) {
 		cmd := &cobra.Command{}
 		cmd.Flags().String("labels-policy", "", "")
 
-		applyLabelsConfig(cmd, nil)
+		cleanup, err := applyLabelsConfig(cmd, nil)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
 		assert.Equal(t, "original", labelsPolicy)
 	})
 }
@@ -852,8 +864,8 @@ func TestLoadAllConfig_Healthcheck(t *testing.T) {
 	assert.Nil(t, cfg.Checks.Labels)
 }
 
-// TestApplyRegistryConfig_InvalidPolicyType tests that applyRegistryConfig handles
-// an invalid policy type gracefully by logging an error and leaving registryPolicy unchanged.
+// TestApplyRegistryConfig_InvalidPolicyType tests that applyRegistryConfig returns an error
+// and leaves registryPolicy unchanged when an invalid policy type is supplied.
 func TestApplyRegistryConfig_InvalidPolicyType(t *testing.T) {
 	origRegistryPolicy := registryPolicy
 	defer func() { registryPolicy = origRegistryPolicy }()
@@ -863,17 +875,20 @@ func TestApplyRegistryConfig_InvalidPolicyType(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("registry-policy", "", "")
 
-	// Pass an integer as RegistryPolicy to trigger the default case in formatRegistryPolicy
+	// Pass an integer as RegistryPolicy to trigger the default case in inlinePolicyToTempFile
 	cfg := &registryCheckConfig{RegistryPolicy: 42}
 
-	applyRegistryConfig(cmd, cfg)
+	cleanup, err := applyRegistryConfig(cmd, cfg)
+	t.Cleanup(cleanup)
 
-	// registryPolicy should NOT have changed (function returns early on error)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to apply inline registry-policy")
+	// registryPolicy should NOT have changed
 	assert.Equal(t, "original-policy.json", registryPolicy)
 }
 
-// TestApplyLabelsConfig_InvalidPolicyType tests that applyLabelsConfig handles
-// an invalid policy type gracefully by logging an error and leaving labelsPolicy unchanged.
+// TestApplyLabelsConfig_InvalidPolicyType tests that applyLabelsConfig returns an error
+// and leaves labelsPolicy unchanged when an invalid policy type is supplied.
 func TestApplyLabelsConfig_InvalidPolicyType(t *testing.T) {
 	origLabelsPolicy := labelsPolicy
 	defer func() { labelsPolicy = origLabelsPolicy }()
@@ -883,12 +898,15 @@ func TestApplyLabelsConfig_InvalidPolicyType(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("labels-policy", "", "")
 
-	// Pass an integer as LabelsPolicy to trigger the default case in formatLabelsPolicy
+	// Pass an integer as LabelsPolicy to trigger the default case in inlinePolicyToTempFile
 	cfg := &labelsCheckConfig{LabelsPolicy: 42}
 
-	applyLabelsConfig(cmd, cfg)
+	cleanup, err := applyLabelsConfig(cmd, cfg)
+	t.Cleanup(cleanup)
 
-	// labelsPolicy should NOT have changed (function returns early on error)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to apply inline labels-policy")
+	// labelsPolicy should NOT have changed
 	assert.Equal(t, "original-labels-policy.json", labelsPolicy)
 }
 
@@ -967,9 +985,10 @@ func TestApplyInlinePolicy(t *testing.T) {
 		cmd := &cobra.Command{}
 		cmd.Flags().String("my-policy", "", "")
 
-		cleanup := applyInlinePolicy(cmd, "my-policy", nil, &target)
+		cleanup, err := applyInlinePolicy(cmd, "my-policy", nil, &target)
 		t.Cleanup(cleanup)
 
+		require.NoError(t, err)
 		assert.Equal(t, "original", target)
 	})
 
@@ -979,9 +998,10 @@ func TestApplyInlinePolicy(t *testing.T) {
 		cmd.Flags().String("my-policy", "", "")
 		require.NoError(t, cmd.Flags().Set("my-policy", "cli-value.json"))
 
-		cleanup := applyInlinePolicy(cmd, "my-policy", "config-value.json", &target)
+		cleanup, err := applyInlinePolicy(cmd, "my-policy", "config-value.json", &target)
 		t.Cleanup(cleanup)
 
+		require.NoError(t, err)
 		assert.Equal(t, "original", target)
 	})
 
@@ -990,9 +1010,10 @@ func TestApplyInlinePolicy(t *testing.T) {
 		cmd := &cobra.Command{}
 		cmd.Flags().String("my-policy", "", "")
 
-		cleanup := applyInlinePolicy(cmd, "my-policy", "config/policy.json", &target)
+		cleanup, err := applyInlinePolicy(cmd, "my-policy", "config/policy.json", &target)
 		t.Cleanup(cleanup)
 
+		require.NoError(t, err)
 		assert.Equal(t, "config/policy.json", target)
 	})
 
@@ -1002,28 +1023,31 @@ func TestApplyInlinePolicy(t *testing.T) {
 		cmd.Flags().String("my-policy", "", "")
 
 		policy := map[string]any{"trusted-registries": []any{"docker.io"}}
-		cleanup := applyInlinePolicy(cmd, "my-policy", policy, &target)
+		cleanup, err := applyInlinePolicy(cmd, "my-policy", policy, &target)
 
+		require.NoError(t, err)
 		require.NotEmpty(t, target)
 		assert.Contains(t, target, "my-policy-")
 		assert.Contains(t, target, ".json")
-		data, err := os.ReadFile(target)
-		require.NoError(t, err)
+		data, readErr := os.ReadFile(target)
+		require.NoError(t, readErr)
 		assert.Contains(t, string(data), "trusted-registries")
 
 		cleanup()
-		_, err = os.Stat(target)
-		assert.True(t, os.IsNotExist(err), "temp file should be removed by cleanup")
+		_, statErr := os.Stat(target)
+		assert.True(t, os.IsNotExist(statErr), "temp file should be removed by cleanup")
 	})
 
-	t.Run("invalid type logs error and leaves target unchanged", func(t *testing.T) {
+	t.Run("invalid type returns error and leaves target unchanged", func(t *testing.T) {
 		target := "original"
 		cmd := &cobra.Command{}
 		cmd.Flags().String("my-policy", "", "")
 
-		cleanup := applyInlinePolicy(cmd, "my-policy", 42, &target)
+		cleanup, err := applyInlinePolicy(cmd, "my-policy", 42, &target)
 		t.Cleanup(cleanup)
 
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to apply inline my-policy")
 		assert.Equal(t, "original", target)
 	})
 }
@@ -1039,9 +1063,10 @@ func TestApplyRegistryConfig(t *testing.T) {
 		cmd.Flags().String("registry-policy", "", "")
 
 		cfg := &registryCheckConfig{RegistryPolicy: "config/registry-policy.yaml"}
-		cleanup := applyRegistryConfig(cmd, cfg)
+		cleanup, err := applyRegistryConfig(cmd, cfg)
 		t.Cleanup(cleanup)
 
+		require.NoError(t, err)
 		assert.Equal(t, "config/registry-policy.yaml", registryPolicy)
 	})
 
@@ -1056,9 +1081,10 @@ func TestApplyRegistryConfig(t *testing.T) {
 		require.NoError(t, cmd.Flags().Set("registry-policy", "cli/policy.json"))
 
 		cfg := &registryCheckConfig{RegistryPolicy: "config/registry-policy.yaml"}
-		cleanup := applyRegistryConfig(cmd, cfg)
+		cleanup, err := applyRegistryConfig(cmd, cfg)
 		t.Cleanup(cleanup)
 
+		require.NoError(t, err)
 		assert.Equal(t, "cli/policy.json", registryPolicy)
 	})
 
@@ -1071,9 +1097,10 @@ func TestApplyRegistryConfig(t *testing.T) {
 		cmd := &cobra.Command{}
 		cmd.Flags().String("registry-policy", "", "")
 
-		cleanup := applyRegistryConfig(cmd, nil)
+		cleanup, err := applyRegistryConfig(cmd, nil)
 		t.Cleanup(cleanup)
 
+		require.NoError(t, err)
 		assert.Equal(t, "original", registryPolicy)
 	})
 }

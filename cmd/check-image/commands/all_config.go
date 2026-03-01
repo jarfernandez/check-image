@@ -134,21 +134,30 @@ func loadAllConfig(path string) (*allConfig, error) {
 // applyConfigValues applies configuration file values to package-level variables,
 // but only for flags that were not explicitly set on the CLI.
 // It returns a cleanup function that removes any temporary files created for
-// inline policy objects; the caller must defer the returned function.
-func applyConfigValues(cmd *cobra.Command, cfg *allConfig) func() {
+// inline policy objects, and any error encountered while applying policies.
+// The caller must always defer the returned cleanup function, even when err != nil,
+// because partial progress may have created temp files that need to be removed.
+func applyConfigValues(cmd *cobra.Command, cfg *allConfig) (func(), error) {
 	applyAgeConfig(cmd, cfg.Checks.Age)
 	applySizeConfig(cmd, cfg.Checks.Size)
 	applyPortsConfig(cmd, cfg.Checks.Ports)
-	cleanupRegistry := applyRegistryConfig(cmd, cfg.Checks.Registry)
-	cleanupSecrets := applySecretsConfig(cmd, cfg.Checks.Secrets)
-	cleanupLabels := applyLabelsConfig(cmd, cfg.Checks.Labels)
+	cleanupRegistry, errRegistry := applyRegistryConfig(cmd, cfg.Checks.Registry)
+	cleanupSecrets, errSecrets := applySecretsConfig(cmd, cfg.Checks.Secrets)
+	cleanupLabels, errLabels := applyLabelsConfig(cmd, cfg.Checks.Labels)
 	applyEntrypointConfig(cmd, cfg.Checks.Entrypoint)
 	applyPlatformConfig(cmd, cfg.Checks.Platform)
-	return func() {
+	combined := func() {
 		cleanupRegistry()
 		cleanupSecrets()
 		cleanupLabels()
 	}
+	if errRegistry != nil {
+		return combined, errRegistry
+	}
+	if errSecrets != nil {
+		return combined, errSecrets
+	}
+	return combined, errLabels
 }
 
 func applyAgeConfig(cmd *cobra.Command, cfg *ageCheckConfig) {
@@ -176,41 +185,39 @@ func applyPortsConfig(cmd *cobra.Command, cfg *portsCheckConfig) {
 }
 
 // applyInlinePolicy resolves an inline policy value to a temp-file path and sets
-// *target. Returns a cleanup func. If policyVal is nil or flagName was explicitly
-// set on the CLI, it is a no-op.
-func applyInlinePolicy(cmd *cobra.Command, flagName string, policyVal any, target *string) func() {
+// *target. Returns a cleanup func and any error. If policyVal is nil or flagName
+// was explicitly set on the CLI, it is a no-op returning (func(){}, nil).
+func applyInlinePolicy(cmd *cobra.Command, flagName string, policyVal any, target *string) (func(), error) {
 	if policyVal == nil || cmd.Flags().Changed(flagName) {
-		return func() {}
+		return func() {}, nil
 	}
 	path, cleanup, err := inlinePolicyToTempFile(flagName, policyVal)
 	if err != nil {
-		log.Errorf("Failed to format %s: %v", flagName, err)
-		return func() {}
+		return func() {}, fmt.Errorf("failed to apply inline %s: %w", flagName, err)
 	}
 	*target = path
-	return cleanup
+	return cleanup, nil
 }
 
-func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) func() {
+func applyRegistryConfig(cmd *cobra.Command, cfg *registryCheckConfig) (func(), error) {
 	if cfg == nil {
-		return func() {}
+		return func() {}, nil
 	}
 	return applyInlinePolicy(cmd, "registry-policy", cfg.RegistryPolicy, &registryPolicy)
 }
 
-func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) func() {
+func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) (func(), error) {
 	if cfg == nil {
-		return func() {}
+		return func() {}, nil
 	}
 	cleanup := func() {}
 	if cfg.SecretsPolicy != nil && !cmd.Flags().Changed("secrets-policy") {
 		path, cl, err := inlinePolicyToTempFile("secrets-policy", cfg.SecretsPolicy)
 		if err != nil {
-			log.Errorf("Failed to format secrets policy: %v", err)
-		} else {
-			secretsPolicy = path
-			cleanup = cl
+			return func() {}, fmt.Errorf("failed to apply inline secrets-policy: %w", err)
 		}
+		secretsPolicy = path
+		cleanup = cl
 	}
 	if cfg.SkipEnvVars != nil && !cmd.Flags().Changed("skip-env-vars") {
 		skipEnvVars = *cfg.SkipEnvVars
@@ -218,12 +225,12 @@ func applySecretsConfig(cmd *cobra.Command, cfg *secretsCheckConfig) func() {
 	if cfg.SkipFiles != nil && !cmd.Flags().Changed("skip-files") {
 		skipFiles = *cfg.SkipFiles
 	}
-	return cleanup
+	return cleanup, nil
 }
 
-func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) func() {
+func applyLabelsConfig(cmd *cobra.Command, cfg *labelsCheckConfig) (func(), error) {
 	if cfg == nil {
-		return func() {}
+		return func() {}, nil
 	}
 	return applyInlinePolicy(cmd, "labels-policy", cfg.LabelsPolicy, &labelsPolicy)
 }
