@@ -23,11 +23,6 @@ type BuildInfo struct {
 	Platform  string
 }
 
-// Get returns the current version string.
-func Get() string {
-	return Version
-}
-
 // GetBuildInfo returns the full build information including version, commit, build date,
 // Go version and target platform.
 func GetBuildInfo() BuildInfo {

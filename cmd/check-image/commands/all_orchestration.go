@@ -175,8 +175,11 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		if err != nil {
 			return err
 		}
-		cleanup := applyConfigValues(cmd, cfg)
+		cleanup, err := applyConfigValues(cmd, cfg)
 		defer cleanup()
+		if err != nil {
+			return err
+		}
 	}
 
 	checks := determineChecks(cfg, skipMap, includeMap)
