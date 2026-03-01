@@ -1,10 +1,16 @@
 package commands
 
 import (
+	"slices"
+
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
 )
+
+const shellFlagArg = "-c"
+
+var shellInterpreters = []string{"/bin/sh", "/bin/bash"}
 
 var allowShellForm bool
 
@@ -95,6 +101,6 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 // This is how Docker stores ENTRYPOINT/CMD when using shell form in a Dockerfile.
 func isShellFormCommand(cmd []string) bool {
 	return len(cmd) >= 2 &&
-		(cmd[0] == "/bin/sh" || cmd[0] == "/bin/bash") &&
-		cmd[1] == "-c"
+		slices.Contains(shellInterpreters, cmd[0]) &&
+		cmd[1] == shellFlagArg
 }
