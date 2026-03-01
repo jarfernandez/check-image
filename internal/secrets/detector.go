@@ -24,12 +24,6 @@ type FileFinding struct {
 	Description string
 }
 
-// DetectionResult holds all findings from secrets detection
-type DetectionResult struct {
-	EnvVarFindings []EnvVarFinding
-	FileFindings   []FileFinding
-}
-
 // CheckEnvironmentVariables scans environment variables for sensitive patterns
 func CheckEnvironmentVariables(envVars []string, policy *Policy) []EnvVarFinding {
 	if !policy.CheckEnvVars {
