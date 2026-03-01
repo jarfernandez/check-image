@@ -41,7 +41,6 @@ func init() {
 }
 
 func runLabels(imageName string) (*output.CheckResult, error) {
-	// Load policy
 	policy, err := labels.LoadLabelsPolicy(labelsPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load labels policy: %w", err)
@@ -49,7 +48,6 @@ func runLabels(imageName string) (*output.CheckResult, error) {
 
 	log.Debugf("Loaded policy with %d required labels", len(policy.RequiredLabels))
 
-	// Get image config
 	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
@@ -64,13 +62,11 @@ func runLabels(imageName string) (*output.CheckResult, error) {
 
 	log.Debugf("Image has %d labels", len(imageLabels))
 
-	// Validate labels
 	validationResult, err := labels.ValidateLabels(imageLabels, policy)
 	if err != nil {
 		return nil, fmt.Errorf("label validation failed: %w", err)
 	}
 
-	// Build details for output
 	reqLabels := make([]output.RequiredLabelCheck, len(policy.RequiredLabels))
 	for i, req := range policy.RequiredLabels {
 		reqLabels[i] = output.RequiredLabelCheck{
@@ -98,7 +94,6 @@ func runLabels(imageName string) (*output.CheckResult, error) {
 		InvalidLabels:  invalidDetails,
 	}
 
-	// Build message
 	var msg string
 	if validationResult.Passed {
 		msg = "All required labels are present and valid"

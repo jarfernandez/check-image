@@ -46,7 +46,6 @@ func init() {
 }
 
 func runSecrets(imageName string) (*output.CheckResult, error) {
-	// Load policy from file or use defaults
 	policy, err := secrets.LoadSecretsPolicy(secretsPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load secrets policy: %w", err)
@@ -60,7 +59,6 @@ func runSecrets(imageName string) (*output.CheckResult, error) {
 		policy.CheckFiles = false
 	}
 
-	// Get image and config
 	image, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
