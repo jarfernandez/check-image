@@ -8,6 +8,20 @@ import (
 	"github.com/jarfernandez/check-image/internal/output"
 )
 
+// mustDetails extracts typed details from r.Details.
+// A mismatch between Check and Details is always a programming error, never a
+// user input error, so it panics with a clear message instead of returning an
+// error that callers would need to handle.
+func mustDetails[T any](r *output.CheckResult) T {
+	d, ok := r.Details.(T)
+	if !ok {
+		var want T
+		panic(fmt.Sprintf("render: check %q has unexpected details type %T, want %T",
+			r.Check, r.Details, want))
+	}
+	return d
+}
+
 // renderResult renders a CheckResult according to the current OutputFmt.
 // In text mode, it calls the appropriate text renderer.
 // In JSON mode, it writes JSON to stdout.
@@ -52,7 +66,7 @@ func renderResult(r *output.CheckResult) error {
 }
 
 func renderAgeText(r *output.CheckResult) {
-	d := r.Details.(output.AgeDetails)
+	d := mustDetails[output.AgeDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking age of image %s", r.Image)))
 	fmt.Printf("Image creation date: %s\n", valueStyle.Render(d.CreatedAt))
 	fmt.Printf("Image age: %s\n", valueStyle.Render(fmt.Sprintf("%.0f days", d.AgeDays)))
@@ -60,7 +74,7 @@ func renderAgeText(r *output.CheckResult) {
 }
 
 func renderSizeText(r *output.CheckResult) {
-	d := r.Details.(output.SizeDetails)
+	d := mustDetails[output.SizeDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking size and layers of image %s", r.Image)))
 	fmt.Printf("Number of layers: %s\n", valueStyle.Render(fmt.Sprintf("%d", d.LayerCount)))
 	// #nosec G115 -- LayerCount is always non-negative (derived from layer enumeration)
@@ -75,7 +89,7 @@ func renderSizeText(r *output.CheckResult) {
 }
 
 func renderPortsText(r *output.CheckResult) {
-	d := r.Details.(output.PortsDetails)
+	d := mustDetails[output.PortsDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking ports of image %s", r.Image)))
 
 	if len(d.ExposedPorts) == 0 {
@@ -106,7 +120,7 @@ func renderPortsText(r *output.CheckResult) {
 }
 
 func renderRegistryText(r *output.CheckResult) {
-	d := r.Details.(output.RegistryDetails)
+	d := mustDetails[output.RegistryDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking registry of image %s", r.Image)))
 
 	if d.Skipped {
@@ -124,7 +138,7 @@ func renderRootUserText(r *output.CheckResult) {
 }
 
 func renderSecretsText(r *output.CheckResult) {
-	d := r.Details.(output.SecretsDetails)
+	d := mustDetails[output.SecretsDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking secrets in image %s", r.Image)))
 
 	if len(d.EnvVarFindings) > 0 {
@@ -176,7 +190,7 @@ func renderHealthcheckText(r *output.CheckResult) {
 }
 
 func renderEntrypointText(r *output.CheckResult) {
-	d := r.Details.(output.EntrypointDetails)
+	d := mustDetails[output.EntrypointDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking entrypoint of image %s", r.Image)))
 	if len(d.Entrypoint) > 0 {
 		fmt.Printf("Entrypoint: %s\n", valueStyle.Render(fmt.Sprintf("%v", d.Entrypoint)))
@@ -188,14 +202,14 @@ func renderEntrypointText(r *output.CheckResult) {
 }
 
 func renderPlatformText(r *output.CheckResult) {
-	d := r.Details.(output.PlatformDetails)
+	d := mustDetails[output.PlatformDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking platform of image %s", r.Image)))
 	fmt.Printf("Image platform: %s\n", valueStyle.Render(d.Platform))
 	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 
 func renderLabelsText(r *output.CheckResult) {
-	d := r.Details.(output.LabelsDetails)
+	d := mustDetails[output.LabelsDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking labels of image %s", r.Image)))
 
 	// Show required labels

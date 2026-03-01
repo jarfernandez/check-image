@@ -867,6 +867,19 @@ func TestRenderLabelsText_EmptyLabels(t *testing.T) {
 	assert.NotContains(t, captured, "Actual labels")
 }
 
+func TestMustDetails_PanicsOnTypeMismatch(t *testing.T) {
+	// Verify that a Check/Details mismatch produces a clear, informative panic
+	// rather than an opaque runtime error.
+	result := &output.CheckResult{
+		Check:   checkAge,
+		Details: output.SizeDetails{}, // wrong type
+	}
+
+	require.Panics(t, func() {
+		mustDetails[output.AgeDetails](result)
+	})
+}
+
 func TestRenderEntrypointText_WithBothEntrypointAndCmd(t *testing.T) {
 	result := &output.CheckResult{
 		Check:  checkEntrypoint,
