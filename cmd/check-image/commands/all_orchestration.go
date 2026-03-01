@@ -9,13 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// checkRunner represents a single check to be executed.
-type checkRunner struct {
-	name   string
-	run    func(imageName string) (*output.CheckResult, error)
-	render func(r *output.CheckResult) // text renderer; paired with run at definition time
-}
-
 var configFile string
 var skipChecks string
 var includeChecks string
@@ -87,10 +80,10 @@ func init() {
 }
 
 type checkDef struct {
-	name       string
-	enabled    bool
-	runFunc    func(string) (*output.CheckResult, error)
-	renderFunc func(*output.CheckResult)
+	name    string
+	enabled bool
+	run     func(string) (*output.CheckResult, error)
+	render  func(*output.CheckResult)
 }
 
 // buildCheckDefs returns the full list of checks with their enabled state.
@@ -114,19 +107,19 @@ func buildCheckDefs(cfg *allConfig) []checkDef {
 }
 
 // determineChecks decides which checks to run based on config, skip list, and include list.
-func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[string]bool) []checkRunner {
-	var checks []checkRunner
+func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[string]bool) []checkDef {
+	var checks []checkDef
 
 	for _, def := range buildCheckDefs(cfg) {
 		if includeMap != nil {
 			// --include mode: only run checks explicitly listed
 			if includeMap[def.name] {
-				checks = append(checks, checkRunner{name: def.name, run: def.runFunc, render: def.renderFunc})
+				checks = append(checks, def)
 			}
 		} else {
 			// Default/skip mode: use config/default enablement minus skip
 			if def.enabled && !skipMap[def.name] {
-				checks = append(checks, checkRunner{name: def.name, run: def.runFunc, render: def.renderFunc})
+				checks = append(checks, def)
 			}
 		}
 	}
@@ -221,7 +214,7 @@ func runAll(cmd *cobra.Command, imageName string) error {
 }
 
 // validateRequiredFlags checks that required flags are provided when their checks will run.
-func validateRequiredFlags(checks []checkRunner) error {
+func validateRequiredFlags(checks []checkDef) error {
 	for _, c := range checks {
 		if c.name == checkRegistry && registryPolicy == "" {
 			return fmt.Errorf("--registry-policy is required when the registry check is enabled")
@@ -237,7 +230,7 @@ func validateRequiredFlags(checks []checkRunner) error {
 }
 
 // executeChecks runs each check, collects results, and updates the global Result.
-func executeChecks(checks []checkRunner, imageName string) []output.CheckResult {
+func executeChecks(checks []checkDef, imageName string) []output.CheckResult {
 	var results []output.CheckResult
 
 	for _, check := range checks {
