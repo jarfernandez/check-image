@@ -3,12 +3,13 @@ package secrets
 import (
 	"archive/tar"
 	"fmt"
-	cr "github.com/google/go-containerregistry/pkg/v1"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	cr "github.com/google/go-containerregistry/pkg/v1"
+	log "github.com/sirupsen/logrus"
 )
 
 // EnvVarFinding represents a sensitive environment variable finding
