@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.4](https://github.com/jarfernandez/check-image/compare/v0.19.3...v0.19.4) (2026-03-01)
+
+
+### Bug Fixes
+
+* Improve error handling and remove dead code ([#127](https://github.com/jarfernandez/check-image/issues/127)) ([e3cc365](https://github.com/jarfernandez/check-image/commit/e3cc365d446d58eef4c78bdf3304f9daaf733d2a))
+* Remove `oci-archive:` temp directory leak via cleanup function pattern ([#124](https://github.com/jarfernandez/check-image/issues/124)) ([51bc6e8](https://github.com/jarfernandez/check-image/commit/51bc6e8e8dc65223fec3d40fb98882a70c40445c))
+
+
+### Code Refactoring
+
+* Collapse `checkDef` and `checkRunner` into a single type ([#132](https://github.com/jarfernandez/check-image/issues/132)) ([0cf265f](https://github.com/jarfernandez/check-image/commit/0cf265f57c16cb9a008f57a728d7e2e9a3ea7f18))
+* Extract shell interpreter literals as named constants in `entrypoint.go` ([#131](https://github.com/jarfernandez/check-image/issues/131)) ([990f9ac](https://github.com/jarfernandez/check-image/commit/990f9ac8edb41bada46bb73687e19fba67fc5173))
+* Fix three naming readability issues in commands and imageutil ([#128](https://github.com/jarfernandez/check-image/issues/128)) ([9d2d084](https://github.com/jarfernandez/check-image/commit/9d2d0849376453bcb2061e9218ea4d38909231c0))
+* Remove redundant comments and fix import grouping ([#130](https://github.com/jarfernandez/check-image/issues/130)) ([7c9f1ca](https://github.com/jarfernandez/check-image/commit/7c9f1ca97b5cbf84978c2b2380fd80ab58f07a52))
+* Rename `UpdateResult` parameter from `new` to `result` ([#125](https://github.com/jarfernandez/check-image/issues/125)) ([97e05c4](https://github.com/jarfernandez/check-image/commit/97e05c4d2b2c837d75f5427d03edf551b52d6649))
+* Replace bare type assertions in render functions with `mustDetails` helper ([#126](https://github.com/jarfernandez/check-image/issues/126)) ([739bb99](https://github.com/jarfernandez/check-image/commit/739bb998b48ea6d7d8891a3686bbd17e9a7f03f1))
+* Replace check name string literals with package-level constants ([#122](https://github.com/jarfernandez/check-image/issues/122)) ([8fd78ca](https://github.com/jarfernandez/check-image/commit/8fd78caa68010d0df9170b1e20299bee6656cc25))
+* Sort default file patterns in `GetFilePatterns` for deterministic output ([#133](https://github.com/jarfernandez/check-image/issues/133)) ([67a2d9f](https://github.com/jarfernandez/check-image/commit/67a2d9f735ba2ff9eb459c0dc4fc39673588a7a7))
+
 ## [0.19.3](https://github.com/jarfernandez/check-image/compare/v0.19.2...v0.19.3) (2026-02-28)
 
 
