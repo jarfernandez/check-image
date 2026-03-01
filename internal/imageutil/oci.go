@@ -7,6 +7,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 )
 
+// ociRefNameAnnotation is the standard OCI annotation key used to store a
+// human-readable reference name (tag) for an image in an OCI layout index.
+const ociRefNameAnnotation = "org.opencontainers.image.ref.name"
+
 // GetOCILayoutImage loads an image from an OCI layout directory
 func GetOCILayoutImage(layoutPath, reference string) (v1.Image, error) {
 	path, err := layout.FromPath(layoutPath)
@@ -50,7 +54,7 @@ func resolveTagInLayout(path layout.Path, tag string) (string, error) {
 
 	// Search for tag in annotations
 	for _, desc := range manifest.Manifests {
-		if refName, ok := desc.Annotations["org.opencontainers.image.ref.name"]; ok {
+		if refName, ok := desc.Annotations[ociRefNameAnnotation]; ok {
 			// Match exact tag or :tag format
 			if refName == tag || refName == fmt.Sprintf(":%s", tag) {
 				return desc.Digest.String(), nil
