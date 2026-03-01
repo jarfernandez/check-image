@@ -41,10 +41,10 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 	}
 	defer cleanup()
 
-	ep := config.Config.Entrypoint
-	cmd := config.Config.Cmd
+	entrypoint := config.Config.Entrypoint
+	startCmd := config.Config.Cmd
 
-	hasEntrypoint := len(ep) > 0 || len(cmd) > 0
+	hasEntrypoint := len(entrypoint) > 0 || len(startCmd) > 0
 	if !hasEntrypoint {
 		return &output.CheckResult{
 			Check:   checkEntrypoint,
@@ -57,7 +57,7 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 		}, nil
 	}
 
-	shellForm := isShellFormCommand(ep) || isShellFormCommand(cmd)
+	shellForm := isShellFormCommand(entrypoint) || isShellFormCommand(startCmd)
 	execForm := !shellForm
 
 	var msg string
@@ -74,8 +74,8 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 	details := output.EntrypointDetails{
 		HasEntrypoint: true,
 		ExecForm:      execForm,
-		Entrypoint:    ep,
-		Cmd:           cmd,
+		Entrypoint:    entrypoint,
+		Cmd:           startCmd,
 	}
 	if !execForm && allowShellForm {
 		details.ShellFormAllowed = true

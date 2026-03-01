@@ -190,7 +190,7 @@ func runAll(cmd *cobra.Command, imageName string) error {
 
 	if len(checks) == 0 {
 		if OutputFmt == output.FormatJSON {
-			skipped := nonRunningCheckNames(skipMap, includeMap)
+			skipped := skippedCheckNames(skipMap, includeMap)
 			allResult := output.AllResult{
 				Image:  imageName,
 				Passed: true,
@@ -288,7 +288,7 @@ func executeChecks(checks []checkRunner, imageName string) []output.CheckResult 
 
 // renderAllJSON renders the aggregated results as a single JSON object.
 func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[string]bool, includeMap map[string]bool) error {
-	skipped := nonRunningCheckNames(skipMap, includeMap)
+	skipped := skippedCheckNames(skipMap, includeMap)
 	var passed, failed, errored int
 	for _, r := range results {
 		switch {
@@ -316,8 +316,8 @@ func renderAllJSON(imageName string, results []output.CheckResult, skipMap map[s
 	return output.RenderJSON(os.Stdout, allResult)
 }
 
-// nonRunningCheckNames returns the list of check names that did not run.
-func nonRunningCheckNames(skipMap map[string]bool, includeMap map[string]bool) []string {
+// skippedCheckNames returns the list of check names that did not run.
+func skippedCheckNames(skipMap map[string]bool, includeMap map[string]bool) []string {
 	if includeMap != nil {
 		var names []string
 		for _, name := range validCheckNames {

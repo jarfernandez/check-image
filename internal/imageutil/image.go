@@ -54,8 +54,7 @@ func GetRemoteImage(imageName string) (cr.Image, error) {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	kc := activeKeychain
-	image, err := remote.Image(ref, remote.WithAuthFromKeychain(kc))
+	image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the remote image: %w", err)
 	}

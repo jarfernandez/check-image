@@ -704,16 +704,16 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 	})
 }
 
-func TestNonRunningCheckNames(t *testing.T) {
+func TestSkippedCheckNames(t *testing.T) {
 	t.Run("with skip map", func(t *testing.T) {
 		skipMap := map[string]bool{"age": true, "size": true}
-		names := nonRunningCheckNames(skipMap, nil)
+		names := skippedCheckNames(skipMap, nil)
 		assert.Equal(t, []string{"age", "size"}, names)
 	})
 
 	t.Run("with include map", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true}
-		names := nonRunningCheckNames(nil, includeMap)
+		names := skippedCheckNames(nil, includeMap)
 		assert.Len(t, names, 8)
 		assert.NotContains(t, names, "age")
 		assert.NotContains(t, names, "size")
@@ -728,7 +728,7 @@ func TestNonRunningCheckNames(t *testing.T) {
 	})
 
 	t.Run("with neither", func(t *testing.T) {
-		names := nonRunningCheckNames(nil, nil)
+		names := skippedCheckNames(nil, nil)
 		assert.Nil(t, names)
 	})
 
@@ -738,12 +738,12 @@ func TestNonRunningCheckNames(t *testing.T) {
 			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
 			"platform": true,
 		}
-		names := nonRunningCheckNames(nil, includeMap)
+		names := skippedCheckNames(nil, includeMap)
 		assert.Nil(t, names)
 	})
 
 	t.Run("empty skip map returns nil", func(t *testing.T) {
-		names := nonRunningCheckNames(map[string]bool{}, nil)
+		names := skippedCheckNames(map[string]bool{}, nil)
 		assert.Nil(t, names)
 	})
 }
