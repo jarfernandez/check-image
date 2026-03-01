@@ -61,10 +61,11 @@ func runSecrets(imageName string) (*output.CheckResult, error) {
 	}
 
 	// Get image and config
-	image, config, err := imageutil.GetImageAndConfig(imageName)
+	image, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	var envFindings []output.EnvVarFinding
 	var fileFindings []output.FileFinding

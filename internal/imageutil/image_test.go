@@ -131,8 +131,9 @@ func TestGetImageAndConfig_OCI(t *testing.T) {
 	// Use OCI transport
 	imageName := "oci:" + layoutPath + ":1.0"
 
-	img, cfg, err := GetImageAndConfig(imageName)
+	img, cfg, cleanup, err := GetImageAndConfig(imageName)
 	require.NoError(t, err)
+	defer cleanup()
 	require.NotNil(t, img)
 	require.NotNil(t, cfg)
 
@@ -180,11 +181,12 @@ func TestGetImage_OCITransport(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			img, err := GetImage(tt.imageName)
+			img, cleanup, err := GetImage(tt.imageName)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
+			defer cleanup()
 
 			require.NoError(t, err)
 			require.NotNil(t, img)
@@ -200,7 +202,7 @@ func TestGetImage_OCITransport(t *testing.T) {
 func TestGetImage_InvalidTransport(t *testing.T) {
 	// Test with a reference that contains invalid characters
 	// References cannot contain spaces or other special characters
-	_, err := GetImage("invalid reference with spaces")
+	_, _, err := GetImage("invalid reference with spaces")
 	require.Error(t, err)
 	// The error should come from the name parsing, not from our ParseReference
 }
@@ -242,7 +244,7 @@ func TestGetImageConfig_EmptyImage(t *testing.T) {
 
 func TestGetImageAndConfig_InvalidReference(t *testing.T) {
 	// Test with a reference that contains invalid characters
-	_, _, err := GetImageAndConfig("invalid reference with spaces")
+	_, _, _, err := GetImageAndConfig("invalid reference with spaces")
 	require.Error(t, err)
 	// The error should come from the name parsing, not from our ParseReference
 }
@@ -253,7 +255,7 @@ func TestGetImageAndConfig_OCIWithoutTag(t *testing.T) {
 	createOCILayout(t, layoutPath)
 
 	// OCI transport requires tag or digest
-	_, _, err := GetImageAndConfig("oci:" + layoutPath)
+	_, _, _, err := GetImageAndConfig("oci:" + layoutPath)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires tag or digest")
 }
@@ -330,7 +332,7 @@ func TestGetImage_OCIArchiveTransport(t *testing.T) {
 	createTarballFromOCILayout(t, layoutPath, tarPath)
 
 	// Test with tag reference
-	loadedImg, err := GetImage("oci-archive:" + tarPath + ":test-tag")
+	loadedImg, cleanup, err := GetImage("oci-archive:" + tarPath + ":test-tag")
 	require.NoError(t, err)
 	require.NotNil(t, loadedImg)
 
@@ -338,14 +340,16 @@ func TestGetImage_OCIArchiveTransport(t *testing.T) {
 	loadedDigest, err := loadedImg.Digest()
 	require.NoError(t, err)
 	assert.Equal(t, digest, loadedDigest)
+	cleanup()
 
 	// Test with digest reference
-	loadedImg2, err := GetImage("oci-archive:" + tarPath + "@" + digest.String())
+	loadedImg2, cleanup2, err := GetImage("oci-archive:" + tarPath + "@" + digest.String())
 	require.NoError(t, err)
 	require.NotNil(t, loadedImg2)
+	cleanup2()
 
 	// Test error: missing reference
-	_, err = GetImage("oci-archive:" + tarPath)
+	_, _, err = GetImage("oci-archive:" + tarPath)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires tag or digest")
 }
@@ -368,8 +372,9 @@ func TestGetImage_DockerArchiveTransport(t *testing.T) {
 
 	// Load the image from docker-archive without specifying tag
 	// (will load the first/only image in the archive)
-	loadedImg, err := GetImage("docker-archive:" + tarPath)
+	loadedImg, cleanup, err := GetImage("docker-archive:" + tarPath)
 	require.NoError(t, err)
+	defer cleanup()
 	require.NotNil(t, loadedImg)
 
 	// Verify it's the same image by comparing digest
@@ -472,7 +477,7 @@ func TestGetDockerArchiveImage_EmptyTag(t *testing.T) {
 // Tests for GetOCIArchiveImage
 
 func TestGetOCIArchiveImage_NonExistentFile(t *testing.T) {
-	_, err := GetOCIArchiveImage("/nonexistent/file.tar", "latest")
+	_, _, err := GetOCIArchiveImage("/nonexistent/file.tar", "latest")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error extracting OCI archive")
 }
@@ -485,7 +490,7 @@ func TestGetOCIArchiveImage_InvalidTarball(t *testing.T) {
 	err := os.WriteFile(tarPath, []byte("not a valid tar file"), 0600)
 	require.NoError(t, err)
 
-	_, err = GetOCIArchiveImage(tarPath, "latest")
+	_, _, err = GetOCIArchiveImage(tarPath, "latest")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error extracting OCI archive")
 }
@@ -494,6 +499,44 @@ func TestGetOCIArchiveImage_InvalidTarball(t *testing.T) {
 
 func TestGetImage_InvalidReference(t *testing.T) {
 	// Test with completely invalid reference
-	_, err := GetImage("")
+	_, _, err := GetImage("")
 	require.Error(t, err)
+}
+
+// TestGetOCIArchiveImage_CleanupRemovesTempDir verifies that the cleanup function
+// returned by GetOCIArchiveImage removes the extracted temporary directory.
+func TestGetOCIArchiveImage_CleanupRemovesTempDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create an OCI layout and pack it into a tarball
+	layoutPath := filepath.Join(tmpDir, "layout")
+	_, digest := createOCILayoutWithTag(t, layoutPath, "cleanup-test")
+	tarPath := filepath.Join(tmpDir, "image.tar")
+	createTarballFromOCILayout(t, layoutPath, tarPath)
+
+	// Load the image — this extracts to a new temp dir inside os.TempDir()
+	img, cleanup, err := GetOCIArchiveImage(tarPath, digest.String())
+	require.NoError(t, err)
+	require.NotNil(t, img)
+
+	// Verify the image is usable before cleanup
+	_, err = img.Digest()
+	require.NoError(t, err)
+
+	// Find the extracted temp dir that was created by GetOCIArchiveImage.
+	// We identify it by listing oci-archive-* entries in os.TempDir() before
+	// and after cleanup so the test remains independent of implementation details.
+	pattern := filepath.Join(os.TempDir(), "oci-archive-*")
+	beforeDirs, err := filepath.Glob(pattern)
+	require.NoError(t, err)
+	require.NotEmpty(t, beforeDirs, "expected at least one oci-archive-* temp dir to exist before cleanup")
+
+	// Call cleanup and verify all previously found dirs are gone
+	cleanup()
+
+	afterDirs, err := filepath.Glob(pattern)
+	require.NoError(t, err)
+	for _, dir := range beforeDirs {
+		assert.NotContains(t, afterDirs, dir, "temp dir %s should have been removed by cleanup", dir)
+	}
 }

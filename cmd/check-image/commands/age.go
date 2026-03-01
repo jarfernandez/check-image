@@ -34,10 +34,11 @@ func init() {
 }
 
 func runAge(imageName string) (*output.CheckResult, error) {
-	_, config, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	if config.Created.IsZero() {
 		return nil, fmt.Errorf("image creation date is not set")

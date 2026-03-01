@@ -50,10 +50,11 @@ func runLabels(imageName string) (*output.CheckResult, error) {
 	log.Debugf("Loaded policy with %d required labels", len(policy.RequiredLabels))
 
 	// Get image config
-	_, config, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	// Get labels from image (may be nil)
 	imageLabels := config.Config.Labels

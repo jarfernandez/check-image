@@ -28,10 +28,11 @@ func init() {
 }
 
 func runHealthcheck(imageName string) (*output.CheckResult, error) {
-	_, config, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	hasHealthcheck := config.Config.Healthcheck != nil &&
 		len(config.Config.Healthcheck.Test) > 0 &&

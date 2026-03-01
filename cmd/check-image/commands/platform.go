@@ -81,10 +81,11 @@ func parseAllowedPlatforms() ([]string, error) {
 }
 
 func runPlatform(imageName string) (*output.CheckResult, error) {
-	_, config, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	// Build platform string: OS/Architecture[/Variant]
 	platform := config.OS + "/" + config.Architecture
