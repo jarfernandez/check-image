@@ -3,6 +3,7 @@ package secrets
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -213,6 +214,27 @@ func TestGetFilePatterns(t *testing.T) {
 	// Minimum length should be defaults + custom
 	minLen := len(DefaultFilePatterns) + len(policy.CustomFilePatterns)
 	assert.GreaterOrEqual(t, len(patterns), minLen)
+}
+
+func TestGetFilePatterns_DeterministicOrder(t *testing.T) {
+	policy := &Policy{
+		CustomFilePatterns: []string{"zzz.custom", "aaa.custom"},
+	}
+
+	// Call multiple times and verify the default-pattern prefix is always sorted
+	for range 10 {
+		patterns := policy.GetFilePatterns()
+
+		defaultCount := len(DefaultFilePatterns)
+		defaultSlice := patterns[:defaultCount]
+
+		// The default portion must be sorted
+		assert.True(t, sort.StringsAreSorted(defaultSlice),
+			"default patterns must be in sorted order, got: %v", defaultSlice)
+
+		// Custom patterns must follow in their original order
+		assert.Equal(t, []string{"zzz.custom", "aaa.custom"}, patterns[defaultCount:])
+	}
 }
 
 func TestDefaultFilePatterns(t *testing.T) {

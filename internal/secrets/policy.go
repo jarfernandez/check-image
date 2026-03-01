@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
 )
@@ -114,12 +115,14 @@ func (p *Policy) GetEnvPatterns() []string {
 	return patterns
 }
 
-// GetFilePatterns returns all file patterns (default + custom)
+// GetFilePatterns returns all file patterns (default + custom).
+// Default patterns are returned in sorted order for deterministic output.
 func (p *Policy) GetFilePatterns() []string {
 	patterns := make([]string, 0, len(DefaultFilePatterns)+len(p.CustomFilePatterns))
 	for pattern := range DefaultFilePatterns {
 		patterns = append(patterns, pattern)
 	}
+	sort.Strings(patterns)
 	patterns = append(patterns, p.CustomFilePatterns...)
 	return patterns
 }
