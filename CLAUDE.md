@@ -72,6 +72,8 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
   - Enforces 5GB decompression limit to prevent decompression bombs
   - Supports gzipped (.gz, .tgz) and uncompressed tarballs
   - Then uses OCI layout loader on extracted content
+  - Returns `(cr.Image, func(), error)` — the `func()` removes the temp dir; callers must `defer cleanup()`
+  - `v1.Image` is lazy (reads from disk on demand), so the temp dir must remain alive until the caller is done with the image
 - **Docker Archive Support**: `GetDockerArchiveImage()` loads images from Docker tarball archives created with `docker save`
   - Uses `tarball.ImageFromPath()` from go-containerregistry
   - Supports tag-based image selection within multi-image archives
@@ -80,6 +82,7 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - `GetLocalImage()` retrieves from Docker daemon
 - `GetRemoteImage()` fetches from remote registry using `activeKeychain` (see Auth section below)
 - All functions use `github.com/google/go-containerregistry` for image operations
+- **Cleanup pattern**: `GetImage()` and `GetImageAndConfig()` both return `(…, func(), error)`. For all transports except `oci-archive:`, the cleanup does nothing. All callers must `defer cleanup()` immediately after a successful call.
 
 **Supported Transport Syntax** (Skopeo-compatible):
 - `oci:/path/to/layout:tag` - OCI layout directory with tag
@@ -415,7 +418,7 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 92.5% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 92.3% overall coverage.
 - Every new feature must include complete unit tests. Existing tests affected by the change must be updated.
 - After adding or modifying tests, run the full test suite (`go test ./...`) to confirm nothing is broken.
 - Before committing, run end-to-end verification of both the new feature and any related functionality that may have been affected.

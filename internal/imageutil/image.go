@@ -2,6 +2,8 @@ package imageutil
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/google/go-containerregistry/pkg/name"
 	cr "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
@@ -82,26 +84,35 @@ func GetDockerArchiveImage(tarballPath string, tag string) (cr.Image, error) {
 	return image, nil
 }
 
-// GetOCIArchiveImage retrieves an image from an OCI tarball
-func GetOCIArchiveImage(tarballPath string, reference string) (cr.Image, error) {
+// GetOCIArchiveImage retrieves an image from an OCI tarball.
+// The caller must call the returned cleanup function when done with the image
+// to remove the temporary directory created during extraction.
+func GetOCIArchiveImage(tarballPath string, reference string) (cr.Image, func(), error) {
 	// OCI archives need to be extracted to a temporary directory first
-	// then loaded using the OCI layout functions
+	// then loaded using the OCI layout functions.
+	// v1.Image is lazy, so the temp dir must remain on disk until the caller
+	// is done accessing the image; cleanup is the caller's responsibility.
 	tempDir, err := extractOCIArchive(tarballPath)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting OCI archive: %w", err)
+		return nil, func() {}, fmt.Errorf("error extracting OCI archive: %w", err)
 	}
-	// Note: Caller should clean up tempDir when done, but for now we'll leave it
-	// TODO: Implement proper cleanup mechanism
+	cleanup := func() { _ = os.RemoveAll(tempDir) }
 
-	// Use the OCI layout loader
-	return GetOCILayoutImage(tempDir, reference)
+	img, err := GetOCILayoutImage(tempDir, reference)
+	if err != nil {
+		cleanup()
+		return nil, func() {}, err
+	}
+	return img, cleanup, nil
 }
 
-// GetImage retrieves the image using transport-aware reference parsing
-func GetImage(imageName string) (cr.Image, error) {
+// GetImage retrieves the image using transport-aware reference parsing.
+// The caller must call the returned cleanup function when done with the image.
+// For all transports except oci-archive, cleanup does nothing.
+func GetImage(imageName string) (cr.Image, func(), error) {
 	ref, err := ParseReference(imageName)
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
 	}
 
 	switch ref.Transport {
@@ -112,35 +123,47 @@ func GetImage(imageName string) (cr.Image, error) {
 			reference = ref.Tag
 		}
 		if reference == "" {
-			return nil, fmt.Errorf("oci transport requires tag or digest")
+			return nil, func() {}, fmt.Errorf("oci transport requires tag or digest")
 		}
-		return GetOCILayoutImage(ref.Path, reference)
+		img, err := GetOCILayoutImage(ref.Path, reference)
+		if err != nil {
+			return nil, func() {}, err
+		}
+		return img, func() {}, nil
 
 	case TransportOCIArchive:
-		// OCI tarball - extract and load
+		// OCI tarball - extract and load; cleanup removes the temp dir
 		reference := ref.Digest
 		if reference == "" {
 			reference = ref.Tag
 		}
 		if reference == "" {
-			return nil, fmt.Errorf("oci-archive transport requires tag or digest")
+			return nil, func() {}, fmt.Errorf("oci-archive transport requires tag or digest")
 		}
 		return GetOCIArchiveImage(ref.Path, reference)
 
 	case TransportDockerArchive:
 		// Docker tarball - load directly
-		return GetDockerArchiveImage(ref.Path, ref.Tag)
+		img, err := GetDockerArchiveImage(ref.Path, ref.Tag)
+		if err != nil {
+			return nil, func() {}, err
+		}
+		return img, func() {}, nil
 
 	case TransportDaemonRegistry:
 		// Default mode: try local daemon, fall back to remote registry
 		image, err := GetLocalImage(ref.Path)
 		if err == nil {
-			return image, nil
+			return image, func() {}, nil
 		}
-		return GetRemoteImage(ref.Path)
+		image, err = GetRemoteImage(ref.Path)
+		if err != nil {
+			return nil, func() {}, err
+		}
+		return image, func() {}, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported transport: %s", ref.Transport)
+		return nil, func() {}, fmt.Errorf("unsupported transport: %s", ref.Transport)
 	}
 }
 
@@ -154,17 +177,20 @@ func GetImageConfig(image cr.Image) (*cr.ConfigFile, error) {
 	return config, nil
 }
 
-// GetImageAndConfig retrieves both the image and its configuration file given an image name
-func GetImageAndConfig(imageName string) (cr.Image, *cr.ConfigFile, error) {
-	image, err := GetImage(imageName)
+// GetImageAndConfig retrieves both the image and its configuration file given an image name.
+// The caller must call the returned cleanup function when done with the image.
+// For all transports except oci-archive, cleanup does nothing.
+func GetImageAndConfig(imageName string) (cr.Image, *cr.ConfigFile, func(), error) {
+	image, cleanup, err := GetImage(imageName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, func() {}, err
 	}
 
 	config, err := GetImageConfig(image)
 	if err != nil {
-		return nil, nil, err
+		cleanup()
+		return nil, nil, func() {}, err
 	}
 
-	return image, config, nil
+	return image, config, cleanup, nil
 }

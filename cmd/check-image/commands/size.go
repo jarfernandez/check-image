@@ -38,10 +38,11 @@ func init() {
 }
 
 func runSize(imageName string) (*output.CheckResult, error) {
-	image, err := imageutil.GetImage(imageName)
+	image, cleanup, err := imageutil.GetImage(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	layers, err := image.Layers()
 	if err != nil {

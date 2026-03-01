@@ -84,10 +84,11 @@ func parseAllowedPorts() ([]int, error) {
 }
 
 func runPorts(imageName string) (*output.CheckResult, error) {
-	_, config, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	// Extract exposed ports from the image config
 	exposedPorts := make([]int, 0)

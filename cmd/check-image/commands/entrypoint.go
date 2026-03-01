@@ -35,10 +35,11 @@ func init() {
 }
 
 func runEntrypoint(imageName string) (*output.CheckResult, error) {
-	_, config, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	ep := config.Config.Entrypoint
 	cmd := config.Config.Cmd
