@@ -143,11 +143,11 @@ func TestDetermineChecks(t *testing.T) {
 	})
 
 	t.Run("all runners have non-nil render function", func(t *testing.T) {
-		// Every checkRunner must carry its own renderer so the all command
+		// Every checkDef must carry its own renderer so the all command
 		// path never falls back to a stringly-typed dispatch.
 		checks := determineChecks(nil, nil, nil)
 		for _, c := range checks {
-			assert.NotNilf(t, c.render, "checkRunner %q has nil render function", c.name)
+			assert.NotNilf(t, c.render, "checkDef %q has nil render function", c.name)
 		}
 	})
 
@@ -168,7 +168,7 @@ func TestDetermineChecks(t *testing.T) {
 		}
 		checks := determineChecks(cfg, nil, nil)
 		for _, c := range checks {
-			assert.NotNilf(t, c.render, "checkRunner %q has nil render function", c.name)
+			assert.NotNilf(t, c.render, "checkDef %q has nil render function", c.name)
 		}
 	})
 
@@ -176,7 +176,7 @@ func TestDetermineChecks(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true, "healthcheck": true}
 		checks := determineChecks(nil, nil, includeMap)
 		for _, c := range checks {
-			assert.NotNilf(t, c.render, "checkRunner %q has nil render function", c.name)
+			assert.NotNilf(t, c.render, "checkDef %q has nil render function", c.name)
 		}
 	})
 }
