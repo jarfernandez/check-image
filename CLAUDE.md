@@ -370,6 +370,7 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Use Conventional Commits format for all commit messages (e.g., `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
 - Commit messages and PR titles must start with an uppercase letter after the conventional commit prefix. Example: `feat: Add platforms validation command`, not `feat: add platforms validation command`.
 - In commit messages and PR titles/descriptions, wrap code, command names, flags, and file paths in backticks (e.g., `check-image`, `--max-size`, `root.go`).
+- Do not escape backticks with a backslash (`\`) in commit messages or PR titles/descriptions.
 - Do not add Claude as a co-author in commits (no `Co-Authored-By: Claude` lines).
 
 ### Go Best Practices
