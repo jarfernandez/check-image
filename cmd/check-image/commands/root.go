@@ -63,37 +63,12 @@ var rootCmd = &cobra.Command{
 		initRenderer(colorMode, os.Stdout)
 
 		// Resolve registry credentials: CLI flags > env vars > DefaultKeychain
-		username := registryUsername
-		password := registryPassword
-
-		if registryPasswordStdin && password != "" {
-			return fmt.Errorf("--password and --password-stdin are mutually exclusive")
+		username, password, err := resolveRegistryCredentials(
+			registryUsername, registryPassword, registryPasswordStdin,
+		)
+		if err != nil {
+			return err
 		}
-
-		if registryPasswordStdin {
-			data, err := io.ReadAll(os.Stdin)
-			if err != nil {
-				return fmt.Errorf("error reading password from stdin: %w", err)
-			}
-			password = strings.TrimRight(string(data), "\r\n")
-		}
-
-		if username == "" {
-			username = os.Getenv("CHECK_IMAGE_USERNAME")
-		}
-		if password == "" {
-			password = os.Getenv("CHECK_IMAGE_PASSWORD")
-		}
-
-		if username != "" && password == "" {
-			return fmt.Errorf("registry password required when username is set " +
-				"(use --password, --password-stdin, or CHECK_IMAGE_PASSWORD)")
-		}
-		if password != "" && username == "" {
-			return fmt.Errorf("registry username required when password is set " +
-				"(use --username or CHECK_IMAGE_USERNAME)")
-		}
-
 		if username != "" {
 			imageutil.SetStaticCredentials(username, password)
 			log.Debugln("Using explicit registry credentials for user:", username)
@@ -104,6 +79,38 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
+}
+
+// resolveRegistryCredentials resolves the final registry username and password
+// by applying the precedence chain: CLI flags > env vars.
+// It validates mutual-exclusivity and pairing constraints, reads from stdin when
+// passwordStdin is true, and returns the resolved (username, password) pair.
+func resolveRegistryCredentials(username, password string, passwordStdin bool) (string, string, error) {
+	if passwordStdin && password != "" {
+		return "", "", fmt.Errorf("--password and --password-stdin are mutually exclusive")
+	}
+	if passwordStdin {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return "", "", fmt.Errorf("error reading password from stdin: %w", err)
+		}
+		password = strings.TrimRight(string(data), "\r\n")
+	}
+	if username == "" {
+		username = os.Getenv("CHECK_IMAGE_USERNAME")
+	}
+	if password == "" {
+		password = os.Getenv("CHECK_IMAGE_PASSWORD")
+	}
+	if username != "" && password == "" {
+		return "", "", fmt.Errorf("registry password required when username is set " +
+			"(use --password, --password-stdin, or CHECK_IMAGE_PASSWORD)")
+	}
+	if password != "" && username == "" {
+		return "", "", fmt.Errorf("registry username required when password is set " +
+			"(use --username or CHECK_IMAGE_USERNAME)")
+	}
+	return username, password, nil
 }
 
 func init() {
