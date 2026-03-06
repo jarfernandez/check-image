@@ -229,48 +229,57 @@ func validateRequiredFlags(checks []checkDef) error {
 	return nil
 }
 
+// printSectionHeader prints the check's section header in text mode.
+func printSectionHeader(name string) {
+	if OutputFmt == output.FormatText {
+		fmt.Println(sectionHeader(name))
+	}
+}
+
+// runSingleCheck executes one check, handles errors, and updates the global Result.
+func runSingleCheck(check checkDef, imageName string) output.CheckResult {
+	result, err := check.run(imageName)
+	if err != nil {
+		log.Errorf("Check %s failed with error: %v", check.name, err)
+		UpdateResult(ExecutionError)
+		return output.CheckResult{
+			Check:   check.name,
+			Image:   imageName,
+			Passed:  false,
+			Message: fmt.Sprintf("check failed with error: %v", err),
+			Error:   err.Error(),
+		}
+	}
+	if result.Passed {
+		UpdateResult(ValidationSucceeded)
+	} else {
+		UpdateResult(ValidationFailed)
+	}
+	return *result
+}
+
+// printSectionFooter renders the check result and prints a blank line in text mode.
+// render is skipped for error results because they carry no typed Details.
+func printSectionFooter(check checkDef, result *output.CheckResult) {
+	if OutputFmt != output.FormatText {
+		return
+	}
+	if check.render != nil && result.Error == "" {
+		check.render(result)
+	}
+	fmt.Println()
+}
+
 // executeChecks runs each check, collects results, and updates the global Result.
 func executeChecks(checks []checkDef, imageName string) []output.CheckResult {
 	var results []output.CheckResult
 
 	for _, check := range checks {
 		log.Debugf("Running check: %s", check.name)
-
-		if OutputFmt == output.FormatText {
-			fmt.Println(sectionHeader(check.name))
-		}
-
-		result, err := check.run(imageName)
-		if err != nil {
-			log.Errorf("Check %s failed with error: %v", check.name, err)
-			UpdateResult(ExecutionError)
-
-			errResult := output.CheckResult{
-				Check:   check.name,
-				Image:   imageName,
-				Passed:  false,
-				Message: fmt.Sprintf("check failed with error: %v", err),
-				Error:   err.Error(),
-			}
-			results = append(results, errResult)
-		} else {
-			results = append(results, *result)
-
-			if OutputFmt == output.FormatText && check.render != nil {
-				check.render(result)
-			}
-
-			if result.Passed {
-				UpdateResult(ValidationSucceeded)
-			} else {
-				UpdateResult(ValidationFailed)
-			}
-		}
-
-		if OutputFmt == output.FormatText {
-			fmt.Println()
-		}
-
+		printSectionHeader(check.name)
+		result := runSingleCheck(check, imageName)
+		results = append(results, result)
+		printSectionFooter(check, &result)
 		if failFast && (Result == ValidationFailed || Result == ExecutionError) {
 			break
 		}
