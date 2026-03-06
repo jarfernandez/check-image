@@ -298,6 +298,52 @@ func TestApplyConfigValues(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint(90), maxAge)
 	})
+
+	t.Run("registry apply error returns error and callable cleanup", func(t *testing.T) {
+		origRegistryPolicy := registryPolicy
+		defer func() { registryPolicy = origRegistryPolicy }()
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("registry-policy", "", "")
+		cmd.Flags().String("secrets-policy", "", "")
+		cmd.Flags().String("labels-policy", "", "")
+
+		// int is an invalid policy type — triggers the default case in inlinePolicyToTempFile
+		cfg := &allConfig{
+			Checks: allChecksConfig{
+				Registry: &registryCheckConfig{RegistryPolicy: 42},
+			},
+		}
+
+		cleanup, err := applyConfigValues(cmd, cfg)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "registry-policy")
+		// Combined cleanup must be callable even on error path
+		assert.NotPanics(t, func() { cleanup() })
+	})
+
+	t.Run("labels apply error returns error and callable cleanup", func(t *testing.T) {
+		origLabelsPolicy := labelsPolicy
+		defer func() { labelsPolicy = origLabelsPolicy }()
+
+		cmd := &cobra.Command{}
+		cmd.Flags().String("registry-policy", "", "")
+		cmd.Flags().String("secrets-policy", "", "")
+		cmd.Flags().String("labels-policy", "", "")
+
+		// int is an invalid policy type — triggers the default case in inlinePolicyToTempFile
+		cfg := &allConfig{
+			Checks: allChecksConfig{
+				Labels: &labelsCheckConfig{LabelsPolicy: 42},
+			},
+		}
+
+		cleanup, err := applyConfigValues(cmd, cfg)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "labels-policy")
+		// Combined cleanup must be callable even on error path
+		assert.NotPanics(t, func() { cleanup() })
+	})
 }
 
 func TestFormatAllowedList(t *testing.T) {

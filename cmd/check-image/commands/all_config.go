@@ -131,6 +131,19 @@ func loadAllConfig(path string) (*allConfig, error) {
 	return &cfg, nil
 }
 
+// configApplyResult bundles the cleanup function and error returned by an
+// apply helper that may create temporary files. Grouping them ensures that
+// every future helper's cleanup is automatically included in the combined
+// cleanup and its error is checked uniformly.
+type configApplyResult struct {
+	cleanup func()
+	err     error
+}
+
+func newApplyResult(cleanup func(), err error) configApplyResult {
+	return configApplyResult{cleanup: cleanup, err: err}
+}
+
 // applyConfigValues applies configuration file values to package-level variables,
 // but only for flags that were not explicitly set on the CLI.
 // It returns a cleanup function that removes any temporary files created for
@@ -141,23 +154,26 @@ func applyConfigValues(cmd *cobra.Command, cfg *allConfig) (func(), error) {
 	applyAgeConfig(cmd, cfg.Checks.Age)
 	applySizeConfig(cmd, cfg.Checks.Size)
 	applyPortsConfig(cmd, cfg.Checks.Ports)
-	cleanupRegistry, errRegistry := applyRegistryConfig(cmd, cfg.Checks.Registry)
-	cleanupSecrets, errSecrets := applySecretsConfig(cmd, cfg.Checks.Secrets)
-	cleanupLabels, errLabels := applyLabelsConfig(cmd, cfg.Checks.Labels)
 	applyEntrypointConfig(cmd, cfg.Checks.Entrypoint)
 	applyPlatformConfig(cmd, cfg.Checks.Platform)
+
+	results := []configApplyResult{
+		newApplyResult(applyRegistryConfig(cmd, cfg.Checks.Registry)),
+		newApplyResult(applySecretsConfig(cmd, cfg.Checks.Secrets)),
+		newApplyResult(applyLabelsConfig(cmd, cfg.Checks.Labels)),
+	}
+
 	combined := func() {
-		cleanupRegistry()
-		cleanupSecrets()
-		cleanupLabels()
+		for _, r := range results {
+			r.cleanup()
+		}
 	}
-	if errRegistry != nil {
-		return combined, errRegistry
+	for _, r := range results {
+		if r.err != nil {
+			return combined, r.err
+		}
 	}
-	if errSecrets != nil {
-		return combined, errSecrets
-	}
-	return combined, errLabels
+	return combined, nil
 }
 
 func applyAgeConfig(cmd *cobra.Command, cfg *ageCheckConfig) {
