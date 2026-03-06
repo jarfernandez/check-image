@@ -333,6 +333,16 @@ func TestMatchesFilePattern(t *testing.T) {
 			path:      "/etc/hosts",
 			wantMatch: false,
 		},
+		{
+			name:      "AWS credentials backup - no false positive",
+			path:      "/home/user/.aws/credentials-backup",
+			wantMatch: false,
+		},
+		{
+			name:      "AWS credentials with extra suffix - no false positive",
+			path:      "/home/user/.aws/credentials.bak",
+			wantMatch: false,
+		},
 	}
 
 	for _, tt := range tests {

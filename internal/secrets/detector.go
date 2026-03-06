@@ -200,9 +200,12 @@ func matchesFilePattern(path string, patterns []string) (bool, string) {
 			return true, describePattern(pattern)
 		}
 
-		// Handle path-based patterns (e.g., .aws/credentials)
+		// Handle path-based patterns (e.g., .aws/credentials).
+		// Use HasSuffix with a directory separator to avoid false positives where
+		// the pattern appears as a prefix of another filename (e.g., ".aws/credentials"
+		// must not match ".aws/credentials-backup").
 		if strings.Contains(pattern, "/") {
-			if strings.Contains(path, pattern) || strings.HasSuffix(path, pattern) {
+			if strings.HasSuffix(path, "/"+pattern) || strings.HasSuffix(path, pattern) {
 				return true, describePattern(pattern)
 			}
 		}
