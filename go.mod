@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/term v0.2.2
-	github.com/google/go-containerregistry v0.21.0
+	github.com/google/go-containerregistry v0.21.2
 	github.com/mattn/go-isatty v0.0.20
 	github.com/muesli/termenv v0.16.0
 	github.com/sirupsen/logrus v1.9.4
