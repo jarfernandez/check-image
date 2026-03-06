@@ -160,27 +160,31 @@ func isExcluded(value string, exclusionList []string) bool {
 // isPathExcluded checks if a path matches any exclusion patterns
 func isPathExcluded(path string, excludedPatterns []string) bool {
 	for _, pattern := range excludedPatterns {
-		// Support both exact matches and glob patterns
-		if before, ok := strings.CutSuffix(pattern, "/**"); ok {
-			// Directory prefix match
-			prefix := before
-			if strings.HasPrefix(path, prefix+"/") || path == prefix {
-				return true
-			}
-		} else {
-			// Exact match or glob pattern
-			matched, err := filepath.Match(pattern, path)
-			if err == nil && matched {
-				return true
-			}
-			// Also try matching against the full path
-			matched, err = filepath.Match(pattern, filepath.Base(path))
-			if err == nil && matched {
-				return true
-			}
+		if isDirectoryPattern(path, pattern) || isGlobPattern(path, pattern) {
+			return true
 		}
 	}
 	return false
+}
+
+// isDirectoryPattern reports whether path falls under a directory exclusion pattern
+// (patterns ending with "/**", e.g. "/usr/share/**").
+func isDirectoryPattern(path, pattern string) bool {
+	prefix, ok := strings.CutSuffix(pattern, "/**")
+	if !ok {
+		return false
+	}
+	return path == prefix || strings.HasPrefix(path, prefix+"/")
+}
+
+// isGlobPattern reports whether path matches an exact path or glob pattern,
+// trying both the full path and the basename.
+func isGlobPattern(path, pattern string) bool {
+	if matched, err := filepath.Match(pattern, path); err == nil && matched {
+		return true
+	}
+	matched, err := filepath.Match(pattern, filepath.Base(path))
+	return err == nil && matched
 }
 
 // matchesFilePattern checks if a file path matches any sensitive patterns
