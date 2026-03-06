@@ -1085,6 +1085,114 @@ func TestRunAll_PlatformWithInlineConfig(t *testing.T) {
 	assert.Contains(t, out, "linux/arm64")
 }
 
+func TestRunSingleCheck(t *testing.T) {
+	t.Run("check succeeds", func(t *testing.T) {
+		resetAllGlobals()
+		expected := output.CheckResult{Check: "age", Image: "img", Passed: true, Message: "ok"}
+		check := checkDef{
+			name: "age",
+			run:  func(string) (*output.CheckResult, error) { return &expected, nil },
+		}
+		got := runSingleCheck(check, "img")
+		assert.Equal(t, expected, got)
+		assert.Equal(t, ValidationSucceeded, Result)
+	})
+
+	t.Run("check fails validation", func(t *testing.T) {
+		resetAllGlobals()
+		expected := output.CheckResult{Check: "size", Image: "img", Passed: false, Message: "too big"}
+		check := checkDef{
+			name: "size",
+			run:  func(string) (*output.CheckResult, error) { return &expected, nil },
+		}
+		got := runSingleCheck(check, "img")
+		assert.Equal(t, expected, got)
+		assert.Equal(t, ValidationFailed, Result)
+	})
+
+	t.Run("check returns error", func(t *testing.T) {
+		resetAllGlobals()
+		check := checkDef{
+			name: "ports",
+			run:  func(string) (*output.CheckResult, error) { return nil, assert.AnError },
+		}
+		got := runSingleCheck(check, "img")
+		assert.False(t, got.Passed)
+		assert.Equal(t, "ports", got.Check)
+		assert.NotEmpty(t, got.Error)
+		assert.Equal(t, ExecutionError, Result)
+	})
+}
+
+func TestPrintSectionHeader(t *testing.T) {
+	t.Run("text mode prints header", func(t *testing.T) {
+		resetAllGlobals()
+		OutputFmt = output.FormatText
+		out := captureStdout(t, func() { printSectionHeader("age") })
+		assert.Contains(t, out, "age")
+	})
+
+	t.Run("json mode prints nothing", func(t *testing.T) {
+		resetAllGlobals()
+		OutputFmt = output.FormatJSON
+		out := captureStdout(t, func() { printSectionHeader("age") })
+		assert.Empty(t, out)
+	})
+}
+
+func TestPrintSectionFooter(t *testing.T) {
+	t.Run("text mode with render calls render and prints blank line", func(t *testing.T) {
+		resetAllGlobals()
+		OutputFmt = output.FormatText
+		rendered := false
+		result := &output.CheckResult{Check: "age", Passed: true}
+		check := checkDef{
+			name:   "age",
+			render: func(*output.CheckResult) { rendered = true },
+		}
+		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		assert.True(t, rendered)
+		assert.Equal(t, "\n", out)
+	})
+
+	t.Run("text mode with nil render prints only blank line", func(t *testing.T) {
+		resetAllGlobals()
+		OutputFmt = output.FormatText
+		result := &output.CheckResult{Check: "age", Passed: true}
+		check := checkDef{name: "age", render: nil}
+		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		assert.Equal(t, "\n", out)
+	})
+
+	t.Run("text mode with error result skips render and prints blank line", func(t *testing.T) {
+		resetAllGlobals()
+		OutputFmt = output.FormatText
+		rendered := false
+		result := &output.CheckResult{Check: "ports", Passed: false, Error: "some error"}
+		check := checkDef{
+			name:   "ports",
+			render: func(*output.CheckResult) { rendered = true },
+		}
+		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		assert.False(t, rendered)
+		assert.Equal(t, "\n", out)
+	})
+
+	t.Run("json mode prints nothing and skips render", func(t *testing.T) {
+		resetAllGlobals()
+		OutputFmt = output.FormatJSON
+		rendered := false
+		result := &output.CheckResult{Check: "age", Passed: true}
+		check := checkDef{
+			name:   "age",
+			render: func(*output.CheckResult) { rendered = true },
+		}
+		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		assert.False(t, rendered)
+		assert.Empty(t, out)
+	})
+}
+
 // TestRenderAllJSON_AllPassing tests renderAllJSON when all checks pass.
 func TestRenderAllJSON_AllPassing(t *testing.T) {
 	resetAllGlobals()

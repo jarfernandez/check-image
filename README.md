@@ -1009,7 +1009,7 @@ go tool cover -html=coverage.out
 - **internal/secrets**: 96.4% coverage
 - **internal/fileutil**: 89.7% coverage
 - **internal/imageutil**: 83.5% coverage
-- **cmd/check-image/commands**: 91.0% coverage
+- **cmd/check-image/commands**: 91.1% coverage
 - **cmd/check-image**: 60.0% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
