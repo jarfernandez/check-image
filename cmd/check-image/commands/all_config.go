@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/jarfernandez/check-image/internal/fileutil"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -310,20 +309,18 @@ func inlinePolicyToTempFile(prefix string, v any) (path string, cleanup func(), 
 			return "", func() {}, fmt.Errorf("failed to create temp file for inline %s: %w", prefix, err)
 		}
 		name := tmpFile.Name()
+		removeFile := func() { _ = os.Remove(name) }
+
 		if _, err := tmpFile.Write(data); err != nil {
 			_ = tmpFile.Close()
-			_ = os.Remove(name) // #nosec G703 -- name comes from os.CreateTemp, not user input
+			removeFile()
 			return "", func() {}, fmt.Errorf("failed to write inline %s to temp file: %w", prefix, err)
 		}
 		if err := tmpFile.Close(); err != nil {
-			_ = os.Remove(name) // #nosec G703 -- name comes from os.CreateTemp, not user input
+			removeFile()
 			return "", func() {}, fmt.Errorf("failed to close temp file for inline %s: %w", prefix, err)
 		}
-		return name, func() {
-			if removeErr := os.Remove(name); removeErr != nil && !os.IsNotExist(removeErr) {
-				log.Warnf("failed to remove temp file %s: %v", name, removeErr)
-			}
-		}, nil
+		return name, removeFile, nil
 	default:
 		return "", func() {}, fmt.Errorf("%s must be either a string (file path) or an object (inline policy), got %T", prefix, v)
 	}
