@@ -1296,6 +1296,41 @@ func TestRenderAllJSON_WithIncludeMap(t *testing.T) {
 	assert.Contains(t, skipped, "registry")
 }
 
+func TestRenderEmptyResult_TextMode(t *testing.T) {
+	resetAllGlobals()
+	OutputFmt = output.FormatText
+
+	captured := captureStdout(t, func() {
+		err := renderEmptyResult("nginx:latest", nil, nil)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, captured, "No checks to run")
+}
+
+func TestRenderEmptyResult_JSONMode(t *testing.T) {
+	resetAllGlobals()
+	OutputFmt = output.FormatJSON
+	skipMap := map[string]bool{"registry": true, "secrets": true}
+
+	captured := captureStdout(t, func() {
+		err := renderEmptyResult("nginx:latest", skipMap, nil)
+		require.NoError(t, err)
+	})
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal([]byte(captured), &data))
+	assert.Equal(t, "nginx:latest", data["image"])
+	assert.Equal(t, true, data["passed"])
+	checks := data["checks"].([]any)
+	assert.Len(t, checks, 0)
+	summary := data["summary"].(map[string]any)
+	assert.Equal(t, float64(0), summary["total"])
+	skipped := summary["skipped"].([]any)
+	assert.Contains(t, skipped, "registry")
+	assert.Contains(t, skipped, "secrets")
+}
+
 // TestRunAll_EntrypointWithCmdField tests that the entrypoint check renders
 // both Entrypoint and Cmd fields when an image defines both.
 func TestRunAll_EntrypointWithCmdField(t *testing.T) {
