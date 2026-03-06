@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.5](https://github.com/jarfernandez/check-image/compare/v0.19.4...v0.19.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* Prevent false positives in path-based secrets file pattern matching ([#139](https://github.com/jarfernandez/check-image/issues/139)) ([9822379](https://github.com/jarfernandez/check-image/commit/982237985cb3be0a37d138c7a7a331785a166c7b))
+
+
+### Code Refactoring
+
+* Centralise cleanup in `extractOCIArchive` via named return defer ([#137](https://github.com/jarfernandez/check-image/issues/137)) ([49eec76](https://github.com/jarfernandez/check-image/commit/49eec76046aa2d62c32b330c9e28ed7c43830d23))
+* Extract `isDirectoryPattern` and `isGlobPattern` from `isPathExcluded` ([#140](https://github.com/jarfernandez/check-image/issues/140)) ([780c278](https://github.com/jarfernandez/check-image/commit/780c278ca9f2637c73b8444da484435d70b6015e))
+* Extract `printSectionHeader`, `runSingleCheck`, `printSectionFooter` from `executeChecks` ([#138](https://github.com/jarfernandez/check-image/issues/138)) ([1b493a8](https://github.com/jarfernandez/check-image/commit/1b493a8de5519c3076bfff2776f0d7a16dd1522a))
+* Extract `resolveRegistryCredentials` from `PersistentPreRunE` for direct testability ([#135](https://github.com/jarfernandez/check-image/issues/135)) ([cd5d2ee](https://github.com/jarfernandez/check-image/commit/cd5d2ee7e523914453c00a3451bff1876640c0a5))
+
 ## [0.19.4](https://github.com/jarfernandez/check-image/compare/v0.19.3...v0.19.4) (2026-03-01)
 
 
