@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
@@ -524,4 +525,146 @@ func TestRootCommandAuth_MixedFlagAndEnv_UsernameFromFlag_PasswordFromEnv(t *tes
 	require.NoError(t, authErr)
 	assert.Equal(t, "flaguser", cfg.Username)
 	assert.Equal(t, "envpass", cfg.Password)
+}
+
+// newStdinPipe creates a pipe, writes content to the write end, closes it, and
+// returns the read end. The caller must restore os.Stdin via t.Cleanup.
+func newStdinPipe(t *testing.T, content string) *os.File {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	_, err = fmt.Fprint(w, content)
+	require.NoError(t, err)
+	w.Close()
+	origStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = origStdin
+		r.Close()
+	})
+	return r
+}
+
+func TestResolveRegistryCredentials(t *testing.T) {
+	tests := []struct {
+		name          string
+		username      string
+		password      string
+		passwordStdin bool
+		stdinContent  string // written to stdin when passwordStdin is true
+		envUsername   string // set CHECK_IMAGE_USERNAME if non-empty
+		envPassword   string // set CHECK_IMAGE_PASSWORD if non-empty
+		wantUsername  string
+		wantPassword  string
+		wantErrSubstr string
+	}{
+		{
+			name:         "both empty, no env vars",
+			wantUsername: "",
+			wantPassword: "",
+		},
+		{
+			name:         "credentials from flags",
+			username:     "flaguser",
+			password:     "flagpass",
+			wantUsername: "flaguser",
+			wantPassword: "flagpass",
+		},
+		{
+			name:         "credentials from env vars",
+			envUsername:  "envuser",
+			envPassword:  "envpass",
+			wantUsername: "envuser",
+			wantPassword: "envpass",
+		},
+		{
+			name:         "flags take precedence over env vars",
+			username:     "flaguser",
+			password:     "flagpass",
+			envUsername:  "envuser",
+			envPassword:  "envpass",
+			wantUsername: "flaguser",
+			wantPassword: "flagpass",
+		},
+		{
+			name:         "username from flag, password from env var",
+			username:     "flaguser",
+			envPassword:  "envpass",
+			wantUsername: "flaguser",
+			wantPassword: "envpass",
+		},
+		{
+			name:         "password from flag, username from env var",
+			password:     "flagpass",
+			envUsername:  "envuser",
+			wantUsername: "envuser",
+			wantPassword: "flagpass",
+		},
+		{
+			name:          "username set, no password — error",
+			username:      "onlyuser",
+			wantErrSubstr: "registry password required when username is set",
+		},
+		{
+			name:          "password set, no username — error",
+			password:      "onlypass",
+			wantErrSubstr: "registry username required when password is set",
+		},
+		{
+			name:          "--password and --password-stdin mutually exclusive",
+			username:      "user",
+			password:      "inline",
+			passwordStdin: true,
+			wantErrSubstr: "--password and --password-stdin are mutually exclusive",
+		},
+		{
+			name:          "password-stdin reads from stdin and strips LF",
+			username:      "stdinuser",
+			passwordStdin: true,
+			stdinContent:  "stdinpass\n",
+			wantUsername:  "stdinuser",
+			wantPassword:  "stdinpass",
+		},
+		{
+			name:          "password-stdin reads from stdin and strips CRLF",
+			username:      "stdinuser",
+			passwordStdin: true,
+			stdinContent:  "tokenvalue\r\n",
+			wantUsername:  "stdinuser",
+			wantPassword:  "tokenvalue",
+		},
+		{
+			name:          "password-stdin with env username",
+			passwordStdin: true,
+			stdinContent:  "stdinpass\n",
+			envUsername:   "envuser",
+			wantUsername:  "envuser",
+			wantPassword:  "stdinpass",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envUsername != "" {
+				t.Setenv("CHECK_IMAGE_USERNAME", tt.envUsername)
+			}
+			if tt.envPassword != "" {
+				t.Setenv("CHECK_IMAGE_PASSWORD", tt.envPassword)
+			}
+			if tt.passwordStdin && !strings.Contains(tt.wantErrSubstr, "mutually exclusive") {
+				newStdinPipe(t, tt.stdinContent)
+			}
+
+			gotUser, gotPass, err := resolveRegistryCredentials(tt.username, tt.password, tt.passwordStdin)
+
+			if tt.wantErrSubstr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrSubstr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantUsername, gotUser)
+			assert.Equal(t, tt.wantPassword, gotPass)
+		})
+	}
 }
