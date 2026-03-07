@@ -15,10 +15,7 @@ type allowedPlatformsFile struct {
 	AllowedPlatforms []string `json:"allowed-platforms" yaml:"allowed-platforms"`
 }
 
-var (
-	allowedPlatforms     string
-	allowedPlatformsList []string
-)
+var allowedPlatforms string
 
 var platformCmd = &cobra.Command{
 	Use:   "platform image",
@@ -35,15 +32,16 @@ var platformCmd = &cobra.Command{
   cat config/allowed-platforms.json | check-image platform nginx:latest --allowed-platforms @-`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		allowedPlatformsList, err = parseAllowedPlatforms()
+		platforms, err := parseAllowedPlatforms()
 		if err != nil {
 			return fmt.Errorf("invalid check platform arguments: %w", err)
 		}
 
-		log.Debugln("Allowed platforms:", allowedPlatformsList)
+		log.Debugln("Allowed platforms:", platforms)
 
-		return runCheckCmd(checkPlatform, runPlatform, args[0])
+		return runCheckCmd(checkPlatform, func(img string) (*output.CheckResult, error) {
+			return runPlatform(img, platforms)
+		}, args[0])
 	},
 }
 
@@ -80,7 +78,7 @@ func parseAllowedPlatforms() ([]string, error) {
 	return platforms, nil
 }
 
-func runPlatform(imageName string) (*output.CheckResult, error) {
+func runPlatform(imageName string, allowedPlatformsList []string) (*output.CheckResult, error) {
 	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err

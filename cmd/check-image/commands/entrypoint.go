@@ -30,7 +30,9 @@ By default the check fails if shell form is detected. Use --allow-shell-form to 
   check-image entrypoint docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkEntrypoint, runEntrypoint, args[0])
+		return runCheckCmd(checkEntrypoint, func(img string) (*output.CheckResult, error) {
+			return runEntrypoint(img, allowShellForm)
+		}, args[0])
 	},
 }
 
@@ -40,7 +42,7 @@ func init() {
 		"Allow shell form for entrypoint or cmd without failing (optional)")
 }
 
-func runEntrypoint(imageName string) (*output.CheckResult, error) {
+func runEntrypoint(imageName string, shellFormAllowed bool) (*output.CheckResult, error) {
 	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
@@ -71,7 +73,7 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 	switch {
 	case execForm:
 		passed, msg = true, "Image has a valid exec-form entrypoint" // #nosec G101 -- false positive: not a credential
-	case allowShellForm:
+	case shellFormAllowed:
 		passed, msg = true, "Image uses shell form but it is allowed"
 	default:
 		passed, msg = false, "Image uses shell form for entrypoint or cmd"
@@ -83,7 +85,7 @@ func runEntrypoint(imageName string) (*output.CheckResult, error) {
 		Entrypoint:    entrypoint,
 		Cmd:           startCmd,
 	}
-	if !execForm && allowShellForm {
+	if !execForm && shellFormAllowed {
 		details.ShellFormAllowed = true
 	}
 

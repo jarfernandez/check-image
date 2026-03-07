@@ -49,11 +49,8 @@ func TestRunLabels_AllValid(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	// Set global variable
-	labelsPolicy = policyFile
-
 	// Run the check
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -90,9 +87,7 @@ func TestRunLabels_MissingLabels(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -123,9 +118,7 @@ func TestRunLabels_InvalidValue(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -156,9 +149,7 @@ func TestRunLabels_InvalidPattern(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -187,9 +178,7 @@ func TestRunLabels_NoLabelsInImage(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -224,9 +213,7 @@ func TestRunLabels_MultipleFailures(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -253,10 +240,8 @@ func TestRunLabels_InvalidPolicy(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
 	// Should fail to load policy
-	result, err := runLabels("nginx:latest")
+	result, err := runLabels("nginx:latest", policyFile)
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "unable to load labels policy")
@@ -275,10 +260,8 @@ func TestRunLabels_NonexistentImage(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
 	// Try to check nonexistent image
-	result, err := runLabels("oci:/nonexistent/path")
+	result, err := runLabels("oci:/nonexistent/path", policyFile)
 	require.Error(t, err)
 	assert.Nil(t, result)
 }
@@ -406,11 +389,8 @@ func TestLabelsCommand_StdinInput(t *testing.T) {
 			defer f.Close()
 			os.Stdin = f
 
-			// Set policy to stdin
-			labelsPolicy = "-"
-
-			// Run check
-			result, err := runLabels("oci:" + imageDir + ":latest")
+			// Run check with stdin policy
+			result, err := runLabels("oci:"+imageDir+":latest", "-")
 
 			if tt.expectedError {
 				require.Error(t, err)
@@ -451,10 +431,8 @@ func TestLabelsCommand_JSONOutput(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	labelsPolicy = policyFile
-
 	// Run check
-	result, err := runLabels("oci:" + imageDir + ":latest")
+	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -543,10 +521,8 @@ func TestRunLabels_InvalidPolicyFormat(t *testing.T) {
 			err := os.WriteFile(policyFile, []byte(tt.policyContent), 0600)
 			require.NoError(t, err)
 
-			labelsPolicy = policyFile
-
 			// Try to run check - should fail to load policy
-			result, err := runLabels("nginx:latest")
+			result, err := runLabels("nginx:latest", policyFile)
 			require.Error(t, err)
 			assert.Nil(t, result)
 			assert.Contains(t, err.Error(), tt.errorContains)

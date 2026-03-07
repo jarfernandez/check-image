@@ -28,7 +28,9 @@ and optionally validates their values against exact matches or regex patterns.
   cat labels-policy.yaml | check-image labels nginx:latest --labels-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkLabels, runLabels, args[0])
+		return runCheckCmd(checkLabels, func(img string) (*output.CheckResult, error) {
+			return runLabels(img, labelsPolicy)
+		}, args[0])
 	},
 }
 
@@ -40,8 +42,8 @@ func init() {
 	}
 }
 
-func runLabels(imageName string) (*output.CheckResult, error) {
-	policy, err := labels.LoadLabelsPolicy(labelsPolicy)
+func runLabels(imageName string, policyPath string) (*output.CheckResult, error) {
+	policy, err := labels.LoadLabelsPolicy(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load labels policy: %w", err)
 	}

@@ -93,15 +93,27 @@ type checkDef struct {
 func buildCheckDefs(cfg *allConfig) []checkDef {
 	noCfg := cfg == nil
 	return []checkDef{
-		{checkAge, noCfg || cfg.Checks.Age != nil, runAge, renderAgeText},
-		{checkSize, noCfg || cfg.Checks.Size != nil, runSize, renderSizeText},
+		{checkAge, noCfg || cfg.Checks.Age != nil, func(img string) (*output.CheckResult, error) {
+			return runAge(img, maxAge)
+		}, renderAgeText},
+		{checkSize, noCfg || cfg.Checks.Size != nil, func(img string) (*output.CheckResult, error) {
+			return runSize(img, maxSize, maxLayers)
+		}, renderSizeText},
 		{checkPorts, noCfg || cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
-		{checkRegistry, noCfg || cfg.Checks.Registry != nil, runRegistry, renderRegistryText},
+		{checkRegistry, noCfg || cfg.Checks.Registry != nil, func(img string) (*output.CheckResult, error) {
+			return runRegistry(img, registryPolicy)
+		}, renderRegistryText},
 		{checkRootUser, noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
-		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, runSecrets, renderSecretsText},
+		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, func(img string) (*output.CheckResult, error) {
+			return runSecrets(img, secretsPolicy, skipEnvVars, skipFiles)
+		}, renderSecretsText},
 		{checkHealthcheck, noCfg || cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
-		{checkLabels, noCfg || cfg.Checks.Labels != nil, runLabels, renderLabelsText},
-		{checkEntrypoint, noCfg || cfg.Checks.Entrypoint != nil, runEntrypoint, renderEntrypointText},
+		{checkLabels, noCfg || cfg.Checks.Labels != nil, func(img string) (*output.CheckResult, error) {
+			return runLabels(img, labelsPolicy)
+		}, renderLabelsText},
+		{checkEntrypoint, noCfg || cfg.Checks.Entrypoint != nil, func(img string) (*output.CheckResult, error) {
+			return runEntrypoint(img, allowShellForm)
+		}, renderEntrypointText},
 		{checkPlatform, noCfg || cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
 	}
 }
@@ -129,22 +141,20 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 
 // runPortsForAll wraps runPorts to parse allowed ports first.
 func runPortsForAll(imageName string) (*output.CheckResult, error) {
-	var err error
-	allowedPortsList, err = parseAllowedPorts()
+	ports, err := parseAllowedPorts()
 	if err != nil {
 		return nil, fmt.Errorf("invalid allowed ports: %w", err)
 	}
-	return runPorts(imageName)
+	return runPorts(imageName, ports)
 }
 
 // runPlatformForAll wraps runPlatform to parse allowed platforms first.
 func runPlatformForAll(imageName string) (*output.CheckResult, error) {
-	var err error
-	allowedPlatformsList, err = parseAllowedPlatforms()
+	platforms, err := parseAllowedPlatforms()
 	if err != nil {
 		return nil, fmt.Errorf("invalid allowed platforms: %w", err)
 	}
-	return runPlatform(imageName)
+	return runPlatform(imageName, platforms)
 }
 
 func runAll(cmd *cobra.Command, imageName string) error {

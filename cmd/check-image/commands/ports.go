@@ -16,10 +16,7 @@ type allowedPortsFile struct {
 	AllowedPorts []int `json:"allowed-ports" yaml:"allowed-ports"`
 }
 
-var (
-	allowedPorts     string
-	allowedPortsList []int
-)
+var allowedPorts string
 
 var portsCmd = &cobra.Command{
 	Use:   "ports image",
@@ -36,15 +33,16 @@ var portsCmd = &cobra.Command{
   cat allowed-ports.json | check-image ports nginx:latest --allowed-ports @-`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		allowedPortsList, err = parseAllowedPorts()
+		ports, err := parseAllowedPorts()
 		if err != nil {
 			return fmt.Errorf("invalid check ports arguments: %w", err)
 		}
 
-		log.Debugln("Allowed ports:", allowedPortsList)
+		log.Debugln("Allowed ports:", ports)
 
-		return runCheckCmd(checkPorts, runPorts, args[0])
+		return runCheckCmd(checkPorts, func(img string) (*output.CheckResult, error) {
+			return runPorts(img, ports)
+		}, args[0])
 	},
 }
 
@@ -83,7 +81,7 @@ func parseAllowedPorts() ([]int, error) {
 	return ports, nil
 }
 
-func runPorts(imageName string) (*output.CheckResult, error) {
+func runPorts(imageName string, allowedPortsList []int) (*output.CheckResult, error) {
 	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err

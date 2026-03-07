@@ -190,7 +190,6 @@ func resetAllGlobals() {
 	maxSize = 500
 	maxLayers = 20
 	allowedPorts = ""
-	allowedPortsList = nil
 	registryPolicy = ""
 	secretsPolicy = ""
 	skipEnvVars = false
@@ -201,7 +200,6 @@ func resetAllGlobals() {
 	includeChecks = ""
 	failFast = false
 	allowedPlatforms = ""
-	allowedPlatformsList = nil
 }
 
 // captureStdout captures stdout output during fn execution.

@@ -190,10 +190,6 @@ func TestRunEntrypoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set package-level flag for this test case
-			allowShellForm = tt.allowShellFormFlag
-			t.Cleanup(func() { allowShellForm = false })
-
 			imageRef := createTestImage(t, testImageOptions{
 				user:       "1000",
 				created:    time.Now(),
@@ -201,7 +197,7 @@ func TestRunEntrypoint(t *testing.T) {
 				cmd:        tt.cmd,
 			})
 
-			result, err := runEntrypoint(imageRef)
+			result, err := runEntrypoint(imageRef, tt.allowShellFormFlag)
 			require.NoError(t, err)
 
 			assert.Equal(t, "entrypoint", result.Check)
@@ -225,6 +221,6 @@ func TestRunEntrypoint(t *testing.T) {
 }
 
 func TestRunEntrypoint_InvalidImage(t *testing.T) {
-	_, err := runEntrypoint("nonexistent:image")
+	_, err := runEntrypoint("nonexistent:image", false)
 	require.Error(t, err)
 }
