@@ -182,21 +182,7 @@ func runAll(cmd *cobra.Command, imageName string) error {
 	}
 
 	if len(checks) == 0 {
-		if OutputFmt == output.FormatJSON {
-			skipped := skippedCheckNames(skipMap, includeMap)
-			allResult := output.AllResult{
-				Image:  imageName,
-				Passed: true,
-				Checks: []output.CheckResult{},
-				Summary: output.Summary{
-					Total:   0,
-					Skipped: skipped,
-				},
-			}
-			return output.RenderJSON(os.Stdout, allResult)
-		}
-		fmt.Println("No checks to run")
-		return nil
+		return renderEmptyResult(imageName, skipMap, includeMap)
 	}
 
 	if OutputFmt == output.FormatText {
@@ -226,6 +212,25 @@ func validateRequiredFlags(checks []checkDef) error {
 			return fmt.Errorf("--allowed-platforms is required when the platform check is enabled")
 		}
 	}
+	return nil
+}
+
+// renderEmptyResult handles output when no checks are selected to run.
+func renderEmptyResult(imageName string, skipMap, includeMap map[string]bool) error {
+	if OutputFmt == output.FormatJSON {
+		skipped := skippedCheckNames(skipMap, includeMap)
+		allResult := output.AllResult{
+			Image:  imageName,
+			Passed: true,
+			Checks: []output.CheckResult{},
+			Summary: output.Summary{
+				Total:   0,
+				Skipped: skipped,
+			},
+		}
+		return output.RenderJSON(os.Stdout, allResult)
+	}
+	fmt.Println("No checks to run")
 	return nil
 }
 
