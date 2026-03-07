@@ -38,10 +38,6 @@ func TestSecretsCommandFlags(t *testing.T) {
 }
 
 func TestRunSecrets_NoSecrets(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
 			"PATH=/usr/local/bin:/usr/bin",
@@ -55,16 +51,12 @@ func TestRunSecrets_NoSecrets(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, false)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when no secrets detected")
 }
 
 func TestRunSecrets_SecretsInEnvVars(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
 			"API_KEY=secret123",
@@ -73,16 +65,12 @@ func TestRunSecrets_SecretsInEnvVars(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, false)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when secrets detected in environment variables")
 }
 
 func TestRunSecrets_SecretsInFiles(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{"PATH=/usr/bin"},
 		layerFiles: []map[string]string{
@@ -93,16 +81,12 @@ func TestRunSecrets_SecretsInFiles(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, false)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when secrets detected in files")
 }
 
 func TestRunSecrets_SecretsBothEnvAndFiles(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
 			"API_TOKEN=token123",
@@ -116,16 +100,12 @@ func TestRunSecrets_SecretsBothEnvAndFiles(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, false)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when secrets detected in both env vars and files")
 }
 
 func TestRunSecrets_SkipEnvVars(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = true
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
 			"API_KEY=secret123",
@@ -138,18 +118,12 @@ func TestRunSecrets_SkipEnvVars(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", true, false)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when skipping env vars and no file secrets")
-
-	skipEnvVars = false
 }
 
 func TestRunSecrets_SkipFiles(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = true
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{"PATH=/usr/bin"},
 		layerFiles: []map[string]string{
@@ -160,18 +134,12 @@ func TestRunSecrets_SkipFiles(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, true)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when skipping files and no env secrets")
-
-	skipFiles = false
 }
 
 func TestRunSecrets_SkipBoth(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = true
-	skipFiles = true
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
 			"API_KEY=secret123",
@@ -184,18 +152,12 @@ func TestRunSecrets_SkipBoth(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", true, true)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when skipping both env and file checks")
-
-	skipEnvVars = false
-	skipFiles = false
 }
 
 func TestRunSecrets_WithPolicyFile(t *testing.T) {
-	skipEnvVars = false
-	skipFiles = false
-
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "secrets-policy.json")
 	policyContent := `{
@@ -206,8 +168,6 @@ func TestRunSecrets_WithPolicyFile(t *testing.T) {
 	}`
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
-
-	secretsPolicy = policyFile
 
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
@@ -222,17 +182,12 @@ func TestRunSecrets_WithPolicyFile(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, policyFile, false, false)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when all secrets are excluded by policy")
-
-	secretsPolicy = ""
 }
 
 func TestRunSecrets_PolicyFileWithNonExcludedSecrets(t *testing.T) {
-	skipEnvVars = false
-	skipFiles = false
-
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "secrets-policy.json")
 	policyContent := `{
@@ -243,8 +198,6 @@ func TestRunSecrets_PolicyFileWithNonExcludedSecrets(t *testing.T) {
 	}`
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
-
-	secretsPolicy = policyFile
 
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
@@ -259,35 +212,22 @@ func TestRunSecrets_PolicyFileWithNonExcludedSecrets(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, policyFile, false, false)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when non-excluded secrets are detected")
-
-	secretsPolicy = ""
 }
 
 func TestRunSecrets_InvalidPolicyFile(t *testing.T) {
-	skipEnvVars = false
-	skipFiles = false
-
-	secretsPolicy = "/nonexistent/policy.json"
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{"PATH=/usr/bin"},
 	})
 
-	_, err := runSecrets(imageRef)
+	_, err := runSecrets(imageRef, "/nonexistent/policy.json", false, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to load secrets policy")
-
-	secretsPolicy = ""
 }
 
 func TestRunSecrets_MultipleLayersWithSecrets(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{"PATH=/usr/bin"},
 		layerFiles: []map[string]string{
@@ -303,36 +243,25 @@ func TestRunSecrets_MultipleLayersWithSecrets(t *testing.T) {
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, false)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when secrets detected across multiple layers")
 }
 
 func TestRunSecrets_InvalidImageReference(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
-	_, err := runSecrets("oci:/nonexistent/path:latest")
+	_, err := runSecrets("oci:/nonexistent/path:latest", "", false, false)
 	require.Error(t, err)
 }
 
 func TestRunSecrets_EmptyImage(t *testing.T) {
-	secretsPolicy = ""
-	skipEnvVars = false
-	skipFiles = false
-
 	imageRef := createTestImage(t, testImageOptions{})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, "", false, false)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed with empty image")
 }
 
 func TestRunSecrets_YAMLPolicyFile(t *testing.T) {
-	skipEnvVars = false
-	skipFiles = false
-
 	tmpDir := t.TempDir()
 	policyFile := filepath.Join(tmpDir, "secrets-policy.yaml")
 	policyContent := `check-env-vars: true
@@ -345,8 +274,6 @@ excluded-env-vars:
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	secretsPolicy = policyFile
-
 	imageRef := createTestImage(t, testImageOptions{
 		env: []string{
 			"PUBLIC_KEY=pubkey",
@@ -358,18 +285,13 @@ excluded-env-vars:
 		},
 	})
 
-	result, err := runSecrets(imageRef)
+	result, err := runSecrets(imageRef, policyFile, false, false)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should work with YAML policy file")
-
-	secretsPolicy = ""
 }
 
 func TestRunSecrets_PolicyFromStdin(t *testing.T) {
 	t.Run("JSON policy from stdin — excludes env var", func(t *testing.T) {
-		origSecretsPolicy := secretsPolicy
-		defer func() { secretsPolicy = origSecretsPolicy }()
-
 		origStdin := os.Stdin
 		defer func() { os.Stdin = origStdin }()
 
@@ -382,22 +304,17 @@ func TestRunSecrets_PolicyFromStdin(t *testing.T) {
 			w.Close()
 		}()
 
-		secretsPolicy = "-"
-
 		imageRef := createTestImage(t, testImageOptions{
 			env: []string{"SECRET_KEY=myvalue"},
 		})
 
-		result, err := runSecrets(imageRef)
+		result, err := runSecrets(imageRef, "-", false, false)
 		require.NoError(t, err)
 		// SECRET_KEY is excluded by the stdin policy, so no findings
 		assert.True(t, result.Passed)
 	})
 
 	t.Run("YAML policy from stdin — excludes path", func(t *testing.T) {
-		origSecretsPolicy := secretsPolicy
-		defer func() { secretsPolicy = origSecretsPolicy }()
-
 		origStdin := os.Stdin
 		defer func() { os.Stdin = origStdin }()
 
@@ -410,15 +327,13 @@ func TestRunSecrets_PolicyFromStdin(t *testing.T) {
 			w.Close()
 		}()
 
-		secretsPolicy = "-"
-
 		imageRef := createTestImage(t, testImageOptions{
 			layerFiles: []map[string]string{
 				{"/etc/id_rsa": "PRIVATE KEY content"},
 			},
 		})
 
-		result, err := runSecrets(imageRef)
+		result, err := runSecrets(imageRef, "-", false, false)
 		require.NoError(t, err)
 		// Files check disabled by the stdin policy
 		assert.True(t, result.Passed)

@@ -89,11 +89,8 @@ func TestRunAge(t *testing.T) {
 				created: createdAt,
 			})
 
-			// Set max age
-			maxAge = tt.maxAge
-
 			// Run command
-			result, err := runAge(imageRef)
+			result, err := runAge(imageRef, tt.maxAge)
 			require.NoError(t, err)
 
 			// Assert on struct
@@ -116,6 +113,6 @@ func TestRunAge(t *testing.T) {
 
 func TestRunAge_InvalidImage(t *testing.T) {
 	// Test with invalid image reference
-	_, err := runAge("nonexistent:image")
+	_, err := runAge("nonexistent:image", 90)
 	require.Error(t, err)
 }

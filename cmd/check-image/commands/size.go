@@ -27,7 +27,9 @@ var sizeCmd = &cobra.Command{
   check-image size docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkSize, runSize, args[0])
+		return runCheckCmd(checkSize, func(img string) (*output.CheckResult, error) {
+			return runSize(img, maxSize, maxLayers)
+		}, args[0])
 	},
 }
 
@@ -37,7 +39,7 @@ func init() {
 	sizeCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", defaultMaxLayerCount, "Maximum number of layers (optional)")
 }
 
-func runSize(imageName string) (*output.CheckResult, error) {
+func runSize(imageName string, maxSizeMB uint, maxLayerCount uint) (*output.CheckResult, error) {
 	image, cleanup, err := imageutil.GetImage(imageName)
 	if err != nil {
 		return nil, err
@@ -60,26 +62,26 @@ func runSize(imageName string) (*output.CheckResult, error) {
 		layerInfos = append(layerInfos, output.LayerInfo{Index: i + 1, Bytes: size})
 	}
 
-	// Validate that maxSize doesn't overflow when converting to int64
-	if maxSize > math.MaxInt64/(1024*1024) {
-		return nil, fmt.Errorf("max-size value %d is too large", maxSize)
+	// Validate that maxSizeMB doesn't overflow when converting to int64
+	if maxSizeMB > math.MaxInt64/(1024*1024) {
+		return nil, fmt.Errorf("max-size value %d is too large", maxSizeMB)
 	}
-	maxSizeBytes := int64(maxSize) * 1024 * 1024
+	maxSizeBytes := int64(maxSizeMB) * 1024 * 1024
 
-	layersOK := uint(len(layers)) <= maxLayers
+	layersOK := uint(len(layers)) <= maxLayerCount
 	sizeOK := totalSize <= maxSizeBytes
 	passed := layersOK && sizeOK
 
 	var msg string
 	switch {
 	case !layersOK && !sizeOK:
-		msg = fmt.Sprintf("Image has more than %d layers and size exceeds the recommended limit of %d MB", maxLayers, maxSize)
+		msg = fmt.Sprintf("Image has more than %d layers and size exceeds the recommended limit of %d MB", maxLayerCount, maxSizeMB)
 	case !layersOK:
-		msg = fmt.Sprintf("Image has more than %d layers", maxLayers)
+		msg = fmt.Sprintf("Image has more than %d layers", maxLayerCount)
 	case !sizeOK:
-		msg = fmt.Sprintf("Image size exceeds the recommended limit of %d MB", maxSize)
+		msg = fmt.Sprintf("Image size exceeds the recommended limit of %d MB", maxSizeMB)
 	default:
-		msg = fmt.Sprintf("Image size is within the allowed limit of %d MB", maxSize)
+		msg = fmt.Sprintf("Image size is within the allowed limit of %d MB", maxSizeMB)
 	}
 
 	return &output.CheckResult{
@@ -90,9 +92,9 @@ func runSize(imageName string) (*output.CheckResult, error) {
 		Details: output.SizeDetails{
 			TotalBytes: totalSize,
 			TotalMB:    float64(totalSize) / 1024 / 1024,
-			MaxSizeMB:  maxSize,
+			MaxSizeMB:  maxSizeMB,
 			LayerCount: len(layers),
-			MaxLayers:  maxLayers,
+			MaxLayers:  maxLayerCount,
 			Layers:     layerInfos,
 		},
 	}, nil

@@ -24,7 +24,9 @@ var ageCmd = &cobra.Command{
   check-image age docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkAge, runAge, args[0])
+		return runCheckCmd(checkAge, func(img string) (*output.CheckResult, error) {
+			return runAge(img, maxAge)
+		}, args[0])
 	},
 }
 
@@ -33,7 +35,7 @@ func init() {
 	ageCmd.Flags().UintVarP(&maxAge, "max-age", "a", defaultMaxAgeDays, "Maximum age in days (optional)")
 }
 
-func runAge(imageName string) (*output.CheckResult, error) {
+func runAge(imageName string, maxAgeDays uint) (*output.CheckResult, error) {
 	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
 	if err != nil {
 		return nil, err
@@ -45,13 +47,13 @@ func runAge(imageName string) (*output.CheckResult, error) {
 	}
 
 	age := time.Since(config.Created.Time).Hours() / 24
-	passed := age <= float64(maxAge)
+	passed := age <= float64(maxAgeDays)
 
 	var msg string
 	if passed {
-		msg = fmt.Sprintf("Image is less than %d days old", maxAge)
+		msg = fmt.Sprintf("Image is less than %d days old", maxAgeDays)
 	} else {
-		msg = fmt.Sprintf("Image is older than %d days", maxAge)
+		msg = fmt.Sprintf("Image is older than %d days", maxAgeDays)
 	}
 
 	return &output.CheckResult{
@@ -62,7 +64,7 @@ func runAge(imageName string) (*output.CheckResult, error) {
 		Details: output.AgeDetails{
 			CreatedAt: config.Created.Format(time.RFC3339),
 			AgeDays:   age,
-			MaxAge:    maxAge,
+			MaxAge:    maxAgeDays,
 		},
 	}, nil
 }

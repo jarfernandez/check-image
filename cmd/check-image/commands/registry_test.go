@@ -48,13 +48,9 @@ func TestRunRegistry_TrustedRegistry(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest", policyFile)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed for trusted registry")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_UntrustedRegistry(t *testing.T) {
@@ -64,13 +60,9 @@ func TestRunRegistry_UntrustedRegistry(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest", policyFile)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail for untrusted registry")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_ExplicitRegistryName(t *testing.T) {
@@ -80,13 +72,9 @@ func TestRunRegistry_ExplicitRegistryName(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("docker.io/library/nginx:latest")
+	result, err := runRegistry("docker.io/library/nginx:latest", policyFile)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed for explicitly trusted registry")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_DifferentRegistries(t *testing.T) {
@@ -150,9 +138,7 @@ func TestRunRegistry_DifferentRegistries(t *testing.T) {
 			err := os.WriteFile(policyFile, []byte(policyContent.String()), 0600)
 			require.NoError(t, err)
 
-			registryPolicy = policyFile
-
-			result, err := runRegistry(tt.imageName)
+			result, err := runRegistry(tt.imageName, policyFile)
 			require.NoError(t, err)
 
 			if tt.expectSuccess {
@@ -160,8 +146,6 @@ func TestRunRegistry_DifferentRegistries(t *testing.T) {
 			} else {
 				assert.False(t, result.Passed, "Expected validation to fail")
 			}
-
-			registryPolicy = ""
 		})
 	}
 }
@@ -173,13 +157,9 @@ func TestRunRegistry_ExcludedRegistries(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest", policyFile)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed for non-excluded registry")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_ExcludedRegistryBlocked(t *testing.T) {
@@ -189,13 +169,9 @@ func TestRunRegistry_ExcludedRegistryBlocked(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest", policyFile)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail for excluded registry")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_OCITransportSkipped(t *testing.T) {
@@ -205,16 +181,12 @@ func TestRunRegistry_OCITransportSkipped(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("oci:/path/to/layout:latest")
+	result, err := runRegistry("oci:/path/to/layout:latest", policyFile)
 	require.NoError(t, err)
 
 	details, ok := result.Details.(output.RegistryDetails)
 	require.True(t, ok)
 	assert.True(t, details.Skipped, "Should skip validation for OCI transport")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_OCIArchiveTransportSkipped(t *testing.T) {
@@ -224,16 +196,12 @@ func TestRunRegistry_OCIArchiveTransportSkipped(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("oci-archive:/path/to/image.tar:latest")
+	result, err := runRegistry("oci-archive:/path/to/image.tar:latest", policyFile)
 	require.NoError(t, err)
 
 	details, ok := result.Details.(output.RegistryDetails)
 	require.True(t, ok)
 	assert.True(t, details.Skipped, "Should skip validation for OCI archive transport")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_DockerArchiveTransportSkipped(t *testing.T) {
@@ -243,26 +211,18 @@ func TestRunRegistry_DockerArchiveTransportSkipped(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("docker-archive:/path/to/image.tar:nginx")
+	result, err := runRegistry("docker-archive:/path/to/image.tar:nginx", policyFile)
 	require.NoError(t, err)
 
 	details, ok := result.Details.(output.RegistryDetails)
 	require.True(t, ok)
 	assert.True(t, details.Skipped, "Should skip validation for docker-archive transport")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_InvalidPolicyFile(t *testing.T) {
-	registryPolicy = "/nonexistent/policy.json"
-
-	_, err := runRegistry("nginx:latest")
+	_, err := runRegistry("nginx:latest", "/nonexistent/policy.json")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to load registry policy")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_InvalidPolicyContent(t *testing.T) {
@@ -272,13 +232,9 @@ func TestRunRegistry_InvalidPolicyContent(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	_, err = runRegistry("nginx:latest")
+	_, err = runRegistry("nginx:latest", policyFile)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to load registry policy")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_YAMLPolicyFile(t *testing.T) {
@@ -291,13 +247,9 @@ func TestRunRegistry_YAMLPolicyFile(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	result, err := runRegistry("nginx:latest")
+	result, err := runRegistry("nginx:latest", policyFile)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should work with YAML policy file")
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_InvalidImageName(t *testing.T) {
@@ -307,12 +259,8 @@ func TestRunRegistry_InvalidImageName(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	registryPolicy = policyFile
-
-	_, err = runRegistry("")
+	_, err = runRegistry("", policyFile)
 	require.Error(t, err)
-
-	registryPolicy = ""
 }
 
 func TestRunRegistry_PolicyFromStdin(t *testing.T) {
@@ -348,9 +296,6 @@ func TestRunRegistry_PolicyFromStdin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			origRegistryPolicy := registryPolicy
-			defer func() { registryPolicy = origRegistryPolicy }()
-
 			origStdin := os.Stdin
 			defer func() { os.Stdin = origStdin }()
 
@@ -363,9 +308,7 @@ func TestRunRegistry_PolicyFromStdin(t *testing.T) {
 				w.Close()
 			}()
 
-			registryPolicy = "-"
-
-			result, err := runRegistry(tt.imageName)
+			result, err := runRegistry(tt.imageName, "-")
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.errContains != "" {

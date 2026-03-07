@@ -34,7 +34,9 @@ Scans both environment variables and files across all image layers.
   cat secrets-policy.yaml | check-image secrets nginx:latest --secrets-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkSecrets, runSecrets, args[0])
+		return runCheckCmd(checkSecrets, func(img string) (*output.CheckResult, error) {
+			return runSecrets(img, secretsPolicy, skipEnvVars, skipFiles)
+		}, args[0])
 	},
 }
 
@@ -45,17 +47,17 @@ func init() {
 	secretsCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks (optional)")
 }
 
-func runSecrets(imageName string) (*output.CheckResult, error) {
-	policy, err := secrets.LoadSecretsPolicy(secretsPolicy)
+func runSecrets(imageName string, policyPath string, noEnvVars bool, noFiles bool) (*output.CheckResult, error) {
+	policy, err := secrets.LoadSecretsPolicy(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load secrets policy: %w", err)
 	}
 
 	// Override policy based on command-line flags
-	if skipEnvVars {
+	if noEnvVars {
 		policy.CheckEnvVars = false
 	}
-	if skipFiles {
+	if noFiles {
 		policy.CheckFiles = false
 	}
 

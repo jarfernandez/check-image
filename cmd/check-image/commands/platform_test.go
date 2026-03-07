@@ -154,17 +154,14 @@ func TestParseAllowedPlatforms_FromStdin(t *testing.T) {
 }
 
 func TestRunPlatform_Pass(t *testing.T) {
-	origAllowedPlatformsList := allowedPlatformsList
-	defer func() { allowedPlatformsList = origAllowedPlatformsList }()
-
-	allowedPlatformsList = []string{"linux/amd64", "linux/arm64"}
+	platforms := []string{"linux/amd64", "linux/arm64"}
 
 	imageRef := createTestImage(t, testImageOptions{
 		os:           "linux",
 		architecture: "amd64",
 	})
 
-	result, err := runPlatform(imageRef)
+	result, err := runPlatform(imageRef, platforms)
 	require.NoError(t, err)
 	assert.True(t, result.Passed)
 	assert.Equal(t, "platform", result.Check)
@@ -178,17 +175,14 @@ func TestRunPlatform_Pass(t *testing.T) {
 }
 
 func TestRunPlatform_Fail(t *testing.T) {
-	origAllowedPlatformsList := allowedPlatformsList
-	defer func() { allowedPlatformsList = origAllowedPlatformsList }()
-
-	allowedPlatformsList = []string{"linux/amd64"}
+	platforms := []string{"linux/amd64"}
 
 	imageRef := createTestImage(t, testImageOptions{
 		os:           "linux",
 		architecture: "arm64",
 	})
 
-	result, err := runPlatform(imageRef)
+	result, err := runPlatform(imageRef, platforms)
 	require.NoError(t, err)
 	assert.False(t, result.Passed)
 	assert.Equal(t, "platform", result.Check)
@@ -202,19 +196,14 @@ func TestRunPlatform_Fail(t *testing.T) {
 }
 
 func TestRunPlatform_WithVariant(t *testing.T) {
-	origAllowedPlatformsList := allowedPlatformsList
-	defer func() { allowedPlatformsList = origAllowedPlatformsList }()
-
 	t.Run("variant matches", func(t *testing.T) {
-		allowedPlatformsList = []string{"linux/arm/v7"}
-
 		imageRef := createTestImage(t, testImageOptions{
 			os:           "linux",
 			architecture: "arm",
 			variant:      "v7",
 		})
 
-		result, err := runPlatform(imageRef)
+		result, err := runPlatform(imageRef, []string{"linux/arm/v7"})
 		require.NoError(t, err)
 		assert.True(t, result.Passed)
 
@@ -223,15 +212,13 @@ func TestRunPlatform_WithVariant(t *testing.T) {
 	})
 
 	t.Run("variant not in list", func(t *testing.T) {
-		allowedPlatformsList = []string{"linux/arm64"}
-
 		imageRef := createTestImage(t, testImageOptions{
 			os:           "linux",
 			architecture: "arm",
 			variant:      "v7",
 		})
 
-		result, err := runPlatform(imageRef)
+		result, err := runPlatform(imageRef, []string{"linux/arm64"})
 		require.NoError(t, err)
 		assert.False(t, result.Passed)
 
@@ -241,27 +228,17 @@ func TestRunPlatform_WithVariant(t *testing.T) {
 }
 
 func TestRunPlatform_InvalidImage(t *testing.T) {
-	origAllowedPlatformsList := allowedPlatformsList
-	defer func() { allowedPlatformsList = origAllowedPlatformsList }()
-
-	allowedPlatformsList = []string{"linux/amd64"}
-
-	_, err := runPlatform("oci:/nonexistent/path:latest")
+	_, err := runPlatform("oci:/nonexistent/path:latest", []string{"linux/amd64"})
 	require.Error(t, err)
 }
 
 func TestRunPlatform_JSONOutput(t *testing.T) {
-	origAllowedPlatformsList := allowedPlatformsList
-	defer func() { allowedPlatformsList = origAllowedPlatformsList }()
-
-	allowedPlatformsList = []string{"linux/amd64"}
-
 	imageRef := createTestImage(t, testImageOptions{
 		os:           "linux",
 		architecture: "amd64",
 	})
 
-	result, err := runPlatform(imageRef)
+	result, err := runPlatform(imageRef, []string{"linux/amd64"})
 	require.NoError(t, err)
 
 	// Verify JSON serialisation uses kebab-case keys

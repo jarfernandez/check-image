@@ -25,7 +25,7 @@ Note: Registry validation is only applicable for registry images and will be ski
   cat registry-policy.json | check-image registry nginx:latest --registry-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result, err := runRegistry(args[0])
+		result, err := runRegistry(args[0], registryPolicy)
 		if err != nil {
 			return fmt.Errorf("check registry operation failed: %w", err)
 		}
@@ -57,7 +57,7 @@ func init() {
 	}
 }
 
-func runRegistry(imageName string) (*output.CheckResult, error) {
+func runRegistry(imageName string, policyPath string) (*output.CheckResult, error) {
 	imageRegistry, err := imageutil.GetImageRegistry(imageName)
 	if err != nil {
 		// Check if this is a non-registry transport
@@ -73,7 +73,7 @@ func runRegistry(imageName string) (*output.CheckResult, error) {
 		return nil, fmt.Errorf("unable to get image registry: %w", err)
 	}
 
-	policy, err := registry.LoadRegistryPolicy(registryPolicy)
+	policy, err := registry.LoadRegistryPolicy(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load registry policy: %w", err)
 	}
