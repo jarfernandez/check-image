@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.6](https://github.com/jarfernandez/check-image/compare/v0.19.5...v0.19.6) (2026-03-07)
+
+
+### Code Refactoring
+
+* Extract `renderEmptyResult` from `runAll` ([#143](https://github.com/jarfernandez/check-image/issues/143)) ([7b16672](https://github.com/jarfernandez/check-image/commit/7b166725da6b44145b49ac20d287e3f0c8d8b4b5))
+* Make error precedence in `applyConfigValues` explicit ([#141](https://github.com/jarfernandez/check-image/issues/141)) ([de14be4](https://github.com/jarfernandez/check-image/commit/de14be4c13b293537c642cc2148c6222c0faea76))
+* Use explicit parameters in `runX` functions instead of package-level globals ([#145](https://github.com/jarfernandez/check-image/issues/145)) ([100bcc2](https://github.com/jarfernandez/check-image/commit/100bcc24260c8d5b3a98cc978958ac0407c5cbf0))
+* Use named cleanup variable in `inlinePolicyToTempFile` ([#144](https://github.com/jarfernandez/check-image/issues/144)) ([adffbe4](https://github.com/jarfernandez/check-image/commit/adffbe4da03be9cdb8cff47d34615dc3489fbd67))
+
 ## [0.19.5](https://github.com/jarfernandez/check-image/compare/v0.19.4...v0.19.5) (2026-03-06)
 
 
