@@ -82,7 +82,7 @@ func TestAllCommandFlags(t *testing.T) {
 
 func TestDetermineChecks(t *testing.T) {
 	t.Run("no config no skip runs all 10 checks", func(t *testing.T) {
-		checks := determineChecks(nil, nil, nil)
+		checks := determineChecks(nil, nil, nil, currentCheckParams())
 		assert.Len(t, checks, 10)
 
 		names := make([]string, len(checks))
@@ -94,7 +94,7 @@ func TestDetermineChecks(t *testing.T) {
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
-		checks := determineChecks(nil, skipMap, nil)
+		checks := determineChecks(nil, skipMap, nil, currentCheckParams())
 		assert.Len(t, checks, 8)
 
 		for _, c := range checks {
@@ -110,7 +110,7 @@ func TestDetermineChecks(t *testing.T) {
 				RootUser: &rootUserCheckConfig{},
 			},
 		}
-		checks := determineChecks(cfg, nil, nil)
+		checks := determineChecks(cfg, nil, nil, currentCheckParams())
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
 		assert.Equal(t, "root-user", checks[1].name)
@@ -125,7 +125,7 @@ func TestDetermineChecks(t *testing.T) {
 			},
 		}
 		skipMap := map[string]bool{"size": true}
-		checks := determineChecks(cfg, skipMap, nil)
+		checks := determineChecks(cfg, skipMap, nil, currentCheckParams())
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
 		assert.Equal(t, "root-user", checks[1].name)
@@ -138,14 +138,14 @@ func TestDetermineChecks(t *testing.T) {
 			"healthcheck": true, "labels": true, "entrypoint": true,
 			"platform": true,
 		}
-		checks := determineChecks(nil, skipMap, nil)
+		checks := determineChecks(nil, skipMap, nil, currentCheckParams())
 		assert.Len(t, checks, 0)
 	})
 
 	t.Run("all runners have non-nil render function", func(t *testing.T) {
 		// Every checkDef must carry its own renderer so the all command
 		// path never falls back to a stringly-typed dispatch.
-		checks := determineChecks(nil, nil, nil)
+		checks := determineChecks(nil, nil, nil, currentCheckParams())
 		for _, c := range checks {
 			assert.NotNilf(t, c.render, "checkDef %q has nil render function", c.name)
 		}
@@ -166,7 +166,7 @@ func TestDetermineChecks(t *testing.T) {
 				Platform:    &platformCheckConfig{},
 			},
 		}
-		checks := determineChecks(cfg, nil, nil)
+		checks := determineChecks(cfg, nil, nil, currentCheckParams())
 		for _, c := range checks {
 			assert.NotNilf(t, c.render, "checkDef %q has nil render function", c.name)
 		}
@@ -174,7 +174,7 @@ func TestDetermineChecks(t *testing.T) {
 
 	t.Run("runners from includeMap have non-nil render function", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true, "healthcheck": true}
-		checks := determineChecks(nil, nil, includeMap)
+		checks := determineChecks(nil, nil, includeMap, currentCheckParams())
 		for _, c := range checks {
 			assert.NotNilf(t, c.render, "checkDef %q has nil render function", c.name)
 		}
@@ -654,7 +654,7 @@ func TestDetermineChecks_HealthcheckInConfig(t *testing.T) {
 			Healthcheck: &healthcheckCheckConfig{},
 		},
 	}
-	checks := determineChecks(cfg, nil, nil)
+	checks := determineChecks(cfg, nil, nil, currentCheckParams())
 	assert.Len(t, checks, 3)
 	assert.Equal(t, "age", checks[0].name)
 	assert.Equal(t, "root-user", checks[1].name)
@@ -664,7 +664,7 @@ func TestDetermineChecks_HealthcheckInConfig(t *testing.T) {
 func TestDetermineChecks_IncludeMap(t *testing.T) {
 	t.Run("includeMap selects subset", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true}
-		checks := determineChecks(nil, nil, includeMap)
+		checks := determineChecks(nil, nil, includeMap, currentCheckParams())
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
 		assert.Equal(t, "size", checks[1].name)
@@ -679,14 +679,14 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 		}
 		// Config enables age and root-user, but --include asks only for size
 		includeMap := map[string]bool{"size": true}
-		checks := determineChecks(cfg, nil, includeMap)
+		checks := determineChecks(cfg, nil, includeMap, currentCheckParams())
 		assert.Len(t, checks, 1)
 		assert.Equal(t, "size", checks[0].name)
 	})
 
 	t.Run("includeMap single check", func(t *testing.T) {
 		includeMap := map[string]bool{"healthcheck": true}
-		checks := determineChecks(nil, nil, includeMap)
+		checks := determineChecks(nil, nil, includeMap, currentCheckParams())
 		assert.Len(t, checks, 1)
 		assert.Equal(t, "healthcheck", checks[0].name)
 	})
@@ -697,7 +697,7 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
 			"platform": true,
 		}
-		checks := determineChecks(nil, nil, includeMap)
+		checks := determineChecks(nil, nil, includeMap, currentCheckParams())
 		assert.Len(t, checks, 10)
 	})
 }
@@ -1046,7 +1046,7 @@ func TestDetermineChecks_PlatformInConfig(t *testing.T) {
 		},
 	}
 
-	checks := determineChecks(cfg, nil, nil)
+	checks := determineChecks(cfg, nil, nil, currentCheckParams())
 	names := make([]string, 0, len(checks))
 	for _, c := range checks {
 		names = append(names, c.name)

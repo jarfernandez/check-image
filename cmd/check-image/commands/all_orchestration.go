@@ -86,43 +86,87 @@ type checkDef struct {
 	render  func(*output.CheckResult)
 }
 
+// checkParams captures the flag values that buildCheckDefs needs, making the
+// data flow explicit instead of reading package-level globals in closures.
+type checkParams struct {
+	maxAge           uint
+	maxSize          uint
+	maxLayers        uint
+	allowedPorts     string
+	registryPolicy   string
+	secretsPolicy    string
+	skipEnvVars      bool
+	skipFiles        bool
+	labelsPolicy     string
+	allowShellForm   bool
+	allowedPlatforms string
+}
+
+func currentCheckParams() checkParams {
+	return checkParams{
+		maxAge:           maxAge,
+		maxSize:          maxSize,
+		maxLayers:        maxLayers,
+		allowedPorts:     allowedPorts,
+		registryPolicy:   registryPolicy,
+		secretsPolicy:    secretsPolicy,
+		skipEnvVars:      skipEnvVars,
+		skipFiles:        skipFiles,
+		labelsPolicy:     labelsPolicy,
+		allowShellForm:   allowShellForm,
+		allowedPlatforms: allowedPlatforms,
+	}
+}
+
 // buildCheckDefs returns the full list of checks with their enabled state.
 // When cfg is nil every check is enabled; otherwise only checks present in the
 // config file are enabled. Short-circuit evaluation of || ensures cfg.Checks
 // fields are never accessed when cfg is nil.
-func buildCheckDefs(cfg *allConfig) []checkDef {
+func buildCheckDefs(cfg *allConfig, p checkParams) []checkDef {
 	noCfg := cfg == nil
 	return []checkDef{
 		{checkAge, noCfg || cfg.Checks.Age != nil, func(img string) (*output.CheckResult, error) {
-			return runAge(img, maxAge)
+			return runAge(img, p.maxAge)
 		}, renderAgeText},
 		{checkSize, noCfg || cfg.Checks.Size != nil, func(img string) (*output.CheckResult, error) {
-			return runSize(img, maxSize, maxLayers)
+			return runSize(img, p.maxSize, p.maxLayers)
 		}, renderSizeText},
-		{checkPorts, noCfg || cfg.Checks.Ports != nil, runPortsForAll, renderPortsText},
+		{checkPorts, noCfg || cfg.Checks.Ports != nil, func(img string) (*output.CheckResult, error) {
+			ports, err := parseAllowedPortsFrom(p.allowedPorts)
+			if err != nil {
+				return nil, fmt.Errorf("invalid allowed ports: %w", err)
+			}
+			return runPorts(img, ports)
+		}, renderPortsText},
 		{checkRegistry, noCfg || cfg.Checks.Registry != nil, func(img string) (*output.CheckResult, error) {
-			return runRegistry(img, registryPolicy)
+			return runRegistry(img, p.registryPolicy)
 		}, renderRegistryText},
 		{checkRootUser, noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
 		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, func(img string) (*output.CheckResult, error) {
-			return runSecrets(img, secretsPolicy, skipEnvVars, skipFiles)
+			return runSecrets(img, p.secretsPolicy, p.skipEnvVars, p.skipFiles)
 		}, renderSecretsText},
 		{checkHealthcheck, noCfg || cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
 		{checkLabels, noCfg || cfg.Checks.Labels != nil, func(img string) (*output.CheckResult, error) {
-			return runLabels(img, labelsPolicy)
+			return runLabels(img, p.labelsPolicy)
 		}, renderLabelsText},
 		{checkEntrypoint, noCfg || cfg.Checks.Entrypoint != nil, func(img string) (*output.CheckResult, error) {
-			return runEntrypoint(img, allowShellForm)
+			return runEntrypoint(img, p.allowShellForm)
 		}, renderEntrypointText},
-		{checkPlatform, noCfg || cfg.Checks.Platform != nil, runPlatformForAll, renderPlatformText},
+		{checkPlatform, noCfg || cfg.Checks.Platform != nil, func(img string) (*output.CheckResult, error) {
+			platforms, err := parseAllowedPlatformsFrom(p.allowedPlatforms)
+			if err != nil {
+				return nil, fmt.Errorf("invalid allowed platforms: %w", err)
+			}
+			return runPlatform(img, platforms)
+		}, renderPlatformText},
 	}
 }
 
 // determineChecks decides which checks to run based on config, skip list, and include list.
-func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[string]bool) []checkDef {
+func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[string]bool, p checkParams) []checkDef {
 	var checks []checkDef
 
-	for _, def := range buildCheckDefs(cfg) {
+	for _, def := range buildCheckDefs(cfg, p) {
 		if includeMap != nil {
 			// --include mode: only run checks explicitly listed
 			if includeMap[def.name] {
@@ -137,24 +181,6 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 	}
 
 	return checks
-}
-
-// runPortsForAll wraps runPorts to parse allowed ports first.
-func runPortsForAll(imageName string) (*output.CheckResult, error) {
-	ports, err := parseAllowedPorts()
-	if err != nil {
-		return nil, fmt.Errorf("invalid allowed ports: %w", err)
-	}
-	return runPorts(imageName, ports)
-}
-
-// runPlatformForAll wraps runPlatform to parse allowed platforms first.
-func runPlatformForAll(imageName string) (*output.CheckResult, error) {
-	platforms, err := parseAllowedPlatforms()
-	if err != nil {
-		return nil, fmt.Errorf("invalid allowed platforms: %w", err)
-	}
-	return runPlatform(imageName, platforms)
 }
 
 func runAll(cmd *cobra.Command, imageName string) error {
@@ -185,9 +211,10 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		}
 	}
 
-	checks := determineChecks(cfg, skipMap, includeMap)
+	p := currentCheckParams()
+	checks := determineChecks(cfg, skipMap, includeMap, p)
 
-	if err := validateRequiredFlags(checks); err != nil {
+	if err := validateRequiredFlags(checks, p); err != nil {
 		return err
 	}
 
@@ -210,15 +237,15 @@ func runAll(cmd *cobra.Command, imageName string) error {
 }
 
 // validateRequiredFlags checks that required flags are provided when their checks will run.
-func validateRequiredFlags(checks []checkDef) error {
+func validateRequiredFlags(checks []checkDef, p checkParams) error {
 	for _, c := range checks {
-		if c.name == checkRegistry && registryPolicy == "" {
+		if c.name == checkRegistry && p.registryPolicy == "" {
 			return fmt.Errorf("--registry-policy is required when the registry check is enabled")
 		}
-		if c.name == checkLabels && labelsPolicy == "" {
+		if c.name == checkLabels && p.labelsPolicy == "" {
 			return fmt.Errorf("--labels-policy is required when the labels check is enabled")
 		}
-		if c.name == checkPlatform && allowedPlatforms == "" {
+		if c.name == checkPlatform && p.allowedPlatforms == "" {
 			return fmt.Errorf("--allowed-platforms is required when the platform check is enabled")
 		}
 	}
