@@ -92,6 +92,23 @@ The `imageutil` package implements a transport-aware retrieval strategy with fal
 - `docker-archive:/path.tar:tag` - Docker tarball archive (saved with `docker save`)
 - `nginx:latest` or `docker.io/nginx:latest` - Default behavior (daemon → registry)
 
+**HTTP Transport and Retry:**
+- Remote registry calls use a custom `http.Transport` with timeouts: 30s dial, 15s TLS handshake, 30s response headers
+- `GetRemoteImage()` retries transient errors (network timeouts, DNS failures, HTTP 429/500/502/503/504) up to 3 times with exponential backoff (1s, 2s, 4s)
+- Non-retryable errors (401, 404, etc.) fail immediately without retry
+- Retry loop respects context cancellation — a SIGINT during backoff terminates promptly
+
+### Context and Signal Handling
+
+The CLI uses `signal.NotifyContext` in `main.go` to create a context that is cancelled on SIGINT/SIGTERM. This context is propagated through:
+- `Execute(ctx)` → `rootCmd.SetContext(ctx)` → `cmd.Context()` in all RunE handlers
+- All `runX()` functions accept `context.Context` as first parameter
+- `imageutil.GetImage(ctx, ...)` and `imageutil.GetImageAndConfig(ctx, ...)` pass ctx to `remote.WithContext(ctx)` and `daemon.WithContext(ctx)`
+- `secrets.CheckFilesInLayers(ctx, ...)` checks `ctx.Err()` before each layer and each tar entry
+- The `all` command threads ctx through `executeChecks` → `runSingleCheck` → each check's `run` closure
+
+This ensures long-running operations (remote registry pulls, multi-layer scans) are cancelled promptly on user interrupt.
+
 ### Registry Authentication
 
 Credentials are resolved with the following precedence (highest first):
@@ -117,6 +134,7 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 **Key constraints:**
 - `--password` and `--password-stdin` are mutually exclusive
 - Username without password (or vice versa) is an error, regardless of source (flags or env)
+- `--password-stdin` reads up to 4KB (`maxPasswordSize`); input exceeding this limit is rejected to prevent memory exhaustion
 - `--password-stdin` cannot be combined with other stdin-consuming flags (`--config -`, `--allowed-ports @-`, etc.) — the first reader wins
 - Static credentials are applied to all registries in that invocation (no per-registry filtering — use Docker credential helpers for that)
 - `activeKeychain` is a package-level variable (acceptable pattern for a single-threaded CLI); `SetStaticCredentials` is idempotent and overwrites any previously set credentials
@@ -419,7 +437,7 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 - Use the standard `testing` package with `testify` for assertions.
 - All tests must be deterministic, fast, and isolated (no Docker daemon, registry, or network access required).
 - Use in-memory images and temporary directories for testing.
-- Comprehensive unit tests cover all commands and internal packages with 93.0% overall coverage.
+- Comprehensive unit tests cover all commands and internal packages with 92.2% overall coverage.
 - Every new feature must include complete unit tests. Existing tests affected by the change must be updated.
 - After adding or modifying tests, run the full test suite (`go test ./...`) to confirm nothing is broken.
 - Before committing, run end-to-end verification of both the new feature and any related functionality that may have been affected.
