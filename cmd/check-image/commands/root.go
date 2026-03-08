@@ -22,6 +22,8 @@ const (
 	ExecutionError                              // 3 - tool could not run properly
 )
 
+const maxPasswordSize = 4 * 1024 // 4KB limit for passwords/tokens from stdin
+
 var Result = ValidationSkipped
 
 var logLevel string
@@ -90,9 +92,13 @@ func resolveRegistryCredentials(username, password string, passwordStdin bool) (
 		return "", "", fmt.Errorf("--password and --password-stdin are mutually exclusive")
 	}
 	if passwordStdin {
-		data, err := io.ReadAll(os.Stdin)
+		limitedReader := io.LimitReader(os.Stdin, maxPasswordSize+1)
+		data, err := io.ReadAll(limitedReader)
 		if err != nil {
 			return "", "", fmt.Errorf("error reading password from stdin: %w", err)
+		}
+		if len(data) > maxPasswordSize {
+			return "", "", fmt.Errorf("password from stdin exceeds maximum size of %d bytes", maxPasswordSize)
 		}
 		password = strings.TrimRight(string(data), "\r\n")
 	}

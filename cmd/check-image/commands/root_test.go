@@ -641,6 +641,13 @@ func TestResolveRegistryCredentials(t *testing.T) {
 			wantUsername:  "envuser",
 			wantPassword:  "stdinpass",
 		},
+		{
+			name:          "password-stdin exceeds max size",
+			username:      "user",
+			passwordStdin: true,
+			stdinContent:  strings.Repeat("x", maxPasswordSize+1),
+			wantErrSubstr: "exceeds maximum size",
+		},
 	}
 
 	for _, tt := range tests {
