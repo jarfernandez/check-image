@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.8](https://github.com/jarfernandez/check-image/compare/v0.19.7...v0.19.8) (2026-03-08)
+
+
+### Code Refactoring
+
+* Pass output format as explicit parameter to render functions ([#150](https://github.com/jarfernandez/check-image/issues/150)) ([e040b5c](https://github.com/jarfernandez/check-image/commit/e040b5c31f8390f6de4f9df5a113f006d4b8bc12))
+* Return result struct from `Execute()` instead of reading globals ([#151](https://github.com/jarfernandez/check-image/issues/151)) ([a80080d](https://github.com/jarfernandez/check-image/commit/a80080d6e8f7ae06bc5f6639d31c23acc04c1d71))
+* Unify finding types between secrets and output packages ([#149](https://github.com/jarfernandez/check-image/issues/149)) ([c6bd8af](https://github.com/jarfernandez/check-image/commit/c6bd8afbd433438c1211f93d301e4b8d4b1ed0cd))
+* Use explicit parameter struct in `buildCheckDefs` instead of package-level globals ([#153](https://github.com/jarfernandez/check-image/issues/153)) ([7ef98be](https://github.com/jarfernandez/check-image/commit/7ef98be2a68a802528abc40763d8d8a421f407b2))
+
 ## [0.19.7](https://github.com/jarfernandez/check-image/compare/v0.19.6...v0.19.7) (2026-03-08)
 
 
