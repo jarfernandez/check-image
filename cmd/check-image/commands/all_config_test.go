@@ -390,6 +390,12 @@ func TestFormatAllowedList(t *testing.T) {
 			input:    "linux/amd64,linux/arm64",
 			expected: "linux/amd64,linux/arm64",
 		},
+		// Unsupported type hits the default branch
+		{
+			name:     "unsupported type uses default formatting",
+			input:    42,
+			expected: "42",
+		},
 	}
 
 	for _, tt := range tests {
