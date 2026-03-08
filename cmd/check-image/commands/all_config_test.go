@@ -1098,6 +1098,22 @@ func TestApplyInlinePolicy(t *testing.T) {
 	})
 }
 
+// TestInlinePolicyToTempFile_JSONMarshalError verifies that inlinePolicyToTempFile
+// returns an error when the inline map contains a value that cannot be JSON-marshalled
+// (e.g. a Go channel). This exercises the json.Marshal error branch inside the
+// map[string]any case, which cannot be reached via normal string or valid-object inputs.
+func TestInlinePolicyToTempFile_JSONMarshalError(t *testing.T) {
+	// Channels are not JSON-serializable; json.Marshal returns an error for them.
+	nonSerializable := map[string]any{
+		"key": make(chan int),
+	}
+	_, cleanup, err := inlinePolicyToTempFile("test-policy", nonSerializable)
+	t.Cleanup(cleanup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to marshal inline test-policy")
+}
+
 func TestApplyRegistryConfig(t *testing.T) {
 	t.Run("config value applied when flag not changed", func(t *testing.T) {
 		origRegistryPolicy := registryPolicy
