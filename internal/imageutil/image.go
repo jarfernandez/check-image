@@ -33,6 +33,12 @@ var remoteTransport http.RoundTripper = &http.Transport{
 	ForceAttemptHTTP2:     true,
 }
 
+// getLocalImageFn and getRemoteImageFn are package-level variables used for
+// retrieving images from the daemon and remote registry respectively.
+// They can be overridden in tests to avoid daemon and network access.
+var getLocalImageFn = GetLocalImage
+var getRemoteImageFn = GetRemoteImage
+
 // GetImageRegistry extracts the registry from the image name
 func GetImageRegistry(imageName string) (string, error) {
 	ref, err := ParseReference(imageName)
@@ -236,11 +242,16 @@ func GetImage(ctx context.Context, imageName string) (cr.Image, func(), error) {
 
 	case TransportDaemonRegistry:
 		// Default mode: try local daemon, fall back to remote registry
-		image, err := GetLocalImage(ctx, ref.Path)
+		image, err := getLocalImageFn(ctx, ref.Path)
 		if err == nil {
 			return image, func() {}, nil
 		}
-		image, err = GetRemoteImage(ctx, ref.Path)
+		// Honour context cancellation: do not attempt the remote fallback
+		// if the context was cancelled while the daemon call was in progress.
+		if ctx.Err() != nil {
+			return nil, func() {}, ctx.Err()
+		}
+		image, err = getRemoteImageFn(ctx, ref.Path)
 		if err != nil {
 			return nil, func() {}, err
 		}

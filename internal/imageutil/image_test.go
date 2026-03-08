@@ -524,11 +524,94 @@ func TestGetRemoteImage_RequiresRegistry(t *testing.T) {
 }
 
 func TestGetImage_DaemonRegistryFallback(t *testing.T) {
-	// Testing the fallback behavior would require:
-	// 1. Mocking the daemon to return an error
-	// 2. Mocking the registry to return success
-	// This is better suited for integration tests
-	t.Skip("Daemon/registry fallback requires mocking - run as integration test")
+	daemonErr := errors.New("daemon unavailable")
+	fakeImg, err := random.Image(512, 1)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		ctx       context.Context
+		localErr  error
+		remoteImg v1.Image
+		remoteErr error
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name:     "daemon success — no remote fallback",
+			ctx:      context.Background(),
+			localErr: nil,
+			wantErr:  false,
+		},
+		{
+			name:      "daemon fails, remote succeeds",
+			ctx:       context.Background(),
+			localErr:  daemonErr,
+			remoteImg: fakeImg,
+			wantErr:   false,
+		},
+		{
+			name:      "daemon fails, remote fails",
+			ctx:       context.Background(),
+			localErr:  daemonErr,
+			remoteErr: errors.New("registry unreachable"),
+			wantErr:   true,
+		},
+		{
+			name:      "context cancelled before remote fallback",
+			ctx:       func() context.Context { ctx, cancel := context.WithCancel(context.Background()); cancel(); return ctx }(),
+			localErr:  daemonErr,
+			remoteImg: nil, // remote must NOT be called
+			wantErr:   true,
+			wantErrIs: context.Canceled,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			remoteCalled := false
+
+			origLocal := getLocalImageFn
+			t.Cleanup(func() { getLocalImageFn = origLocal })
+			if tt.localErr == nil {
+				getLocalImageFn = func(_ context.Context, _ string) (v1.Image, error) {
+					return fakeImg, nil
+				}
+			} else {
+				getLocalImageFn = func(_ context.Context, _ string) (v1.Image, error) {
+					return nil, tt.localErr
+				}
+			}
+
+			origRemote := getRemoteImageFn
+			t.Cleanup(func() { getRemoteImageFn = origRemote })
+			getRemoteImageFn = func(_ context.Context, _ string) (v1.Image, error) {
+				remoteCalled = true
+				return tt.remoteImg, tt.remoteErr
+			}
+
+			img, cleanup, err := GetImage(tt.ctx, "nginx:latest")
+			if err == nil {
+				defer cleanup()
+			}
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(t, err, tt.wantErrIs)
+				}
+				assert.Nil(t, img)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.NotNil(t, img)
+
+			if tt.localErr == nil {
+				assert.False(t, remoteCalled, "remote should not be called when daemon succeeds")
+			}
+		})
+	}
 }
 
 // Tests for GetLocalImage error paths
