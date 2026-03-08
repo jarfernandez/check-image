@@ -191,18 +191,20 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		return err
 	}
 
+	outFmt := OutputFmt
+
 	if len(checks) == 0 {
-		return renderEmptyResult(imageName, skipMap, includeMap)
+		return renderEmptyResult(imageName, skipMap, includeMap, outFmt)
 	}
 
-	if OutputFmt == output.FormatText {
+	if outFmt == output.FormatText {
 		fmt.Println(headerStyle.Render(fmt.Sprintf("Running %d checks on image %s", len(checks), imageName)))
 		fmt.Println()
 	}
 
-	results := executeChecks(checks, imageName)
+	results := executeChecks(checks, imageName, outFmt)
 
-	if OutputFmt == output.FormatJSON {
+	if outFmt == output.FormatJSON {
 		return renderAllJSON(imageName, results, skipMap, includeMap)
 	}
 
@@ -226,8 +228,8 @@ func validateRequiredFlags(checks []checkDef) error {
 }
 
 // renderEmptyResult handles output when no checks are selected to run.
-func renderEmptyResult(imageName string, skipMap, includeMap map[string]bool) error {
-	if OutputFmt == output.FormatJSON {
+func renderEmptyResult(imageName string, skipMap, includeMap map[string]bool, outFmt output.Format) error {
+	if outFmt == output.FormatJSON {
 		skipped := skippedCheckNames(skipMap, includeMap)
 		allResult := output.AllResult{
 			Image:  imageName,
@@ -245,8 +247,8 @@ func renderEmptyResult(imageName string, skipMap, includeMap map[string]bool) er
 }
 
 // printSectionHeader prints the check's section header in text mode.
-func printSectionHeader(name string) {
-	if OutputFmt == output.FormatText {
+func printSectionHeader(name string, outFmt output.Format) {
+	if outFmt == output.FormatText {
 		fmt.Println(sectionHeader(name))
 	}
 }
@@ -275,8 +277,8 @@ func runSingleCheck(check checkDef, imageName string) output.CheckResult {
 
 // printSectionFooter renders the check result and prints a blank line in text mode.
 // render is skipped for error results because they carry no typed Details.
-func printSectionFooter(check checkDef, result *output.CheckResult) {
-	if OutputFmt != output.FormatText {
+func printSectionFooter(check checkDef, result *output.CheckResult, outFmt output.Format) {
+	if outFmt != output.FormatText {
 		return
 	}
 	if check.render != nil && result.Error == "" {
@@ -286,15 +288,15 @@ func printSectionFooter(check checkDef, result *output.CheckResult) {
 }
 
 // executeChecks runs each check, collects results, and updates the global Result.
-func executeChecks(checks []checkDef, imageName string) []output.CheckResult {
+func executeChecks(checks []checkDef, imageName string, outFmt output.Format) []output.CheckResult {
 	var results []output.CheckResult
 
 	for _, check := range checks {
 		log.Debugf("Running check: %s", check.name)
-		printSectionHeader(check.name)
+		printSectionHeader(check.name, outFmt)
 		result := runSingleCheck(check, imageName)
 		results = append(results, result)
-		printSectionFooter(check, &result)
+		printSectionFooter(check, &result, outFmt)
 		if failFast && (Result == ValidationFailed || Result == ExecutionError) {
 			break
 		}

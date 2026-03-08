@@ -36,11 +36,11 @@ var textRenderers = map[string]func(*output.CheckResult){
 	checkPlatform:    renderPlatformText,
 }
 
-// renderResult renders a CheckResult according to the current OutputFmt.
+// renderResult renders a CheckResult according to the given output format.
 // In text mode, it calls the appropriate text renderer.
 // In JSON mode, it writes JSON to stdout.
-func renderResult(r *output.CheckResult) error {
-	if OutputFmt == output.FormatJSON {
+func renderResult(r *output.CheckResult, outFmt output.Format) error {
+	if outFmt == output.FormatJSON {
 		return output.RenderJSON(os.Stdout, r)
 	}
 
