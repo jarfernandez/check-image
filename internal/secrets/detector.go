@@ -8,28 +8,17 @@ import (
 
 	cr "github.com/google/go-containerregistry/pkg/v1"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/jarfernandez/check-image/internal/output"
 )
 
-// EnvVarFinding represents a sensitive environment variable finding
-type EnvVarFinding struct {
-	Name        string
-	Description string
-}
-
-// FileFinding represents a sensitive file finding
-type FileFinding struct {
-	Path        string
-	LayerIndex  int
-	Description string
-}
-
 // CheckEnvironmentVariables scans environment variables for sensitive patterns
-func CheckEnvironmentVariables(envVars []string, policy *Policy) []EnvVarFinding {
+func CheckEnvironmentVariables(envVars []string, policy *Policy) []output.EnvVarFinding {
 	if !policy.CheckEnvVars {
 		return nil
 	}
 
-	var findings []EnvVarFinding
+	var findings []output.EnvVarFinding
 	patterns := policy.GetEnvPatterns()
 
 	for _, envVar := range envVars {
@@ -52,7 +41,7 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []EnvVarFinding
 		for _, pattern := range patterns {
 			patternLower := strings.ToLower(pattern)
 			if strings.Contains(varNameLower, patternLower) {
-				findings = append(findings, EnvVarFinding{
+				findings = append(findings, output.EnvVarFinding{
 					Name:        varName,
 					Description: "sensitive pattern detected",
 				})
@@ -66,7 +55,7 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []EnvVarFinding
 }
 
 // CheckFilesInLayers scans all layers for files matching sensitive patterns
-func CheckFilesInLayers(image cr.Image, policy *Policy) ([]FileFinding, error) {
+func CheckFilesInLayers(image cr.Image, policy *Policy) ([]output.FileFinding, error) {
 	if !policy.CheckFiles {
 		return nil, nil
 	}
@@ -76,7 +65,7 @@ func CheckFilesInLayers(image cr.Image, policy *Policy) ([]FileFinding, error) {
 		return nil, fmt.Errorf("error getting image layers: %w", err)
 	}
 
-	var allFindings []FileFinding
+	var allFindings []output.FileFinding
 	seenPaths := make(map[string]bool) // Deduplication across layers
 
 	for i, layer := range layers {
@@ -101,7 +90,7 @@ func CheckFilesInLayers(image cr.Image, policy *Policy) ([]FileFinding, error) {
 }
 
 // scanLayer scans a single layer for sensitive files
-func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]FileFinding, error) {
+func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]output.FileFinding, error) {
 	rc, err := layer.Uncompressed()
 	if err != nil {
 		return nil, fmt.Errorf("error uncompressing layer: %w", err)
@@ -112,7 +101,7 @@ func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]FileFinding, e
 		}
 	}()
 
-	var findings []FileFinding
+	var findings []output.FileFinding
 	tarReader := tar.NewReader(rc)
 	patterns := policy.GetFilePatterns()
 
@@ -138,7 +127,7 @@ func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]FileFinding, e
 
 		// Check if file matches any sensitive patterns
 		if matchesPattern, description := matchesFilePattern(header.Name, patterns); matchesPattern {
-			findings = append(findings, FileFinding{
+			findings = append(findings, output.FileFinding{
 				Path:        header.Name,
 				LayerIndex:  layerIndex,
 				Description: description,
