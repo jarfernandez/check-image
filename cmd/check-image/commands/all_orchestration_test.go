@@ -11,6 +11,7 @@ import (
 	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -182,8 +183,8 @@ func TestDetermineChecks(t *testing.T) {
 	})
 }
 
-// resetAllGlobals resets all package-level variables used by commands to their defaults.
-func resetAllGlobals() {
+// doResetGlobals sets all package-level command variables back to their defaults.
+func doResetGlobals() {
 	Result = ValidationSkipped
 	OutputFmt = output.FormatText
 	colorMode = "auto"
@@ -192,6 +193,7 @@ func resetAllGlobals() {
 	maxLayers = 20
 	allowedPorts = ""
 	registryPolicy = ""
+	labelsPolicy = ""
 	secretsPolicy = ""
 	skipEnvVars = false
 	skipFiles = false
@@ -201,6 +203,17 @@ func resetAllGlobals() {
 	includeChecks = ""
 	failFast = false
 	allowedPlatforms = ""
+	imageutil.ResetKeychain()
+}
+
+// resetAllGlobals resets package-level state immediately and registers a
+// t.Cleanup so the state is also restored after the test finishes, even if
+// the test fails or panics. Always pass the innermost t (i.e. the subtest's t
+// inside t.Run, not the parent's t).
+func resetAllGlobals(t *testing.T) {
+	t.Helper()
+	doResetGlobals()
+	t.Cleanup(doResetGlobals)
 }
 
 // captureStdout captures stdout output during fn execution.
@@ -221,7 +234,7 @@ func captureStdout(t *testing.T, fn func()) string {
 }
 
 func TestRunAll_AllChecksPass(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,labels,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -248,7 +261,7 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 }
 
 func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 
 	// Image runs as root -> root-user check fails
@@ -272,7 +285,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 }
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "root-user,registry,healthcheck,labels,entrypoint,platform" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
 
 	// Image runs as root but we skip root-user check
@@ -293,7 +306,7 @@ func TestRunAll_SkipFailingCheck(t *testing.T) {
 }
 
 func TestRunAll_ConfigSelectsSubset(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -329,7 +342,7 @@ func TestRunAll_ConfigSelectsSubset(t *testing.T) {
 }
 
 func TestRunAll_ConfigPlusSkip(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -365,7 +378,7 @@ func TestRunAll_ConfigPlusSkip(t *testing.T) {
 }
 
 func TestRunAll_CLIOverridesConfig(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -402,7 +415,7 @@ func TestRunAll_CLIOverridesConfig(t *testing.T) {
 }
 
 func TestRunAll_WithoutConfig_FlagsWork(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	maxAge = 1                                          // Very strict: 1 day
 
@@ -423,7 +436,7 @@ func TestRunAll_WithoutConfig_FlagsWork(t *testing.T) {
 }
 
 func TestRunAll_RegistryRequiresPolicy(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -438,7 +451,7 @@ func TestRunAll_RegistryRequiresPolicy(t *testing.T) {
 }
 
 func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 
 	// Image exposes ports but no allowed-ports provided -> ports check fails
@@ -459,7 +472,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 }
 
 func TestRunAll_SkipAll(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint,platform"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -477,7 +490,7 @@ func TestRunAll_SkipAll(t *testing.T) {
 }
 
 func TestRunAll_InvalidConfigFile(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	configFile = "/nonexistent/config.yaml"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -491,7 +504,7 @@ func TestRunAll_InvalidConfigFile(t *testing.T) {
 }
 
 func TestRunAll_InvalidSkipList(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "age,invalid"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -511,7 +524,7 @@ func TestAllCommandFailFastFlag(t *testing.T) {
 }
 
 func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = true
 
@@ -536,7 +549,7 @@ func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 }
 
 func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = true
 
@@ -563,7 +576,7 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 }
 
 func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = false
 
@@ -588,7 +601,7 @@ func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 }
 
 func TestRunAll_LabelsRequiresPolicy(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -604,7 +617,7 @@ func TestRunAll_LabelsRequiresPolicy(t *testing.T) {
 }
 
 func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,labels,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -628,7 +641,7 @@ func TestRunAll_HealthcheckPassesWithHealthcheck(t *testing.T) {
 }
 
 func TestRunAll_HealthcheckFailsWithoutHealthcheck(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,labels,platform" // skip checks that require policy files
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -748,7 +761,7 @@ func TestSkippedCheckNames(t *testing.T) {
 }
 
 func TestRunAll_IncludeAndSkipMutuallyExclusive(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "age"
 	includeChecks = "size"
 
@@ -763,7 +776,7 @@ func TestRunAll_IncludeAndSkipMutuallyExclusive(t *testing.T) {
 }
 
 func TestRunAll_IncludeSelectsSubset(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "age,root-user"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -790,7 +803,7 @@ func TestRunAll_IncludeSelectsSubset(t *testing.T) {
 }
 
 func TestRunAll_IncludeOverridesConfig(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -825,7 +838,7 @@ func TestRunAll_IncludeOverridesConfig(t *testing.T) {
 }
 
 func TestRunAll_IncludeWithConfig_ValuesApply(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -858,7 +871,7 @@ func TestRunAll_IncludeWithConfig_ValuesApply(t *testing.T) {
 }
 
 func TestRunAll_InvalidIncludeList(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "age,invalid"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -872,7 +885,7 @@ func TestRunAll_InvalidIncludeList(t *testing.T) {
 }
 
 func TestRunAll_EntrypointPassesWithExecForm(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "entrypoint" // run only entrypoint check
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -892,7 +905,7 @@ func TestRunAll_EntrypointPassesWithExecForm(t *testing.T) {
 }
 
 func TestRunAll_EntrypointFailsWithShellForm(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "entrypoint"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -910,7 +923,7 @@ func TestRunAll_EntrypointFailsWithShellForm(t *testing.T) {
 }
 
 func TestRunAll_EntrypointSkipped(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,entrypoint,platform"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -928,7 +941,7 @@ func TestRunAll_EntrypointSkipped(t *testing.T) {
 }
 
 func TestRunAll_EntrypointWithAllowShellFormViaConfig(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	allow := true
 	tmpDir := t.TempDir()
@@ -959,7 +972,7 @@ func TestRunAll_EntrypointWithAllowShellFormViaConfig(t *testing.T) {
 }
 
 func TestRunAll_PlatformPasses(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "platform"
 	allowedPlatforms = "linux/amd64,linux/arm64"
 
@@ -979,7 +992,7 @@ func TestRunAll_PlatformPasses(t *testing.T) {
 }
 
 func TestRunAll_PlatformFails(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "platform"
 	allowedPlatforms = "linux/amd64"
 
@@ -999,7 +1012,7 @@ func TestRunAll_PlatformFails(t *testing.T) {
 }
 
 func TestRunAll_PlatformFailsWhenNoPlatformsProvided(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "platform"
 	// allowedPlatforms is "" after reset
 
@@ -1014,7 +1027,7 @@ func TestRunAll_PlatformFailsWhenNoPlatformsProvided(t *testing.T) {
 }
 
 func TestRunAll_PlatformWithConfig(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -1059,7 +1072,7 @@ func TestDetermineChecks_PlatformInConfig(t *testing.T) {
 }
 
 func TestRunAll_PlatformWithInlineConfig(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, "config.yaml")
@@ -1086,7 +1099,7 @@ func TestRunAll_PlatformWithInlineConfig(t *testing.T) {
 
 func TestRunSingleCheck(t *testing.T) {
 	t.Run("check succeeds", func(t *testing.T) {
-		resetAllGlobals()
+		resetAllGlobals(t)
 		expected := output.CheckResult{Check: "age", Image: "img", Passed: true, Message: "ok"}
 		check := checkDef{
 			name: "age",
@@ -1098,7 +1111,7 @@ func TestRunSingleCheck(t *testing.T) {
 	})
 
 	t.Run("check fails validation", func(t *testing.T) {
-		resetAllGlobals()
+		resetAllGlobals(t)
 		expected := output.CheckResult{Check: "size", Image: "img", Passed: false, Message: "too big"}
 		check := checkDef{
 			name: "size",
@@ -1110,7 +1123,7 @@ func TestRunSingleCheck(t *testing.T) {
 	})
 
 	t.Run("check returns error", func(t *testing.T) {
-		resetAllGlobals()
+		resetAllGlobals(t)
 		check := checkDef{
 			name: "ports",
 			run:  func(_ context.Context, _ string) (*output.CheckResult, error) { return nil, assert.AnError },
@@ -1182,7 +1195,7 @@ func TestPrintSectionFooter(t *testing.T) {
 
 // TestRenderAllJSON_AllPassing tests renderAllJSON when all checks pass.
 func TestRenderAllJSON_AllPassing(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	Result = ValidationSucceeded
 
 	results := []output.CheckResult{
@@ -1209,7 +1222,7 @@ func TestRenderAllJSON_AllPassing(t *testing.T) {
 
 // TestRenderAllJSON_WithFailures tests renderAllJSON when some checks fail or error.
 func TestRenderAllJSON_WithFailures(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	Result = ValidationFailed
 
 	results := []output.CheckResult{
@@ -1235,7 +1248,7 @@ func TestRenderAllJSON_WithFailures(t *testing.T) {
 
 // TestRenderAllJSON_WithSkipMap tests renderAllJSON with a skip map.
 func TestRenderAllJSON_WithSkipMap(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	Result = ValidationSucceeded
 
 	results := []output.CheckResult{
@@ -1259,7 +1272,7 @@ func TestRenderAllJSON_WithSkipMap(t *testing.T) {
 
 // TestRenderAllJSON_WithIncludeMap tests renderAllJSON with an include map.
 func TestRenderAllJSON_WithIncludeMap(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	Result = ValidationSucceeded
 
 	results := []output.CheckResult{
@@ -1316,7 +1329,7 @@ func TestRenderEmptyResult_JSONMode(t *testing.T) {
 // TestRunAll_EntrypointWithCmdField tests that the entrypoint check renders
 // both Entrypoint and Cmd fields when an image defines both.
 func TestRunAll_EntrypointWithCmdField(t *testing.T) {
-	resetAllGlobals()
+	resetAllGlobals(t)
 	includeChecks = "entrypoint"
 
 	imageRef := createTestImage(t, testImageOptions{
