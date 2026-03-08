@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -90,7 +91,7 @@ func TestRunAge(t *testing.T) {
 			})
 
 			// Run command
-			result, err := runAge(imageRef, tt.maxAge)
+			result, err := runAge(context.Background(), imageRef, tt.maxAge)
 			require.NoError(t, err)
 
 			// Assert on struct
@@ -113,6 +114,6 @@ func TestRunAge(t *testing.T) {
 
 func TestRunAge_InvalidImage(t *testing.T) {
 	// Test with invalid image reference
-	_, err := runAge("nonexistent:image", 90)
+	_, err := runAge(context.Background(), "nonexistent:image", 90)
 	require.Error(t, err)
 }

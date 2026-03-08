@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -39,9 +40,10 @@ var platformCmd = &cobra.Command{
 
 		log.Debugln("Allowed platforms:", platforms)
 
-		return runCheckCmd(checkPlatform, func(img string) (*output.CheckResult, error) {
-			return runPlatform(img, platforms)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkPlatform, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runPlatform(ctx, img, platforms)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -82,8 +84,8 @@ func parseAllowedPlatformsFrom(platformsStr string) ([]string, error) {
 	return platforms, nil
 }
 
-func runPlatform(imageName string, allowedPlatformsList []string) (*output.CheckResult, error) {
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+func runPlatform(ctx context.Context, imageName string, allowedPlatformsList []string) (*output.CheckResult, error) {
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

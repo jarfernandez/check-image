@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -214,7 +215,7 @@ func TestRunPorts_NoExposedPorts(t *testing.T) {
 		exposedPorts: nil,
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443})
 	require.NoError(t, err)
 	assert.True(t, result.Passed)
 }
@@ -228,7 +229,7 @@ func TestRunPorts_ExposedPortsWithNoAllowedList(t *testing.T) {
 		},
 	})
 
-	result, err := runPorts(imageRef, nil)
+	result, err := runPorts(context.Background(), imageRef, nil)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when exposed ports exist but no allowed list is provided")
 }
@@ -242,7 +243,7 @@ func TestRunPorts_AllPortsAllowed(t *testing.T) {
 		},
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443, 8080})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443, 8080})
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when all exposed ports are in allowed list")
 }
@@ -257,7 +258,7 @@ func TestRunPorts_SomePortsNotAllowed(t *testing.T) {
 		},
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443})
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when some exposed ports are not in allowed list")
 }
@@ -270,7 +271,7 @@ func TestRunPorts_NoPortsAllowed(t *testing.T) {
 		},
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443})
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when no exposed ports are in allowed list")
 }
@@ -284,13 +285,13 @@ func TestRunPorts_DifferentProtocols(t *testing.T) {
 		},
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443, 53})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443, 53})
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should handle different protocols (tcp/udp)")
 }
 
 func TestRunPorts_InvalidImageReference(t *testing.T) {
-	_, err := runPorts("oci:/nonexistent/path:latest", []int{80, 443})
+	_, err := runPorts(context.Background(), "oci:/nonexistent/path:latest", []int{80, 443})
 	require.Error(t, err)
 }
 
@@ -302,7 +303,7 @@ func TestRunPorts_SubsetOfAllowedPorts(t *testing.T) {
 		},
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443, 8080, 9090, 3000})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443, 8080, 9090, 3000})
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when exposed ports are a subset of allowed ports")
 }
@@ -312,7 +313,7 @@ func TestRunPorts_EmptyExposedPortsMap(t *testing.T) {
 		exposedPorts: map[string]struct{}{},
 	})
 
-	result, err := runPorts(imageRef, []int{80, 443})
+	result, err := runPorts(context.Background(), imageRef, []int{80, 443})
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when exposed ports map is empty")
 }

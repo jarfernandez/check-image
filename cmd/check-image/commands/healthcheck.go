@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
@@ -19,7 +21,8 @@ var healthcheckCmd = &cobra.Command{
   check-image healthcheck docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkHealthcheck, runHealthcheck, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkHealthcheck, runHealthcheck, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -27,8 +30,8 @@ func init() {
 	rootCmd.AddCommand(healthcheckCmd)
 }
 
-func runHealthcheck(imageName string) (*output.CheckResult, error) {
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+func runHealthcheck(ctx context.Context, imageName string) (*output.CheckResult, error) {
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

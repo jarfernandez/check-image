@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
@@ -34,9 +35,10 @@ Scans both environment variables and files across all image layers.
   cat secrets-policy.yaml | check-image secrets nginx:latest --secrets-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkSecrets, func(img string) (*output.CheckResult, error) {
-			return runSecrets(img, secretsPolicy, skipEnvVars, skipFiles)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkSecrets, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runSecrets(ctx, img, secretsPolicy, skipEnvVars, skipFiles)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -47,7 +49,7 @@ func init() {
 	secretsCmd.Flags().BoolVar(&skipFiles, "skip-files", false, "Skip file system checks (optional)")
 }
 
-func runSecrets(imageName string, policyPath string, noEnvVars bool, noFiles bool) (*output.CheckResult, error) {
+func runSecrets(ctx context.Context, imageName string, policyPath string, noEnvVars bool, noFiles bool) (*output.CheckResult, error) {
 	policy, err := secrets.LoadSecretsPolicy(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load secrets policy: %w", err)
@@ -61,7 +63,7 @@ func runSecrets(imageName string, policyPath string, noEnvVars bool, noFiles boo
 		policy.CheckFiles = false
 	}
 
-	image, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+	image, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

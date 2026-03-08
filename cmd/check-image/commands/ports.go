@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strconv"
@@ -40,9 +41,10 @@ var portsCmd = &cobra.Command{
 
 		log.Debugln("Allowed ports:", ports)
 
-		return runCheckCmd(checkPorts, func(img string) (*output.CheckResult, error) {
-			return runPorts(img, ports)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkPorts, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runPorts(ctx, img, ports)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -85,8 +87,8 @@ func parseAllowedPortsFrom(portsStr string) ([]int, error) {
 	return ports, nil
 }
 
-func runPorts(imageName string, allowedPortsList []int) (*output.CheckResult, error) {
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+func runPorts(ctx context.Context, imageName string, allowedPortsList []int) (*output.CheckResult, error) {
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

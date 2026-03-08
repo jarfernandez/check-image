@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/spf13/cobra"
@@ -18,7 +20,8 @@ var rootUserCmd = &cobra.Command{
   check-image root-user docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkRootUser, runRootUser, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkRootUser, runRootUser, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -26,8 +29,8 @@ func init() {
 	rootCmd.AddCommand(rootUserCmd)
 }
 
-func runRootUser(imageName string) (*output.CheckResult, error) {
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+func runRootUser(ctx context.Context, imageName string) (*output.CheckResult, error) {
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

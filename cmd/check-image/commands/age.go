@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -24,9 +25,10 @@ var ageCmd = &cobra.Command{
   check-image age docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkAge, func(img string) (*output.CheckResult, error) {
-			return runAge(img, maxAge)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkAge, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runAge(ctx, img, maxAge)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -35,8 +37,8 @@ func init() {
 	ageCmd.Flags().UintVarP(&maxAge, "max-age", "a", defaultMaxAgeDays, "Maximum age in days (optional)")
 }
 
-func runAge(imageName string, maxAgeDays uint) (*output.CheckResult, error) {
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+func runAge(ctx context.Context, imageName string, maxAgeDays uint) (*output.CheckResult, error) {
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

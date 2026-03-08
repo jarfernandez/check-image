@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -86,7 +87,7 @@ func TestRunHealthcheck(t *testing.T) {
 				healthcheck: tt.healthcheck,
 			})
 
-			result, err := runHealthcheck(imageRef)
+			result, err := runHealthcheck(context.Background(), imageRef)
 			require.NoError(t, err)
 
 			assert.Equal(t, "healthcheck", result.Check)
@@ -102,6 +103,6 @@ func TestRunHealthcheck(t *testing.T) {
 }
 
 func TestRunHealthcheck_InvalidImage(t *testing.T) {
-	_, err := runHealthcheck("nonexistent:image")
+	_, err := runHealthcheck(context.Background(), "nonexistent:image")
 	require.Error(t, err)
 }

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
@@ -28,9 +29,10 @@ and optionally validates their values against exact matches or regex patterns.
   cat labels-policy.yaml | check-image labels nginx:latest --labels-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkLabels, func(img string) (*output.CheckResult, error) {
-			return runLabels(img, labelsPolicy)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkLabels, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runLabels(ctx, img, labelsPolicy)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -42,7 +44,7 @@ func init() {
 	}
 }
 
-func runLabels(imageName string, policyPath string) (*output.CheckResult, error) {
+func runLabels(ctx context.Context, imageName string, policyPath string) (*output.CheckResult, error) {
 	policy, err := labels.LoadLabelsPolicy(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load labels policy: %w", err)
@@ -50,7 +52,7 @@ func runLabels(imageName string, policyPath string) (*output.CheckResult, error)
 
 	log.Debugf("Loaded policy with %d required labels", len(policy.RequiredLabels))
 
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

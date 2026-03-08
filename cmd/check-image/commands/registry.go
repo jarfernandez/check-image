@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -25,7 +26,8 @@ Note: Registry validation is only applicable for registry images and will be ski
   cat registry-policy.json | check-image registry nginx:latest --registry-policy -`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result, err := runRegistry(args[0], registryPolicy)
+		ctx := cmd.Context()
+		result, err := runRegistry(ctx, args[0], registryPolicy)
 		if err != nil {
 			return fmt.Errorf("check registry operation failed: %w", err)
 		}
@@ -57,7 +59,7 @@ func init() {
 	}
 }
 
-func runRegistry(imageName string, policyPath string) (*output.CheckResult, error) {
+func runRegistry(_ context.Context, imageName string, policyPath string) (*output.CheckResult, error) {
 	imageRegistry, err := imageutil.GetImageRegistry(imageName)
 	if err != nil {
 		// Check if this is a non-registry transport

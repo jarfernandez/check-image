@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -27,9 +28,10 @@ var sizeCmd = &cobra.Command{
   check-image size docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkSize, func(img string) (*output.CheckResult, error) {
-			return runSize(img, maxSize, maxLayers)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkSize, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runSize(ctx, img, maxSize, maxLayers)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -39,8 +41,8 @@ func init() {
 	sizeCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", defaultMaxLayerCount, "Maximum number of layers (optional)")
 }
 
-func runSize(imageName string, maxSizeMB uint, maxLayerCount uint) (*output.CheckResult, error) {
-	image, cleanup, err := imageutil.GetImage(imageName)
+func runSize(ctx context.Context, imageName string, maxSizeMB uint, maxLayerCount uint) (*output.CheckResult, error) {
+	image, cleanup, err := imageutil.GetImage(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

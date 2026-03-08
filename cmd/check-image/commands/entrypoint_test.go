@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -197,7 +198,7 @@ func TestRunEntrypoint(t *testing.T) {
 				cmd:        tt.cmd,
 			})
 
-			result, err := runEntrypoint(imageRef, tt.allowShellFormFlag)
+			result, err := runEntrypoint(context.Background(), imageRef, tt.allowShellFormFlag)
 			require.NoError(t, err)
 
 			assert.Equal(t, "entrypoint", result.Check)
@@ -221,6 +222,6 @@ func TestRunEntrypoint(t *testing.T) {
 }
 
 func TestRunEntrypoint_InvalidImage(t *testing.T) {
-	_, err := runEntrypoint("nonexistent:image", false)
+	_, err := runEntrypoint(context.Background(), "nonexistent:image", false)
 	require.Error(t, err)
 }

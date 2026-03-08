@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -75,7 +76,7 @@ func TestRunRootUser(t *testing.T) {
 			})
 
 			// Run command
-			result, err := runRootUser(imageRef)
+			result, err := runRootUser(context.Background(), imageRef)
 			require.NoError(t, err)
 
 			// Assert on struct
@@ -93,6 +94,6 @@ func TestRunRootUser(t *testing.T) {
 
 func TestRunRootUser_InvalidImage(t *testing.T) {
 	// Test with invalid image reference
-	_, err := runRootUser("nonexistent:image")
+	_, err := runRootUser(context.Background(), "nonexistent:image")
 	require.Error(t, err)
 }

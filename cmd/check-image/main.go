@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jarfernandez/check-image/cmd/check-image/commands"
 	"github.com/jarfernandez/check-image/internal/output"
@@ -49,7 +52,10 @@ func exitResult(result commands.ExecuteResult, stdout io.Writer) int {
 
 // run executes the CLI and returns the exit code.
 func run(stdout io.Writer) int {
-	result := commands.Execute()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	result := commands.Execute(ctx)
 	return exitResult(result, stdout)
 }
 
