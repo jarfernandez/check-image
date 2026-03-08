@@ -9,15 +9,13 @@ import (
 	"github.com/jarfernandez/check-image/internal/output"
 )
 
-// run executes the CLI and returns the exit code
-// This function is testable because it doesn't call os.Exit
-func run(stdout io.Writer) int {
-	commands.Execute()
-
+// exitResult maps an ExecuteResult to an exit code and prints the final
+// status message when appropriate.
+func exitResult(result commands.ExecuteResult, stdout io.Writer) int {
 	// Execution error has the highest priority — exit code 2.
 	// The detailed error message is already logged to stderr by Execute().
-	if commands.Result == commands.ExecutionError {
-		if commands.OutputFmt != output.FormatJSON {
+	if result.Validation == commands.ExecutionError {
+		if result.Format != output.FormatJSON {
 			if _, err := fmt.Fprintln(stdout, commands.FailStyle.Render("Execution error")); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 			}
@@ -26,27 +24,33 @@ func run(stdout io.Writer) int {
 	}
 
 	// In JSON mode, suppress the final text message (already in JSON)
-	if commands.OutputFmt == output.FormatJSON {
-		if commands.Result == commands.ValidationFailed {
+	if result.Format == output.FormatJSON {
+		if result.Validation == commands.ValidationFailed {
 			return 1
 		}
 		return 0
 	}
 
-	if commands.Result == commands.ValidationFailed {
+	if result.Validation == commands.ValidationFailed {
 		if _, err := fmt.Fprintln(stdout, commands.FailStyle.Render("Validation failed")); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 		}
 		return 1
 	}
 
-	if commands.Result == commands.ValidationSucceeded {
+	if result.Validation == commands.ValidationSucceeded {
 		if _, err := fmt.Fprintln(stdout, commands.PassStyle.Render("Validation succeeded")); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 		}
 	}
 
 	return 0
+}
+
+// run executes the CLI and returns the exit code.
+func run(stdout io.Writer) int {
+	result := commands.Execute()
+	return exitResult(result, stdout)
 }
 
 func main() {
