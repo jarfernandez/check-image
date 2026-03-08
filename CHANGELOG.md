@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1](https://github.com/jarfernandez/check-image/compare/v0.20.0...v0.20.1) (2026-03-08)
+
+
+### Code Refactoring
+
+* Use `t.Cleanup` in `resetAllGlobals` for guaranteed test state cleanup ([#156](https://github.com/jarfernandez/check-image/issues/156)) ([4ac3075](https://github.com/jarfernandez/check-image/commit/4ac3075ecb45d3eb4946da2ade86cc2ed07e7ffd))
+
 ## [0.20.0](https://github.com/jarfernandez/check-image/compare/v0.19.8...v0.20.0) (2026-03-08)
 
 
