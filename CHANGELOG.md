@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.7](https://github.com/jarfernandez/check-image/compare/v0.19.6...v0.19.7) (2026-03-08)
+
+
+### Code Refactoring
+
+* Replace `renderResult` switch with map-based dispatch ([#146](https://github.com/jarfernandez/check-image/issues/146)) ([b22e35c](https://github.com/jarfernandez/check-image/commit/b22e35c2616eb3f4a1fba57a74a1c4caff6e71d9))
+* Split pattern-matching helpers into `patterns.go` ([#147](https://github.com/jarfernandez/check-image/issues/147)) ([0a0387b](https://github.com/jarfernandez/check-image/commit/0a0387b2ec11f7f4dba3a923cc80136a299d71da))
+
 ## [0.19.6](https://github.com/jarfernandez/check-image/compare/v0.19.5...v0.19.6) (2026-03-07)
 
 
