@@ -185,6 +185,11 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 }
 
 func runAll(cmd *cobra.Command, imageName string) error {
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	skipMap, err := parseCheckNameList(skipChecks)
 	if err != nil {
 		return err
@@ -230,7 +235,6 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		fmt.Println()
 	}
 
-	ctx := cmd.Context()
 	results := executeChecks(ctx, checks, imageName, outFmt)
 
 	if outFmt == output.FormatJSON {

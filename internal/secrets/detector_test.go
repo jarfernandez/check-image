@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"io"
 	"testing"
 	"time"
@@ -547,7 +548,7 @@ func TestCheckFilesInLayers(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			findings, err := CheckFilesInLayers(img, tt.policy)
+			findings, err := CheckFilesInLayers(context.Background(), img, tt.policy)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -616,7 +617,7 @@ func TestScanLayer_DirectorySkipped(t *testing.T) {
 		ExcludedEnvVars: DefaultExcludedEnvVars,
 	}
 
-	findings, err := scanLayer(layer, 0, policy)
+	findings, err := scanLayer(context.Background(), layer, 0, policy)
 	require.NoError(t, err)
 
 	// Should only find the file, not the directory
@@ -633,7 +634,7 @@ func TestCheckFilesInLayers_EmptyImage(t *testing.T) {
 		ExcludedEnvVars: DefaultExcludedEnvVars,
 	}
 
-	findings, err := CheckFilesInLayers(img, policy)
+	findings, err := CheckFilesInLayers(context.Background(), img, policy)
 	require.NoError(t, err)
 	assert.Empty(t, findings)
 }
@@ -668,9 +669,53 @@ func TestCheckFilesInLayers_CorruptedLayer(t *testing.T) {
 	}
 
 	// Should not fail completely, just log warning for corrupted layer
-	findings, err := CheckFilesInLayers(img, policy)
+	findings, err := CheckFilesInLayers(context.Background(), img, policy)
 	require.NoError(t, err)
 	// Findings slice should exist (even if empty)
 	// The implementation continues processing valid layers even when some fail
 	assert.GreaterOrEqual(t, len(findings), 0)
+}
+
+func TestCheckFilesInLayers_CancelledContext(t *testing.T) {
+	// Create image with multiple layers
+	img := empty.Image
+	for i := 0; i < 3; i++ {
+		layer := createLayerWithFiles(t, map[string]string{
+			"/app/file" + string(rune('a'+i)) + ".txt": "content",
+		})
+		var err error
+		img, err = mutate.AppendLayers(img, layer)
+		require.NoError(t, err)
+	}
+
+	policy := &Policy{
+		CheckFiles:    true,
+		ExcludedPaths: []string{},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err := CheckFilesInLayers(ctx, img, policy)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cancelled")
+}
+
+func TestScanLayer_CancelledContext(t *testing.T) {
+	layer := createLayerWithFiles(t, map[string]string{
+		"/root/.ssh/id_rsa": "private key content",
+		"/app/config.json":  "{}",
+	})
+
+	policy := &Policy{
+		CheckFiles:    true,
+		ExcludedPaths: []string{},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err := scanLayer(ctx, layer, 0, policy)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cancelled")
 }
