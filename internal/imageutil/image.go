@@ -39,6 +39,10 @@ var remoteTransport http.RoundTripper = &http.Transport{
 var getLocalImageFn = GetLocalImage
 var getRemoteImageFn = GetRemoteImage
 
+// daemonImageFn wraps daemon.Image and can be overridden in tests to avoid
+// requiring a live Docker daemon socket.
+var daemonImageFn = daemon.Image
+
 // GetImageRegistry extracts the registry from the image name
 func GetImageRegistry(imageName string) (string, error) {
 	ref, err := ParseReference(imageName)
@@ -67,7 +71,7 @@ func GetLocalImage(ctx context.Context, imageName string) (cr.Image, error) {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	image, err := daemon.Image(ref, daemon.WithContext(ctx))
+	image, err := daemonImageFn(ref, daemon.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the local image: %w", err)
 	}

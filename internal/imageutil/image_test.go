@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
@@ -625,6 +626,18 @@ func TestGetLocalImage_InvalidImageName(t *testing.T) {
 func TestGetLocalImage_InvalidReference(t *testing.T) {
 	_, err := GetLocalImage(context.Background(), "INVALID@IMAGE@NAME")
 	require.Error(t, err)
+}
+
+func TestGetLocalImage_DaemonError(t *testing.T) {
+	orig := daemonImageFn
+	daemonImageFn = func(_ name.Reference, _ ...daemon.Option) (v1.Image, error) {
+		return nil, errors.New("daemon not available")
+	}
+	defer func() { daemonImageFn = orig }()
+
+	_, err := GetLocalImage(context.Background(), "nginx:latest")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error retrieving the local image")
 }
 
 // Tests for GetRemoteImage error paths
