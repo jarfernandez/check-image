@@ -348,3 +348,47 @@ func TestLoadRegistryPolicy_Stdin(t *testing.T) {
 		})
 	}
 }
+
+// FuzzLoadRegistryPolicyJSON feeds arbitrary bytes as a JSON policy file and
+// verifies that the loader never panics, regardless of content.
+func FuzzLoadRegistryPolicyJSON(f *testing.F) {
+	f.Add([]byte(`{"trusted-registries":["docker.io"]}`))
+	f.Add([]byte(`{"excluded-registries":["bad.io"]}`))
+	f.Add([]byte(`{"trusted-registries":["docker.io"],"excluded-registries":["bad.io"]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`{invalid json}`))
+	f.Add([]byte(``))
+	f.Add([]byte(`null`))
+	f.Add([]byte(`[]`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "policy.json")
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Skip("could not write temp file")
+		}
+		// Must not panic regardless of input; errors are acceptable.
+		_, _ = LoadRegistryPolicy(path)
+	})
+}
+
+// FuzzLoadRegistryPolicyYAML feeds arbitrary bytes as a YAML policy file and
+// verifies that the loader never panics, regardless of content.
+func FuzzLoadRegistryPolicyYAML(f *testing.F) {
+	f.Add([]byte("trusted-registries:\n  - docker.io\n"))
+	f.Add([]byte("excluded-registries:\n  - bad.io\n"))
+	f.Add([]byte(""))
+	f.Add([]byte("invalid:\n  yaml:\n  - [unclosed"))
+	f.Add([]byte("trusted-registries: null\n"))
+	f.Add([]byte("trusted-registries:\n  - docker.io\nexcluded-registries:\n  - bad.io\n"))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "policy.yaml")
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Skip("could not write temp file")
+		}
+		// Must not panic regardless of input; errors are acceptable.
+		_, _ = LoadRegistryPolicy(path)
+	})
+}

@@ -406,3 +406,54 @@ func TestPolicyValidate(t *testing.T) {
 		})
 	}
 }
+
+// FuzzLoadLabelsPolicyJSON feeds arbitrary bytes as a JSON policy file and
+// verifies that the loader never panics, regardless of content. The labels
+// loader is particularly interesting because it compiles user-supplied regex
+// patterns — a malformed pattern must return an error, not panic.
+func FuzzLoadLabelsPolicyJSON(f *testing.F) {
+	f.Add([]byte(`{"required-labels":[{"name":"maintainer"}]}`))
+	f.Add([]byte(`{"required-labels":[{"name":"version","pattern":"^v?\\d+\\.\\d+\\.\\d+$"}]}`))
+	f.Add([]byte(`{"required-labels":[{"name":"vendor","value":"Acme"}]}`))
+	f.Add([]byte(`{"required-labels":[]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`{invalid json}`))
+	f.Add([]byte(``))
+	f.Add([]byte(`null`))
+	f.Add([]byte(`[]`))
+	// Invalid regex: must return error, not panic.
+	f.Add([]byte(`{"required-labels":[{"name":"x","pattern":"[invalid("}]}`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "policy.json")
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Skip("could not write temp file")
+		}
+		// Must not panic regardless of input; errors are acceptable.
+		_, _ = LoadLabelsPolicy(path)
+	})
+}
+
+// FuzzLoadLabelsPolicyYAML feeds arbitrary bytes as a YAML policy file and
+// verifies that the loader never panics, regardless of content.
+func FuzzLoadLabelsPolicyYAML(f *testing.F) {
+	f.Add([]byte("required-labels:\n  - name: maintainer\n"))
+	f.Add([]byte("required-labels:\n  - name: version\n    pattern: \"^v?\\\\d+\"\n"))
+	f.Add([]byte("required-labels:\n  - name: vendor\n    value: Acme\n"))
+	f.Add([]byte(""))
+	f.Add([]byte("invalid:\n  yaml:\n  - [unclosed"))
+	f.Add([]byte("required-labels: null\n"))
+	// Invalid regex: must return error, not panic.
+	f.Add([]byte("required-labels:\n  - name: x\n    pattern: \"[invalid(\"\n"))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "policy.yaml")
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Skip("could not write temp file")
+		}
+		// Must not panic regardless of input; errors are acceptable.
+		_, _ = LoadLabelsPolicy(path)
+	})
+}

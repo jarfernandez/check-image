@@ -365,3 +365,47 @@ excluded-env-vars:
 		})
 	}
 }
+
+// FuzzLoadSecretsPolicyJSON feeds arbitrary bytes as a JSON policy file and
+// verifies that the loader never panics, regardless of content.
+func FuzzLoadSecretsPolicyJSON(f *testing.F) {
+	f.Add([]byte(`{"check-env-vars":true,"check-files":true}`))
+	f.Add([]byte(`{"check-env-vars":false,"excluded-paths":["/tmp/**"]}`))
+	f.Add([]byte(`{"excluded-env-vars":["PUBLIC_KEY"],"custom-env-patterns":["MY_TOKEN"]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`{invalid json}`))
+	f.Add([]byte(``))
+	f.Add([]byte(`null`))
+	f.Add([]byte(`[]`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "policy.json")
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Skip("could not write temp file")
+		}
+		// Must not panic regardless of input; errors are acceptable.
+		_, _ = LoadSecretsPolicy(path)
+	})
+}
+
+// FuzzLoadSecretsPolicyYAML feeds arbitrary bytes as a YAML policy file and
+// verifies that the loader never panics, regardless of content.
+func FuzzLoadSecretsPolicyYAML(f *testing.F) {
+	f.Add([]byte("check-env-vars: true\ncheck-files: true\n"))
+	f.Add([]byte("check-env-vars: false\nexcluded-paths:\n  - /tmp/**\n"))
+	f.Add([]byte("excluded-env-vars:\n  - PUBLIC_KEY\n"))
+	f.Add([]byte(""))
+	f.Add([]byte("invalid:\n  yaml:\n  - [unclosed"))
+	f.Add([]byte("check-env-vars: null\n"))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "policy.yaml")
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Skip("could not write temp file")
+		}
+		// Must not panic regardless of input; errors are acceptable.
+		_, _ = LoadSecretsPolicy(path)
+	})
+}
