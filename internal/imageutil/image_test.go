@@ -3,6 +3,7 @@ package imageutil
 import (
 	"archive/tar"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,6 +18,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRemoteTransport_IsConfigured(t *testing.T) {
+	assert.NotNil(t, remoteTransport, "remoteTransport must be configured")
+
+	// Verify it's an *http.Transport with expected timeouts
+	transport, ok := remoteTransport.(*http.Transport)
+	require.True(t, ok, "remoteTransport must be an *http.Transport")
+	assert.Equal(t, 15*time.Second, transport.TLSHandshakeTimeout)
+	assert.Equal(t, 30*time.Second, transport.ResponseHeaderTimeout)
+}
 
 func TestGetImageRegistry(t *testing.T) {
 	tests := []struct {
