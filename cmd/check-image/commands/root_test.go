@@ -527,15 +527,18 @@ func TestRootCommandAuth_MixedFlagAndEnv_UsernameFromFlag_PasswordFromEnv(t *tes
 	assert.Equal(t, "envpass", cfg.Password)
 }
 
-// newStdinPipe creates a pipe, writes content to the write end, closes it, and
-// returns the read end. The caller must restore os.Stdin via t.Cleanup.
+// newStdinPipe creates a pipe, writes content to the write end in a goroutine,
+// and returns the read end. Writing in a goroutine is necessary because
+// Windows pipes are synchronous and block when the buffer is full (~4KB);
+// a synchronous write would deadlock before the reader starts draining.
 func newStdinPipe(t *testing.T, content string) *os.File {
 	t.Helper()
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
-	_, err = fmt.Fprint(w, content)
-	require.NoError(t, err)
-	w.Close()
+	go func() {
+		_, _ = fmt.Fprint(w, content)
+		w.Close()
+	}()
 	origStdin := os.Stdin
 	os.Stdin = r
 	t.Cleanup(func() {
