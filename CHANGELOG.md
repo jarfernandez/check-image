@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0](https://github.com/jarfernandez/check-image/compare/v0.19.8...v0.20.0) (2026-03-08)
+
+
+### Features
+
+* Add context cancellation checks in secrets layer scanning ([c2af061](https://github.com/jarfernandez/check-image/commit/c2af06143b77ee86b10d050828b376c11b885e0d))
+* Add retry with exponential backoff for remote registry calls ([5488754](https://github.com/jarfernandez/check-image/commit/5488754c18c285cfeb9f70dac8af64f7b419aa73))
+
+
+### Bug Fixes
+
+* Add HTTP timeouts to remote registry transport ([657cf3f](https://github.com/jarfernandez/check-image/commit/657cf3f4dc74b17ca24c16a420b4f1ec86b11690))
+* Add size limit on `--password-stdin` read ([a7b4801](https://github.com/jarfernandez/check-image/commit/a7b4801f47bd5fae6dcc50c3e9d6c04187a65065))
+* Write to stdin pipe in goroutine to prevent deadlock on Windows ([abec527](https://github.com/jarfernandez/check-image/commit/abec52766525a4aa5737df0377db2264163d0230))
+
+
+### Code Refactoring
+
+* Add `context.Context` propagation and signal handling ([3bdd305](https://github.com/jarfernandez/check-image/commit/3bdd305ea6fb70cef1583eecd79128c34aee96fc))
+
 ## [0.19.8](https://github.com/jarfernandez/check-image/compare/v0.19.7...v0.19.8) (2026-03-08)
 
 
