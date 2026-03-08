@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"io"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -718,4 +720,26 @@ func TestScanLayer_CancelledContext(t *testing.T) {
 	_, err := scanLayer(ctx, layer, 0, policy)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cancelled")
+}
+
+// errLayer is a stub v1.Layer whose Uncompressed() always returns an error,
+// simulating a corrupted or unreadable image layer.
+type errLayer struct{}
+
+func (e errLayer) Digest() (v1.Hash, error)             { return v1.Hash{}, nil }
+func (e errLayer) DiffID() (v1.Hash, error)             { return v1.Hash{}, nil }
+func (e errLayer) Compressed() (io.ReadCloser, error)   { return io.NopCloser(bytes.NewReader(nil)), nil }
+func (e errLayer) Uncompressed() (io.ReadCloser, error) { return nil, errors.New("disk I/O error") }
+func (e errLayer) Size() (int64, error)                 { return 0, nil }
+func (e errLayer) MediaType() (types.MediaType, error)  { return types.OCILayer, nil }
+
+func TestScanLayer_UncompressError(t *testing.T) {
+	policy := &Policy{
+		CheckFiles:    true,
+		ExcludedPaths: []string{},
+	}
+
+	_, err := scanLayer(context.Background(), errLayer{}, 0, policy)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error uncompressing layer")
 }
