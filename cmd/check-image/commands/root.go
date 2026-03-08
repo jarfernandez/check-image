@@ -138,9 +138,19 @@ func UpdateResult(result ValidationResult) {
 	}
 }
 
-func Execute() {
+// ExecuteResult holds the outcome of a CLI execution for the caller.
+type ExecuteResult struct {
+	Validation ValidationResult
+	Format     output.Format
+}
+
+func Execute() ExecuteResult {
 	if err := rootCmd.Execute(); err != nil {
 		log.Errorf("Error executing check-image: %v", err)
 		Result = ExecutionError
+	}
+	return ExecuteResult{
+		Validation: Result,
+		Format:     OutputFmt,
 	}
 }

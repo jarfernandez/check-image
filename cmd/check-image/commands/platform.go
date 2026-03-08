@@ -41,7 +41,7 @@ var platformCmd = &cobra.Command{
 
 		return runCheckCmd(checkPlatform, func(img string) (*output.CheckResult, error) {
 			return runPlatform(img, platforms)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 

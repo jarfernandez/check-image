@@ -30,7 +30,7 @@ and optionally validates their values against exact matches or regex patterns.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCheckCmd(checkLabels, func(img string) (*output.CheckResult, error) {
 			return runLabels(img, labelsPolicy)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 

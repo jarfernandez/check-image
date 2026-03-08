@@ -42,7 +42,7 @@ var portsCmd = &cobra.Command{
 
 		return runCheckCmd(checkPorts, func(img string) (*output.CheckResult, error) {
 			return runPorts(img, ports)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 

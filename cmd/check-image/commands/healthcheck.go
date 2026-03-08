@@ -19,7 +19,7 @@ var healthcheckCmd = &cobra.Command{
   check-image healthcheck docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkHealthcheck, runHealthcheck, args[0])
+		return runCheckCmd(checkHealthcheck, runHealthcheck, args[0], OutputFmt)
 	},
 }
 

@@ -18,7 +18,7 @@ var rootUserCmd = &cobra.Command{
   check-image root-user docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkRootUser, runRootUser, args[0])
+		return runCheckCmd(checkRootUser, runRootUser, args[0], OutputFmt)
 	},
 }
 

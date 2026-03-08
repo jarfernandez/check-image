@@ -29,7 +29,7 @@ var sizeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCheckCmd(checkSize, func(img string) (*output.CheckResult, error) {
 			return runSize(img, maxSize, maxLayers)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 
