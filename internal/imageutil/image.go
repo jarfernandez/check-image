@@ -78,30 +78,49 @@ func GetRemoteImage(ctx context.Context, imageName string) (cr.Image, error) {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
+	img, err := retryWithBackoff(ctx, maxRetries, retryBaseWait, func() (cr.Image, error) {
+		return remote.Image(ref,
+			remote.WithAuthFromKeychain(activeKeychain),
+			remote.WithTransport(remoteTransport),
+			remote.WithContext(ctx))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving the remote image: %w", err)
+	}
+	return img, nil
+}
+
+// retryWithBackoff calls fn up to attempts+1 times, backing off exponentially
+// between failures. Returns immediately on success or non-retryable error
+// (unwrapped, so the caller can re-wrap with context). After exhausting all
+// attempts returns an error of the form "after N attempts: <lastErr>".
+// Context cancellation during a backoff sleep terminates the loop immediately.
+func retryWithBackoff(ctx context.Context, attempts int, baseWait time.Duration, fn func() (cr.Image, error)) (cr.Image, error) {
 	var lastErr error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain), remote.WithTransport(remoteTransport), remote.WithContext(ctx))
+	for attempt := 0; attempt <= attempts; attempt++ {
+		img, err := fn()
 		if err == nil {
-			return image, nil
+			return img, nil
 		}
 		lastErr = err
 
 		if !isRetryableError(err) {
-			return nil, fmt.Errorf("error retrieving the remote image: %w", err)
+			return nil, err
 		}
 
-		if attempt < maxRetries {
-			backoff := retryBaseWait * (1 << uint(attempt))
-			log.Debugf("Retryable error on attempt %d/%d: %v; retrying in %v", attempt+1, maxRetries+1, err, backoff)
+		if attempt < attempts {
+			backoff := baseWait * (1 << uint(attempt))
+			log.Debugf("Retryable error on attempt %d/%d: %v; retrying in %v",
+				attempt+1, attempts+1, err, backoff)
 			select {
 			case <-ctx.Done():
-				return nil, fmt.Errorf("error retrieving the remote image: %w", ctx.Err())
+				return nil, ctx.Err()
 			case <-time.After(backoff):
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("error retrieving the remote image after %d attempts: %w", maxRetries+1, lastErr)
+	return nil, fmt.Errorf("after %d attempts: %w", attempts+1, lastErr)
 }
 
 // isRetryableError returns true for transient network errors and HTTP 429/5xx

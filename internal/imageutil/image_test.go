@@ -431,6 +431,82 @@ func TestGetImage_DockerArchiveTransport(t *testing.T) {
 	assert.Equal(t, origDigest, loadedDigest)
 }
 
+func TestRetryWithBackoff(t *testing.T) {
+	const fastWait = time.Microsecond
+
+	t.Run("success on first attempt", func(t *testing.T) {
+		calls := 0
+		fn := func() (v1.Image, error) {
+			calls++
+			return nil, nil
+		}
+		img, err := retryWithBackoff(context.Background(), 3, fastWait, fn)
+		require.NoError(t, err)
+		assert.Nil(t, img)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("success after retryable failures", func(t *testing.T) {
+		calls := 0
+		fn := func() (v1.Image, error) {
+			calls++
+			if calls < 3 {
+				return nil, &net.DNSError{IsTimeout: true}
+			}
+			return nil, nil
+		}
+		img, err := retryWithBackoff(context.Background(), 3, fastWait, fn)
+		require.NoError(t, err)
+		assert.Nil(t, img)
+		assert.Equal(t, 3, calls)
+	})
+
+	t.Run("non-retryable error fails immediately", func(t *testing.T) {
+		calls := 0
+		permErr := errors.New("unexpected status code 401 Unauthorized")
+		fn := func() (v1.Image, error) {
+			calls++
+			return nil, permErr
+		}
+		img, err := retryWithBackoff(context.Background(), 3, fastWait, fn)
+		require.Error(t, err)
+		assert.Nil(t, img)
+		assert.Equal(t, 1, calls)
+		assert.ErrorIs(t, err, permErr)
+	})
+
+	t.Run("context cancelled during backoff", func(t *testing.T) {
+		calls := 0
+		ctx, cancel := context.WithCancel(context.Background())
+		fn := func() (v1.Image, error) {
+			calls++
+			cancel() // cancel before returning so ctx.Done() is already closed when select runs
+			return nil, &net.DNSError{IsTimeout: true}
+		}
+		// Use a long backoff so time.After never fires — only ctx.Done() can win the select.
+		img, err := retryWithBackoff(ctx, 3, time.Hour, fn)
+		require.Error(t, err)
+		assert.Nil(t, img)
+		assert.Equal(t, 1, calls)
+		assert.ErrorIs(t, err, context.Canceled)
+	})
+
+	t.Run("retries exhausted", func(t *testing.T) {
+		calls := 0
+		retryableErr := &net.DNSError{IsTimeout: true, Err: "timeout"}
+		fn := func() (v1.Image, error) {
+			calls++
+			return nil, retryableErr
+		}
+		img, err := retryWithBackoff(context.Background(), 2, fastWait, fn)
+		require.Error(t, err)
+		assert.Nil(t, img)
+		assert.Equal(t, 3, calls)
+		assert.ErrorContains(t, err, "after 3 attempts")
+		assert.ErrorIs(t, err, retryableErr)
+	})
+}
+
 // TestGetLocalImage and TestGetRemoteImage would require mocking
 // the Docker daemon and registry clients. These are integration tests
 // that should be run separately with actual Docker daemon or test registries.
