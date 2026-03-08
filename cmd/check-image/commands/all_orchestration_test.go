@@ -193,6 +193,7 @@ func doResetGlobals() {
 	maxLayers = 20
 	allowedPorts = ""
 	registryPolicy = ""
+	labelsPolicy = ""
 	secretsPolicy = ""
 	skipEnvVars = false
 	skipFiles = false
