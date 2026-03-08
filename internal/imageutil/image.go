@@ -2,7 +2,10 @@ package imageutil
 
 import (
 	"fmt"
+	"net"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	cr "github.com/google/go-containerregistry/pkg/v1"
@@ -10,6 +13,16 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 )
+
+// remoteTransport is the HTTP transport used for remote registry calls.
+// It applies timeouts to prevent hanging on unresponsive registries.
+var remoteTransport http.RoundTripper = &http.Transport{
+	Proxy:                 http.ProxyFromEnvironment,
+	DialContext:           (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
+	TLSHandshakeTimeout:   15 * time.Second,
+	ResponseHeaderTimeout: 30 * time.Second,
+	ForceAttemptHTTP2:     true,
+}
 
 // GetImageRegistry extracts the registry from the image name
 func GetImageRegistry(imageName string) (string, error) {
@@ -54,7 +67,7 @@ func GetRemoteImage(imageName string) (cr.Image, error) {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain))
+	image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain), remote.WithTransport(remoteTransport))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the remote image: %w", err)
 	}
