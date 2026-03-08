@@ -114,6 +114,13 @@ func extractEntries(tarReader *tar.Reader, tempDir string) error {
 	return nil
 }
 
+// openFileFn is the function used to create output files during tar extraction.
+// It is a variable to allow substitution in tests.
+var openFileFn = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	// #nosec G304 -- name is validated against path traversal by callers (HasPrefix check)
+	return os.OpenFile(name, flag, perm)
+}
+
 // extractRegularFile extracts a single regular file from a tar archive
 func extractRegularFile(tarReader *tar.Reader, target string, header *tar.Header) error {
 	// Create parent directories if needed
@@ -126,7 +133,7 @@ func extractRegularFile(tarReader *tar.Reader, target string, header *tar.Header
 	// #nosec G115 -- Mode masked to 0777 ensures safe conversion
 	fileMode := os.FileMode(header.Mode) & 0777
 	// #nosec G304,G703 -- target path validated by caller for traversal (HasPrefix check)
-	outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, fileMode)
+	outFile, err := openFileFn(target, os.O_CREATE|os.O_WRONLY, fileMode)
 	if err != nil {
 		return fmt.Errorf("error creating file %s: %w", target, err)
 	}
