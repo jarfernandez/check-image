@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"math"
 	"testing"
 
@@ -47,7 +48,7 @@ func TestRunSize_WithinLimits(t *testing.T) {
 		layerSizes: []int64{1024, 1024, 1024},
 	})
 
-	result, err := runSize(imageRef, 10, 5)
+	result, err := runSize(context.Background(), imageRef, 10, 5)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when within size and layer limits")
 
@@ -62,7 +63,7 @@ func TestRunSize_ExceedsSizeLimit(t *testing.T) {
 		layerSizes: []int64{600 * 1024, 600 * 1024},
 	})
 
-	result, err := runSize(imageRef, 1, 10)
+	result, err := runSize(context.Background(), imageRef, 1, 10)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when size exceeds limit")
 }
@@ -73,7 +74,7 @@ func TestRunSize_ExceedsLayerLimit(t *testing.T) {
 		layerSizes: []int64{1024, 1024, 1024, 1024, 1024},
 	})
 
-	result, err := runSize(imageRef, 100, 3)
+	result, err := runSize(context.Background(), imageRef, 100, 3)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when layer count exceeds limit")
 }
@@ -84,7 +85,7 @@ func TestRunSize_ExceedsBothLimits(t *testing.T) {
 		layerSizes: []int64{500 * 1024, 500 * 1024, 500 * 1024, 500 * 1024, 500 * 1024},
 	})
 
-	result, err := runSize(imageRef, 1, 2)
+	result, err := runSize(context.Background(), imageRef, 1, 2)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when both size and layer count exceed limits")
 }
@@ -94,7 +95,7 @@ func TestRunSize_NoLayers(t *testing.T) {
 		layerCount: 0,
 	})
 
-	result, err := runSize(imageRef, 10, 5)
+	result, err := runSize(context.Background(), imageRef, 10, 5)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed with no layers")
 }
@@ -105,7 +106,7 @@ func TestRunSize_ExactlyAtSizeLimit(t *testing.T) {
 		layerSizes: []int64{1024 * 1024},
 	})
 
-	result, err := runSize(imageRef, 1, 5)
+	result, err := runSize(context.Background(), imageRef, 1, 5)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when exactly at size limit")
 }
@@ -116,7 +117,7 @@ func TestRunSize_ExactlyAtLayerLimit(t *testing.T) {
 		layerSizes: []int64{1024, 1024, 1024},
 	})
 
-	result, err := runSize(imageRef, 100, 3)
+	result, err := runSize(context.Background(), imageRef, 100, 3)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should succeed when exactly at layer limit")
 }
@@ -127,7 +128,7 @@ func TestRunSize_OneByteSizeOverLimit(t *testing.T) {
 		layerSizes: []int64{1024*1024 + 1024},
 	})
 
-	result, err := runSize(imageRef, 1, 5)
+	result, err := runSize(context.Background(), imageRef, 1, 5)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when even 1 byte over size limit")
 }
@@ -138,13 +139,13 @@ func TestRunSize_OneLayerOverLimit(t *testing.T) {
 		layerSizes: []int64{1024, 1024, 1024, 1024},
 	})
 
-	result, err := runSize(imageRef, 100, 3)
+	result, err := runSize(context.Background(), imageRef, 100, 3)
 	require.NoError(t, err)
 	assert.False(t, result.Passed, "Should fail when 1 layer over limit")
 }
 
 func TestRunSize_InvalidImageReference(t *testing.T) {
-	_, err := runSize("oci:/nonexistent/path:latest", 100, 10)
+	_, err := runSize(context.Background(), "oci:/nonexistent/path:latest", 100, 10)
 	require.Error(t, err)
 }
 
@@ -154,7 +155,7 @@ func TestRunSize_VeryLargeImage(t *testing.T) {
 		layerSizes: []int64{1024 * 1024},
 	})
 
-	result, err := runSize(imageRef, 1000, 100)
+	result, err := runSize(context.Background(), imageRef, 1000, 100)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should handle large images with many layers")
 }
@@ -171,7 +172,7 @@ func TestRunSize_VariableLayerSizes(t *testing.T) {
 		},
 	})
 
-	result, err := runSize(imageRef, 10, 10)
+	result, err := runSize(context.Background(), imageRef, 10, 10)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should handle variable layer sizes")
 }
@@ -182,7 +183,7 @@ func TestRunSize_MaxSizeOverflow(t *testing.T) {
 		layerSizes: []int64{1024},
 	})
 
-	_, err := runSize(imageRef, math.MaxInt64/(1024*1024)+1, 10)
+	_, err := runSize(context.Background(), imageRef, math.MaxInt64/(1024*1024)+1, 10)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "too large", "Should return error for max-size overflow")
 }
@@ -193,7 +194,7 @@ func TestRunSize_DefaultFlagValues(t *testing.T) {
 		layerSizes: []int64{1024 * 1024},
 	})
 
-	result, err := runSize(imageRef, 500, 20)
+	result, err := runSize(context.Background(), imageRef, 500, 20)
 	require.NoError(t, err)
 	assert.True(t, result.Passed, "Should work with default flag values")
 }

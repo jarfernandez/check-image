@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -150,7 +151,8 @@ type ExecuteResult struct {
 	Format     output.Format
 }
 
-func Execute() ExecuteResult {
+func Execute(ctx context.Context) ExecuteResult {
+	rootCmd.SetContext(ctx)
 	if err := rootCmd.Execute(); err != nil {
 		log.Errorf("Error executing check-image: %v", err)
 		Result = ExecutionError

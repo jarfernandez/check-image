@@ -1,6 +1,7 @@
 package imageutil
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -46,13 +47,13 @@ func GetImageRegistry(imageName string) (string, error) {
 }
 
 // GetLocalImage retrieves the local image from a reference name
-func GetLocalImage(imageName string) (cr.Image, error) {
+func GetLocalImage(ctx context.Context, imageName string) (cr.Image, error) {
 	ref, err := name.ParseReference(imageName)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	image, err := daemon.Image(ref)
+	image, err := daemon.Image(ref, daemon.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the local image: %w", err)
 	}
@@ -61,13 +62,13 @@ func GetLocalImage(imageName string) (cr.Image, error) {
 }
 
 // GetRemoteImage retrieves the remote image from a reference name
-func GetRemoteImage(imageName string) (cr.Image, error) {
+func GetRemoteImage(ctx context.Context, imageName string) (cr.Image, error) {
 	ref, err := name.ParseReference(imageName)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain), remote.WithTransport(remoteTransport))
+	image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain), remote.WithTransport(remoteTransport), remote.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving the remote image: %w", err)
 	}
@@ -121,7 +122,7 @@ func GetOCIArchiveImage(tarballPath string, reference string) (cr.Image, func(),
 // GetImage retrieves the image using transport-aware reference parsing.
 // The caller must call the returned cleanup function when done with the image.
 // For all transports except oci-archive, cleanup does nothing.
-func GetImage(imageName string) (cr.Image, func(), error) {
+func GetImage(ctx context.Context, imageName string) (cr.Image, func(), error) {
 	ref, err := ParseReference(imageName)
 	if err != nil {
 		return nil, func() {}, err
@@ -164,11 +165,11 @@ func GetImage(imageName string) (cr.Image, func(), error) {
 
 	case TransportDaemonRegistry:
 		// Default mode: try local daemon, fall back to remote registry
-		image, err := GetLocalImage(ref.Path)
+		image, err := GetLocalImage(ctx, ref.Path)
 		if err == nil {
 			return image, func() {}, nil
 		}
-		image, err = GetRemoteImage(ref.Path)
+		image, err = GetRemoteImage(ctx, ref.Path)
 		if err != nil {
 			return nil, func() {}, err
 		}
@@ -192,8 +193,8 @@ func GetImageConfig(image cr.Image) (*cr.ConfigFile, error) {
 // GetImageAndConfig retrieves both the image and its configuration file given an image name.
 // The caller must call the returned cleanup function when done with the image.
 // For all transports except oci-archive, cleanup does nothing.
-func GetImageAndConfig(imageName string) (cr.Image, *cr.ConfigFile, func(), error) {
-	image, cleanup, err := GetImage(imageName)
+func GetImageAndConfig(ctx context.Context, imageName string) (cr.Image, *cr.ConfigFile, func(), error) {
+	image, cleanup, err := GetImage(ctx, imageName)
 	if err != nil {
 		return nil, nil, func() {}, err
 	}

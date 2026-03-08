@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"slices"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
@@ -30,9 +31,10 @@ By default the check fails if shell form is detected. Use --allow-shell-form to 
   check-image entrypoint docker-archive:/path/to/image.tar:tag`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckCmd(checkEntrypoint, func(img string) (*output.CheckResult, error) {
-			return runEntrypoint(img, allowShellForm)
-		}, args[0], OutputFmt)
+		ctx := cmd.Context()
+		return runCheckCmd(checkEntrypoint, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runEntrypoint(ctx, img, allowShellForm)
+		}, ctx, args[0], OutputFmt)
 	},
 }
 
@@ -42,8 +44,8 @@ func init() {
 		"Allow shell form for entrypoint or cmd without failing (optional)")
 }
 
-func runEntrypoint(imageName string, shellFormAllowed bool) (*output.CheckResult, error) {
-	_, config, cleanup, err := imageutil.GetImageAndConfig(imageName)
+func runEntrypoint(ctx context.Context, imageName string, shellFormAllowed bool) (*output.CheckResult, error) {
+	_, config, cleanup, err := imageutil.GetImageAndConfig(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}

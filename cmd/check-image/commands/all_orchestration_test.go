@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -1089,9 +1090,9 @@ func TestRunSingleCheck(t *testing.T) {
 		expected := output.CheckResult{Check: "age", Image: "img", Passed: true, Message: "ok"}
 		check := checkDef{
 			name: "age",
-			run:  func(string) (*output.CheckResult, error) { return &expected, nil },
+			run:  func(_ context.Context, _ string) (*output.CheckResult, error) { return &expected, nil },
 		}
-		got := runSingleCheck(check, "img")
+		got := runSingleCheck(context.Background(), check, "img")
 		assert.Equal(t, expected, got)
 		assert.Equal(t, ValidationSucceeded, Result)
 	})
@@ -1101,9 +1102,9 @@ func TestRunSingleCheck(t *testing.T) {
 		expected := output.CheckResult{Check: "size", Image: "img", Passed: false, Message: "too big"}
 		check := checkDef{
 			name: "size",
-			run:  func(string) (*output.CheckResult, error) { return &expected, nil },
+			run:  func(_ context.Context, _ string) (*output.CheckResult, error) { return &expected, nil },
 		}
-		got := runSingleCheck(check, "img")
+		got := runSingleCheck(context.Background(), check, "img")
 		assert.Equal(t, expected, got)
 		assert.Equal(t, ValidationFailed, Result)
 	})
@@ -1112,9 +1113,9 @@ func TestRunSingleCheck(t *testing.T) {
 		resetAllGlobals()
 		check := checkDef{
 			name: "ports",
-			run:  func(string) (*output.CheckResult, error) { return nil, assert.AnError },
+			run:  func(_ context.Context, _ string) (*output.CheckResult, error) { return nil, assert.AnError },
 		}
-		got := runSingleCheck(check, "img")
+		got := runSingleCheck(context.Background(), check, "img")
 		assert.False(t, got.Passed)
 		assert.Equal(t, "ports", got.Check)
 		assert.NotEmpty(t, got.Error)

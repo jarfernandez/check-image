@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -19,9 +20,9 @@ func TestRunCheckCmd_Success(t *testing.T) {
 		Passed:  true,
 		Message: "ok",
 	}
-	err := runCheckCmd("test", func(string) (*output.CheckResult, error) {
+	err := runCheckCmd("test", func(_ context.Context, _ string) (*output.CheckResult, error) {
 		return result, nil
-	}, "nginx:latest", output.FormatText)
+	}, context.Background(), "nginx:latest", output.FormatText)
 	require.NoError(t, err)
 	assert.Equal(t, ValidationSucceeded, Result)
 }
@@ -36,17 +37,17 @@ func TestRunCheckCmd_Failure(t *testing.T) {
 		Passed:  false,
 		Message: "not ok",
 	}
-	err := runCheckCmd("test", func(string) (*output.CheckResult, error) {
+	err := runCheckCmd("test", func(_ context.Context, _ string) (*output.CheckResult, error) {
 		return result, nil
-	}, "nginx:latest", output.FormatText)
+	}, context.Background(), "nginx:latest", output.FormatText)
 	require.NoError(t, err)
 	assert.Equal(t, ValidationFailed, Result)
 }
 
 func TestRunCheckCmd_RunError(t *testing.T) {
-	err := runCheckCmd("mycheck", func(string) (*output.CheckResult, error) {
+	err := runCheckCmd("mycheck", func(_ context.Context, _ string) (*output.CheckResult, error) {
 		return nil, errors.New("something went wrong")
-	}, "nginx:latest", output.FormatText)
+	}, context.Background(), "nginx:latest", output.FormatText)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "check mycheck operation failed")
 	assert.Contains(t, err.Error(), "something went wrong")

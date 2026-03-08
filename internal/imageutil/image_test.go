@@ -2,6 +2,7 @@ package imageutil
 
 import (
 	"archive/tar"
+	"context"
 	"io"
 	"net/http"
 	"os"
@@ -142,7 +143,7 @@ func TestGetImageAndConfig_OCI(t *testing.T) {
 	// Use OCI transport
 	imageName := "oci:" + layoutPath + ":1.0"
 
-	img, cfg, cleanup, err := GetImageAndConfig(imageName)
+	img, cfg, cleanup, err := GetImageAndConfig(context.Background(), imageName)
 	require.NoError(t, err)
 	defer cleanup()
 	require.NotNil(t, img)
@@ -192,7 +193,7 @@ func TestGetImage_OCITransport(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			img, cleanup, err := GetImage(tt.imageName)
+			img, cleanup, err := GetImage(context.Background(), tt.imageName)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -213,7 +214,7 @@ func TestGetImage_OCITransport(t *testing.T) {
 func TestGetImage_InvalidTransport(t *testing.T) {
 	// Test with a reference that contains invalid characters
 	// References cannot contain spaces or other special characters
-	_, _, err := GetImage("invalid reference with spaces")
+	_, _, err := GetImage(context.Background(), "invalid reference with spaces")
 	require.Error(t, err)
 	// The error should come from the name parsing, not from our ParseReference
 }
@@ -255,7 +256,7 @@ func TestGetImageConfig_EmptyImage(t *testing.T) {
 
 func TestGetImageAndConfig_InvalidReference(t *testing.T) {
 	// Test with a reference that contains invalid characters
-	_, _, _, err := GetImageAndConfig("invalid reference with spaces")
+	_, _, _, err := GetImageAndConfig(context.Background(), "invalid reference with spaces")
 	require.Error(t, err)
 	// The error should come from the name parsing, not from our ParseReference
 }
@@ -266,7 +267,7 @@ func TestGetImageAndConfig_OCIWithoutTag(t *testing.T) {
 	createOCILayout(t, layoutPath)
 
 	// OCI transport requires tag or digest
-	_, _, _, err := GetImageAndConfig("oci:" + layoutPath)
+	_, _, _, err := GetImageAndConfig(context.Background(), "oci:"+layoutPath)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires tag or digest")
 }
@@ -343,7 +344,7 @@ func TestGetImage_OCIArchiveTransport(t *testing.T) {
 	createTarballFromOCILayout(t, layoutPath, tarPath)
 
 	// Test with tag reference
-	loadedImg, cleanup, err := GetImage("oci-archive:" + tarPath + ":test-tag")
+	loadedImg, cleanup, err := GetImage(context.Background(), "oci-archive:"+tarPath+":test-tag")
 	require.NoError(t, err)
 	require.NotNil(t, loadedImg)
 
@@ -354,13 +355,13 @@ func TestGetImage_OCIArchiveTransport(t *testing.T) {
 	cleanup()
 
 	// Test with digest reference
-	loadedImg2, cleanup2, err := GetImage("oci-archive:" + tarPath + "@" + digest.String())
+	loadedImg2, cleanup2, err := GetImage(context.Background(), "oci-archive:"+tarPath+"@"+digest.String())
 	require.NoError(t, err)
 	require.NotNil(t, loadedImg2)
 	cleanup2()
 
 	// Test error: missing reference
-	_, _, err = GetImage("oci-archive:" + tarPath)
+	_, _, err = GetImage(context.Background(), "oci-archive:"+tarPath)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires tag or digest")
 }
@@ -383,7 +384,7 @@ func TestGetImage_DockerArchiveTransport(t *testing.T) {
 
 	// Load the image from docker-archive without specifying tag
 	// (will load the first/only image in the archive)
-	loadedImg, cleanup, err := GetImage("docker-archive:" + tarPath)
+	loadedImg, cleanup, err := GetImage(context.Background(), "docker-archive:"+tarPath)
 	require.NoError(t, err)
 	defer cleanup()
 	require.NotNil(t, loadedImg)
@@ -423,26 +424,26 @@ func TestGetImage_DaemonRegistryFallback(t *testing.T) {
 // Tests for GetLocalImage error paths
 
 func TestGetLocalImage_InvalidImageName(t *testing.T) {
-	_, err := GetLocalImage("")
+	_, err := GetLocalImage(context.Background(), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error parsing the reference")
 }
 
 func TestGetLocalImage_InvalidReference(t *testing.T) {
-	_, err := GetLocalImage("INVALID@IMAGE@NAME")
+	_, err := GetLocalImage(context.Background(), "INVALID@IMAGE@NAME")
 	require.Error(t, err)
 }
 
 // Tests for GetRemoteImage error paths
 
 func TestGetRemoteImage_InvalidImageName(t *testing.T) {
-	_, err := GetRemoteImage("")
+	_, err := GetRemoteImage(context.Background(), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error parsing the reference")
 }
 
 func TestGetRemoteImage_InvalidReference(t *testing.T) {
-	_, err := GetRemoteImage("INVALID@IMAGE@NAME")
+	_, err := GetRemoteImage(context.Background(), "INVALID@IMAGE@NAME")
 	require.Error(t, err)
 }
 
@@ -510,7 +511,7 @@ func TestGetOCIArchiveImage_InvalidTarball(t *testing.T) {
 
 func TestGetImage_InvalidReference(t *testing.T) {
 	// Test with completely invalid reference
-	_, _, err := GetImage("")
+	_, _, err := GetImage(context.Background(), "")
 	require.Error(t, err)
 }
 

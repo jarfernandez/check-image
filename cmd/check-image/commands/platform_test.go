@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -161,7 +162,7 @@ func TestRunPlatform_Pass(t *testing.T) {
 		architecture: "amd64",
 	})
 
-	result, err := runPlatform(imageRef, platforms)
+	result, err := runPlatform(context.Background(), imageRef, platforms)
 	require.NoError(t, err)
 	assert.True(t, result.Passed)
 	assert.Equal(t, "platform", result.Check)
@@ -182,7 +183,7 @@ func TestRunPlatform_Fail(t *testing.T) {
 		architecture: "arm64",
 	})
 
-	result, err := runPlatform(imageRef, platforms)
+	result, err := runPlatform(context.Background(), imageRef, platforms)
 	require.NoError(t, err)
 	assert.False(t, result.Passed)
 	assert.Equal(t, "platform", result.Check)
@@ -203,7 +204,7 @@ func TestRunPlatform_WithVariant(t *testing.T) {
 			variant:      "v7",
 		})
 
-		result, err := runPlatform(imageRef, []string{"linux/arm/v7"})
+		result, err := runPlatform(context.Background(), imageRef, []string{"linux/arm/v7"})
 		require.NoError(t, err)
 		assert.True(t, result.Passed)
 
@@ -218,7 +219,7 @@ func TestRunPlatform_WithVariant(t *testing.T) {
 			variant:      "v7",
 		})
 
-		result, err := runPlatform(imageRef, []string{"linux/arm64"})
+		result, err := runPlatform(context.Background(), imageRef, []string{"linux/arm64"})
 		require.NoError(t, err)
 		assert.False(t, result.Passed)
 
@@ -228,7 +229,7 @@ func TestRunPlatform_WithVariant(t *testing.T) {
 }
 
 func TestRunPlatform_InvalidImage(t *testing.T) {
-	_, err := runPlatform("oci:/nonexistent/path:latest", []string{"linux/amd64"})
+	_, err := runPlatform(context.Background(), "oci:/nonexistent/path:latest", []string{"linux/amd64"})
 	require.Error(t, err)
 }
 
@@ -238,7 +239,7 @@ func TestRunPlatform_JSONOutput(t *testing.T) {
 		architecture: "amd64",
 	})
 
-	result, err := runPlatform(imageRef, []string{"linux/amd64"})
+	result, err := runPlatform(context.Background(), imageRef, []string{"linux/amd64"})
 	require.NoError(t, err)
 
 	// Verify JSON serialisation uses kebab-case keys

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -82,7 +83,7 @@ func init() {
 type checkDef struct {
 	name    string
 	enabled bool
-	run     func(string) (*output.CheckResult, error)
+	run     func(context.Context, string) (*output.CheckResult, error)
 	render  func(*output.CheckResult)
 }
 
@@ -125,39 +126,39 @@ func currentCheckParams() checkParams {
 func buildCheckDefs(cfg *allConfig, p checkParams) []checkDef {
 	noCfg := cfg == nil
 	return []checkDef{
-		{checkAge, noCfg || cfg.Checks.Age != nil, func(img string) (*output.CheckResult, error) {
-			return runAge(img, p.maxAge)
+		{checkAge, noCfg || cfg.Checks.Age != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runAge(ctx, img, p.maxAge)
 		}, renderAgeText},
-		{checkSize, noCfg || cfg.Checks.Size != nil, func(img string) (*output.CheckResult, error) {
-			return runSize(img, p.maxSize, p.maxLayers)
+		{checkSize, noCfg || cfg.Checks.Size != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runSize(ctx, img, p.maxSize, p.maxLayers)
 		}, renderSizeText},
-		{checkPorts, noCfg || cfg.Checks.Ports != nil, func(img string) (*output.CheckResult, error) {
+		{checkPorts, noCfg || cfg.Checks.Ports != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
 			ports, err := parseAllowedPortsFrom(p.allowedPorts)
 			if err != nil {
 				return nil, fmt.Errorf("invalid allowed ports: %w", err)
 			}
-			return runPorts(img, ports)
+			return runPorts(ctx, img, ports)
 		}, renderPortsText},
-		{checkRegistry, noCfg || cfg.Checks.Registry != nil, func(img string) (*output.CheckResult, error) {
-			return runRegistry(img, p.registryPolicy)
+		{checkRegistry, noCfg || cfg.Checks.Registry != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runRegistry(ctx, img, p.registryPolicy)
 		}, renderRegistryText},
 		{checkRootUser, noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
-		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, func(img string) (*output.CheckResult, error) {
-			return runSecrets(img, p.secretsPolicy, p.skipEnvVars, p.skipFiles)
+		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runSecrets(ctx, img, p.secretsPolicy, p.skipEnvVars, p.skipFiles)
 		}, renderSecretsText},
 		{checkHealthcheck, noCfg || cfg.Checks.Healthcheck != nil, runHealthcheck, renderHealthcheckText},
-		{checkLabels, noCfg || cfg.Checks.Labels != nil, func(img string) (*output.CheckResult, error) {
-			return runLabels(img, p.labelsPolicy)
+		{checkLabels, noCfg || cfg.Checks.Labels != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runLabels(ctx, img, p.labelsPolicy)
 		}, renderLabelsText},
-		{checkEntrypoint, noCfg || cfg.Checks.Entrypoint != nil, func(img string) (*output.CheckResult, error) {
-			return runEntrypoint(img, p.allowShellForm)
+		{checkEntrypoint, noCfg || cfg.Checks.Entrypoint != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			return runEntrypoint(ctx, img, p.allowShellForm)
 		}, renderEntrypointText},
-		{checkPlatform, noCfg || cfg.Checks.Platform != nil, func(img string) (*output.CheckResult, error) {
+		{checkPlatform, noCfg || cfg.Checks.Platform != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
 			platforms, err := parseAllowedPlatformsFrom(p.allowedPlatforms)
 			if err != nil {
 				return nil, fmt.Errorf("invalid allowed platforms: %w", err)
 			}
-			return runPlatform(img, platforms)
+			return runPlatform(ctx, img, platforms)
 		}, renderPlatformText},
 	}
 }
@@ -229,7 +230,8 @@ func runAll(cmd *cobra.Command, imageName string) error {
 		fmt.Println()
 	}
 
-	results := executeChecks(checks, imageName, outFmt)
+	ctx := cmd.Context()
+	results := executeChecks(ctx, checks, imageName, outFmt)
 
 	if outFmt == output.FormatJSON {
 		return renderAllJSON(imageName, results, skipMap, includeMap)
@@ -281,8 +283,8 @@ func printSectionHeader(name string, outFmt output.Format) {
 }
 
 // runSingleCheck executes one check, handles errors, and updates the global Result.
-func runSingleCheck(check checkDef, imageName string) output.CheckResult {
-	result, err := check.run(imageName)
+func runSingleCheck(ctx context.Context, check checkDef, imageName string) output.CheckResult {
+	result, err := check.run(ctx, imageName)
 	if err != nil {
 		log.Errorf("Check %s failed with error: %v", check.name, err)
 		UpdateResult(ExecutionError)
@@ -315,13 +317,13 @@ func printSectionFooter(check checkDef, result *output.CheckResult, outFmt outpu
 }
 
 // executeChecks runs each check, collects results, and updates the global Result.
-func executeChecks(checks []checkDef, imageName string, outFmt output.Format) []output.CheckResult {
+func executeChecks(ctx context.Context, checks []checkDef, imageName string, outFmt output.Format) []output.CheckResult {
 	var results []output.CheckResult
 
 	for _, check := range checks {
 		log.Debugf("Running check: %s", check.name)
 		printSectionHeader(check.name, outFmt)
-		result := runSingleCheck(check, imageName)
+		result := runSingleCheck(ctx, check, imageName)
 		results = append(results, result)
 		printSectionFooter(check, &result, outFmt)
 		if failFast && (Result == ValidationFailed || Result == ExecutionError) {

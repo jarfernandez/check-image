@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -50,7 +51,7 @@ func TestRunLabels_AllValid(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run the check
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -87,7 +88,7 @@ func TestRunLabels_MissingLabels(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -118,7 +119,7 @@ func TestRunLabels_InvalidValue(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -149,7 +150,7 @@ func TestRunLabels_InvalidPattern(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -178,7 +179,7 @@ func TestRunLabels_NoLabelsInImage(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -213,7 +214,7 @@ func TestRunLabels_MultipleFailures(t *testing.T) {
 	err := os.WriteFile(policyFile, []byte(policyContent), 0600)
 	require.NoError(t, err)
 
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -241,7 +242,7 @@ func TestRunLabels_InvalidPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should fail to load policy
-	result, err := runLabels("nginx:latest", policyFile)
+	result, err := runLabels(context.Background(), "nginx:latest", policyFile)
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "unable to load labels policy")
@@ -261,7 +262,7 @@ func TestRunLabels_NonexistentImage(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try to check nonexistent image
-	result, err := runLabels("oci:/nonexistent/path", policyFile)
+	result, err := runLabels(context.Background(), "oci:/nonexistent/path", policyFile)
 	require.Error(t, err)
 	assert.Nil(t, result)
 }
@@ -390,7 +391,7 @@ func TestLabelsCommand_StdinInput(t *testing.T) {
 			os.Stdin = f
 
 			// Run check with stdin policy
-			result, err := runLabels("oci:"+imageDir+":latest", "-")
+			result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", "-")
 
 			if tt.expectedError {
 				require.Error(t, err)
@@ -432,7 +433,7 @@ func TestLabelsCommand_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run check
-	result, err := runLabels("oci:"+imageDir+":latest", policyFile)
+	result, err := runLabels(context.Background(), "oci:"+imageDir+":latest", policyFile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -519,7 +520,7 @@ func TestRunLabels_InvalidPolicyFormat(t *testing.T) {
 			require.NoError(t, err)
 
 			// Try to run check - should fail to load policy
-			result, err := runLabels("nginx:latest", policyFile)
+			result, err := runLabels(context.Background(), "nginx:latest", policyFile)
 			require.Error(t, err)
 			assert.Nil(t, result)
 			assert.Contains(t, err.Error(), tt.errorContains)
