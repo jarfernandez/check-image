@@ -26,7 +26,7 @@ var ageCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCheckCmd(checkAge, func(img string) (*output.CheckResult, error) {
 			return runAge(img, maxAge)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 

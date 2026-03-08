@@ -36,7 +36,7 @@ Scans both environment variables and files across all image layers.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCheckCmd(checkSecrets, func(img string) (*output.CheckResult, error) {
 			return runSecrets(img, secretsPolicy, skipEnvVars, skipFiles)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 
