@@ -2,10 +2,12 @@ package imageutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -13,6 +15,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	log "github.com/sirupsen/logrus"
+)
+
+const (
+	maxRetries    = 3
+	retryBaseWait = 1 * time.Second
 )
 
 // remoteTransport is the HTTP transport used for remote registry calls.
@@ -61,19 +69,63 @@ func GetLocalImage(ctx context.Context, imageName string) (cr.Image, error) {
 	return image, nil
 }
 
-// GetRemoteImage retrieves the remote image from a reference name
+// GetRemoteImage retrieves the remote image from a reference name.
+// Transient errors (network timeouts, HTTP 429/5xx) are retried up to
+// maxRetries times with exponential backoff.
 func GetRemoteImage(ctx context.Context, imageName string) (cr.Image, error) {
 	ref, err := name.ParseReference(imageName)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing the reference: %w", err)
 	}
 
-	image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain), remote.WithTransport(remoteTransport), remote.WithContext(ctx))
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving the remote image: %w", err)
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		image, err := remote.Image(ref, remote.WithAuthFromKeychain(activeKeychain), remote.WithTransport(remoteTransport), remote.WithContext(ctx))
+		if err == nil {
+			return image, nil
+		}
+		lastErr = err
+
+		if !isRetryableError(err) {
+			return nil, fmt.Errorf("error retrieving the remote image: %w", err)
+		}
+
+		if attempt < maxRetries {
+			backoff := retryBaseWait * (1 << uint(attempt))
+			log.Debugf("Retryable error on attempt %d/%d: %v; retrying in %v", attempt+1, maxRetries+1, err, backoff)
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("error retrieving the remote image: %w", ctx.Err())
+			case <-time.After(backoff):
+			}
+		}
 	}
 
-	return image, nil
+	return nil, fmt.Errorf("error retrieving the remote image after %d attempts: %w", maxRetries+1, lastErr)
+}
+
+// isRetryableError returns true for transient network errors and HTTP 429/5xx
+// status codes that are safe to retry.
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Network-level errors (timeouts, DNS failures, connection resets)
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+
+	// HTTP status codes that indicate transient server issues
+	msg := err.Error()
+	for _, code := range []string{"429", "500", "502", "503", "504"} {
+		if strings.Contains(msg, code) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetDockerArchiveImage retrieves an image from a Docker tarball (docker save format)
