@@ -82,7 +82,7 @@ func runSecrets(ctx context.Context, imageName string, policyPath string, noEnvV
 	if policy.CheckFiles {
 		log.Debug("Checking files in layers for secrets")
 		var err error
-		fileFindings, err = secrets.CheckFilesInLayers(image, policy)
+		fileFindings, err = secrets.CheckFilesInLayers(ctx, image, policy)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning files: %w", err)
 		}

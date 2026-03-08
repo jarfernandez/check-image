@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"archive/tar"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -54,8 +55,9 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []output.EnvVar
 	return findings
 }
 
-// CheckFilesInLayers scans all layers for files matching sensitive patterns
-func CheckFilesInLayers(image cr.Image, policy *Policy) ([]output.FileFinding, error) {
+// CheckFilesInLayers scans all layers for files matching sensitive patterns.
+// It checks for context cancellation before scanning each layer.
+func CheckFilesInLayers(ctx context.Context, image cr.Image, policy *Policy) ([]output.FileFinding, error) {
 	if !policy.CheckFiles {
 		return nil, nil
 	}
@@ -69,9 +71,13 @@ func CheckFilesInLayers(image cr.Image, policy *Policy) ([]output.FileFinding, e
 	seenPaths := make(map[string]bool) // Deduplication across layers
 
 	for i, layer := range layers {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("scanning cancelled: %w", err)
+		}
+
 		log.Debugf("Scanning layer %d/%d", i+1, len(layers))
 
-		findings, err := scanLayer(layer, i, policy)
+		findings, err := scanLayer(ctx, layer, i, policy)
 		if err != nil {
 			log.Warnf("Error scanning layer %d: %v", i, err)
 			continue
@@ -89,8 +95,9 @@ func CheckFilesInLayers(image cr.Image, policy *Policy) ([]output.FileFinding, e
 	return allFindings, nil
 }
 
-// scanLayer scans a single layer for sensitive files
-func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]output.FileFinding, error) {
+// scanLayer scans a single layer for sensitive files.
+// It checks for context cancellation before processing each tar entry.
+func scanLayer(ctx context.Context, layer cr.Layer, layerIndex int, policy *Policy) ([]output.FileFinding, error) {
 	rc, err := layer.Uncompressed()
 	if err != nil {
 		return nil, fmt.Errorf("error uncompressing layer: %w", err)
@@ -106,6 +113,10 @@ func scanLayer(layer cr.Layer, layerIndex int, policy *Policy) ([]output.FileFin
 	patterns := policy.GetFilePatterns()
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("scanning cancelled: %w", err)
+		}
+
 		header, err := tarReader.Next()
 		if err == io.EOF {
 			break
