@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -227,6 +229,48 @@ func TestExtractRegularFile_SizeMismatch(t *testing.T) {
 	err = extractRegularFile(tarReader, targetPath, fakeHeader)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "size mismatch")
+}
+
+// errCloseWriter is a WriteCloser whose writes succeed (in-memory buffer)
+// but whose Close always returns an error. Used to test the close-error path
+// in extractRegularFile without requiring OS-level fault injection.
+type errCloseWriter struct {
+	buf bytes.Buffer
+}
+
+func (w *errCloseWriter) Write(p []byte) (int, error) { return w.buf.Write(p) }
+func (w *errCloseWriter) Close() error                { return errors.New("mock close error") }
+
+// TestExtractRegularFile_CloseError verifies the close-error path in
+// extractRegularFile by injecting a WriteCloser whose Close() always fails.
+func TestExtractRegularFile_CloseError(t *testing.T) {
+	orig := openFileFn
+	t.Cleanup(func() { openFileFn = orig })
+	openFileFn = func(_ string, _ int, _ os.FileMode) (io.WriteCloser, error) {
+		return &errCloseWriter{}, nil
+	}
+
+	// Build a minimal in-memory tar with a 5-byte entry
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	hdr := &tar.Header{
+		Name:     "file.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0644,
+		Size:     5,
+	}
+	require.NoError(t, tw.WriteHeader(hdr))
+	_, err := tw.Write([]byte("hello"))
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+
+	tarReader := tar.NewReader(&buf)
+	_, err = tarReader.Next()
+	require.NoError(t, err)
+
+	err = extractRegularFile(tarReader, filepath.Join(t.TempDir(), "file.txt"), hdr)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error closing file")
 }
 
 func TestExtractOCIArchive_SkipsSymlinks(t *testing.T) {
