@@ -1124,68 +1124,56 @@ func TestRunSingleCheck(t *testing.T) {
 
 func TestPrintSectionHeader(t *testing.T) {
 	t.Run("text mode prints header", func(t *testing.T) {
-		resetAllGlobals()
-		OutputFmt = output.FormatText
-		out := captureStdout(t, func() { printSectionHeader("age") })
+		out := captureStdout(t, func() { printSectionHeader("age", output.FormatText) })
 		assert.Contains(t, out, "age")
 	})
 
 	t.Run("json mode prints nothing", func(t *testing.T) {
-		resetAllGlobals()
-		OutputFmt = output.FormatJSON
-		out := captureStdout(t, func() { printSectionHeader("age") })
+		out := captureStdout(t, func() { printSectionHeader("age", output.FormatJSON) })
 		assert.Empty(t, out)
 	})
 }
 
 func TestPrintSectionFooter(t *testing.T) {
 	t.Run("text mode with render calls render and prints blank line", func(t *testing.T) {
-		resetAllGlobals()
-		OutputFmt = output.FormatText
 		rendered := false
 		result := &output.CheckResult{Check: "age", Passed: true}
 		check := checkDef{
 			name:   "age",
 			render: func(*output.CheckResult) { rendered = true },
 		}
-		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		out := captureStdout(t, func() { printSectionFooter(check, result, output.FormatText) })
 		assert.True(t, rendered)
 		assert.Equal(t, "\n", out)
 	})
 
 	t.Run("text mode with nil render prints only blank line", func(t *testing.T) {
-		resetAllGlobals()
-		OutputFmt = output.FormatText
 		result := &output.CheckResult{Check: "age", Passed: true}
 		check := checkDef{name: "age", render: nil}
-		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		out := captureStdout(t, func() { printSectionFooter(check, result, output.FormatText) })
 		assert.Equal(t, "\n", out)
 	})
 
 	t.Run("text mode with error result skips render and prints blank line", func(t *testing.T) {
-		resetAllGlobals()
-		OutputFmt = output.FormatText
 		rendered := false
 		result := &output.CheckResult{Check: "ports", Passed: false, Error: "some error"}
 		check := checkDef{
 			name:   "ports",
 			render: func(*output.CheckResult) { rendered = true },
 		}
-		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		out := captureStdout(t, func() { printSectionFooter(check, result, output.FormatText) })
 		assert.False(t, rendered)
 		assert.Equal(t, "\n", out)
 	})
 
 	t.Run("json mode prints nothing and skips render", func(t *testing.T) {
-		resetAllGlobals()
-		OutputFmt = output.FormatJSON
 		rendered := false
 		result := &output.CheckResult{Check: "age", Passed: true}
 		check := checkDef{
 			name:   "age",
 			render: func(*output.CheckResult) { rendered = true },
 		}
-		out := captureStdout(t, func() { printSectionFooter(check, result) })
+		out := captureStdout(t, func() { printSectionFooter(check, result, output.FormatJSON) })
 		assert.False(t, rendered)
 		assert.Empty(t, out)
 	})
@@ -1295,11 +1283,8 @@ func TestRenderAllJSON_WithIncludeMap(t *testing.T) {
 }
 
 func TestRenderEmptyResult_TextMode(t *testing.T) {
-	resetAllGlobals()
-	OutputFmt = output.FormatText
-
 	captured := captureStdout(t, func() {
-		err := renderEmptyResult("nginx:latest", nil, nil)
+		err := renderEmptyResult("nginx:latest", nil, nil, output.FormatText)
 		require.NoError(t, err)
 	})
 
@@ -1307,12 +1292,10 @@ func TestRenderEmptyResult_TextMode(t *testing.T) {
 }
 
 func TestRenderEmptyResult_JSONMode(t *testing.T) {
-	resetAllGlobals()
-	OutputFmt = output.FormatJSON
 	skipMap := map[string]bool{"registry": true, "secrets": true}
 
 	captured := captureStdout(t, func() {
-		err := renderEmptyResult("nginx:latest", skipMap, nil)
+		err := renderEmptyResult("nginx:latest", skipMap, nil, output.FormatJSON)
 		require.NoError(t, err)
 	})
 

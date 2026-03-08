@@ -436,12 +436,9 @@ func TestLabelsCommand_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	// Set JSON output mode
-	OutputFmt = output.FormatJSON
-
 	// Capture JSON output
 	jsonOutput := captureStdout(t, func() {
-		err := renderResult(result)
+		err := renderResult(result, output.FormatJSON)
 		require.NoError(t, err)
 	})
 

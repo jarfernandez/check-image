@@ -36,7 +36,7 @@ Scans both environment variables and files across all image layers.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCheckCmd(checkSecrets, func(img string) (*output.CheckResult, error) {
 			return runSecrets(img, secretsPolicy, skipEnvVars, skipFiles)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 
@@ -73,28 +73,16 @@ func runSecrets(imageName string, policyPath string, noEnvVars bool, noFiles boo
 	// Check environment variables
 	if policy.CheckEnvVars {
 		log.Debug("Checking environment variables for secrets")
-		rawEnvFindings := secrets.CheckEnvironmentVariables(config.Config.Env, policy)
-		for _, f := range rawEnvFindings {
-			envFindings = append(envFindings, output.EnvVarFinding{
-				Name:        f.Name,
-				Description: f.Description,
-			})
-		}
+		envFindings = secrets.CheckEnvironmentVariables(config.Config.Env, policy)
 	}
 
 	// Check files in layers
 	if policy.CheckFiles {
 		log.Debug("Checking files in layers for secrets")
-		rawFileFindings, err := secrets.CheckFilesInLayers(image, policy)
+		var err error
+		fileFindings, err = secrets.CheckFilesInLayers(image, policy)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning files: %w", err)
-		}
-		for _, f := range rawFileFindings {
-			fileFindings = append(fileFindings, output.FileFinding{
-				Path:        f.Path,
-				LayerIndex:  f.LayerIndex,
-				Description: f.Description,
-			})
 		}
 	}
 

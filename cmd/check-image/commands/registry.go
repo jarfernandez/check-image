@@ -30,7 +30,7 @@ Note: Registry validation is only applicable for registry images and will be ski
 			return fmt.Errorf("check registry operation failed: %w", err)
 		}
 
-		if err := renderResult(result); err != nil {
+		if err := renderResult(result, OutputFmt); err != nil {
 			return err
 		}
 

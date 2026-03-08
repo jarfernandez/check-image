@@ -32,7 +32,7 @@ By default the check fails if shell form is detected. Use --allow-shell-form to 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCheckCmd(checkEntrypoint, func(img string) (*output.CheckResult, error) {
 			return runEntrypoint(img, allowShellForm)
-		}, args[0])
+		}, args[0], OutputFmt)
 	},
 }
 
