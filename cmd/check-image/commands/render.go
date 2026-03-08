@@ -22,6 +22,20 @@ func mustDetails[T any](r *output.CheckResult) T {
 	return d
 }
 
+// textRenderers maps each check name to its text rendering function.
+var textRenderers = map[string]func(*output.CheckResult){
+	checkAge:         renderAgeText,
+	checkSize:        renderSizeText,
+	checkPorts:       renderPortsText,
+	checkRegistry:    renderRegistryText,
+	checkRootUser:    renderRootUserText,
+	checkSecrets:     renderSecretsText,
+	checkHealthcheck: renderHealthcheckText,
+	checkLabels:      renderLabelsText,
+	checkEntrypoint:  renderEntrypointText,
+	checkPlatform:    renderPlatformText,
+}
+
 // renderResult renders a CheckResult according to the current OutputFmt.
 // In text mode, it calls the appropriate text renderer.
 // In JSON mode, it writes JSON to stdout.
@@ -37,28 +51,9 @@ func renderResult(r *output.CheckResult) error {
 		return nil
 	}
 
-	switch r.Check {
-	case checkAge:
-		renderAgeText(r)
-	case checkSize:
-		renderSizeText(r)
-	case checkPorts:
-		renderPortsText(r)
-	case checkRegistry:
-		renderRegistryText(r)
-	case checkRootUser:
-		renderRootUserText(r)
-	case checkSecrets:
-		renderSecretsText(r)
-	case checkHealthcheck:
-		renderHealthcheckText(r)
-	case checkLabels:
-		renderLabelsText(r)
-	case checkEntrypoint:
-		renderEntrypointText(r)
-	case checkPlatform:
-		renderPlatformText(r)
-	default:
+	if fn, ok := textRenderers[r.Check]; ok {
+		fn(r)
+	} else {
 		fmt.Printf("(no text renderer for check %q)\n", r.Check)
 	}
 
