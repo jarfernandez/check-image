@@ -52,11 +52,15 @@ func init() {
 }
 
 func parseAllowedPorts() ([]int, error) {
-	if allowedPorts == "" {
+	return parseAllowedPortsFrom(allowedPorts)
+}
+
+func parseAllowedPortsFrom(portsStr string) ([]int, error) {
+	if portsStr == "" {
 		return nil, nil
 	}
 
-	if after, ok := strings.CutPrefix(allowedPorts, "@"); ok {
+	if after, ok := strings.CutPrefix(portsStr, "@"); ok {
 		var portsFromFile allowedPortsFile
 		if err := parseAllowedListFromFile(after, &portsFromFile); err != nil {
 			return nil, err
@@ -64,7 +68,7 @@ func parseAllowedPorts() ([]int, error) {
 		return portsFromFile.AllowedPorts, nil
 	}
 
-	parts := strings.Split(allowedPorts, ",")
+	parts := strings.Split(portsStr, ",")
 	var ports []int
 	for _, part := range parts {
 		trimmed := strings.TrimSpace(part)

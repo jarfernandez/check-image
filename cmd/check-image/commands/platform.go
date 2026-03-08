@@ -53,11 +53,15 @@ func init() {
 // parseAllowedPlatforms parses the --allowed-platforms flag value into a slice of platform strings.
 // The flag is required; an error is returned if it is empty.
 func parseAllowedPlatforms() ([]string, error) {
-	if allowedPlatforms == "" {
+	return parseAllowedPlatformsFrom(allowedPlatforms)
+}
+
+func parseAllowedPlatformsFrom(platformsStr string) ([]string, error) {
+	if platformsStr == "" {
 		return nil, fmt.Errorf("--allowed-platforms is required")
 	}
 
-	if after, ok := strings.CutPrefix(allowedPlatforms, "@"); ok {
+	if after, ok := strings.CutPrefix(platformsStr, "@"); ok {
 		var platformsFromFile allowedPlatformsFile
 		if err := parseAllowedListFromFile(after, &platformsFromFile); err != nil {
 			return nil, err
@@ -65,7 +69,7 @@ func parseAllowedPlatforms() ([]string, error) {
 		return platformsFromFile.AllowedPlatforms, nil
 	}
 
-	parts := strings.Split(allowedPlatforms, ",")
+	parts := strings.Split(platformsStr, ",")
 	var platforms []string
 	for _, part := range parts {
 		trimmed := strings.TrimSpace(part)
