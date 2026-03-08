@@ -2,6 +2,7 @@ package imageutil
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"os"
 	"path/filepath"
@@ -132,13 +133,32 @@ func TestExtractOCIArchive_PathTraversalPrevention(t *testing.T) {
 	assert.Contains(t, err.Error(), "illegal file path")
 }
 
-func TestExtractOCIArchive_DecompressionBombPrevention(t *testing.T) {
-	// Skip this test as it requires creating multi-GB files which is slow
-	// The decompression bomb protection is validated through code review:
-	// - archive.go lines 66-71 check totalSize against maxDecompressedSize
-	// - The check happens on tar header Size field before extraction
-	// - This prevents malicious archives from exhausting disk space
-	t.Skip("Skipping decompression bomb test - would require creating multi-GB files")
+// TestExtractEntries_DecompressionBombPrevention verifies that extractEntries
+// rejects a tar whose entries collectively declare a size exceeding the 5 GB
+// limit, without actually writing any large amount of data. The check fires on
+// the tar header Size field, so a single header claiming >5 GB is sufficient to
+// trigger the protection immediately — no real data needs to be stored on disk.
+func TestExtractEntries_DecompressionBombPrevention(t *testing.T) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	// Declare a single entry whose Size alone exceeds the 5 GB limit.
+	const overLimit = maxDecompressedSize + 1
+	err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeReg,
+		Name:     "bomb.txt",
+		Size:     overLimit,
+		Mode:     0644,
+	})
+	require.NoError(t, err)
+	// Do not flush or close tw — doing so would validate that overLimit bytes
+	// were written for the entry and return an error. The header bytes are
+	// already in buf, which is all tar.Reader.Next() needs to read Size.
+
+	tr := tar.NewReader(&buf)
+	err = extractEntries(tr, t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds")
 }
 
 func TestExtractOCIArchive_NonExistentFile(t *testing.T) {
