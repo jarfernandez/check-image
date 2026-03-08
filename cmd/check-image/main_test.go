@@ -2,12 +2,21 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/jarfernandez/check-image/cmd/check-image/commands"
 	"github.com/jarfernandez/check-image/internal/output"
 	"github.com/stretchr/testify/assert"
 )
+
+// errWriter is an io.Writer that always returns an error, used to exercise
+// the defensive error-handling branches in exitResult.
+type errWriter struct{}
+
+func (e errWriter) Write(_ []byte) (int, error) {
+	return 0, errors.New("write error")
+}
 
 func TestExitResult_ValidationSucceeded(t *testing.T) {
 	var buf bytes.Buffer
@@ -165,6 +174,44 @@ func TestExitResult_JSONMode_SuppressesTextOutput(t *testing.T) {
 			}, &buf)
 
 			assert.Empty(t, buf.String(), "JSON mode should not print status messages")
+		})
+	}
+}
+
+// TestExitResult_WriteError exercises the defensive fmt.Fprintf(os.Stderr, ...) branches
+// inside exitResult that are reached when writing to stdout fails. The correct exit code
+// must still be returned even when the write fails.
+func TestExitResult_WriteError(t *testing.T) {
+	tests := []struct {
+		name         string
+		validation   commands.ValidationResult
+		expectedCode int
+	}{
+		{
+			name:         "ExecutionError still returns 2 on write failure",
+			validation:   commands.ExecutionError,
+			expectedCode: 2,
+		},
+		{
+			name:         "ValidationFailed still returns 1 on write failure",
+			validation:   commands.ValidationFailed,
+			expectedCode: 1,
+		},
+		{
+			name:         "ValidationSucceeded still returns 0 on write failure",
+			validation:   commands.ValidationSucceeded,
+			expectedCode: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code := exitResult(commands.ExecuteResult{
+				Validation: tt.validation,
+				Format:     output.FormatText,
+			}, errWriter{})
+
+			assert.Equal(t, tt.expectedCode, code)
 		})
 	}
 }
