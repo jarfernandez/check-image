@@ -3,7 +3,9 @@ package imageutil
 import (
 	"archive/tar"
 	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +21,38 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestIsRetryableError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil error", nil, false},
+		{"generic error", errors.New("something went wrong"), false},
+		{"net timeout error", &net.DNSError{IsTimeout: true}, true},
+		{"net DNS not found", &net.DNSError{Err: "no such host"}, true},
+		{"HTTP 503 in message", errors.New("unexpected status code 503 Service Unavailable"), true},
+		{"HTTP 429 in message", errors.New("unexpected status code 429 Too Many Requests"), true},
+		{"HTTP 500 in message", errors.New("unexpected status code 500 Internal Server Error"), true},
+		{"HTTP 502 in message", errors.New("unexpected status code 502 Bad Gateway"), true},
+		{"HTTP 504 in message", errors.New("unexpected status code 504 Gateway Timeout"), true},
+		{"HTTP 404 not retryable", errors.New("unexpected status code 404 Not Found"), false},
+		{"HTTP 401 not retryable", errors.New("unexpected status code 401 Unauthorized"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isRetryableError(tt.err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRetryConstants(t *testing.T) {
+	assert.Equal(t, 3, maxRetries)
+	assert.Equal(t, 1*time.Second, retryBaseWait)
+}
 
 func TestRemoteTransport_IsConfigured(t *testing.T) {
 	assert.NotNil(t, remoteTransport, "remoteTransport must be configured")
