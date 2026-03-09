@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.2](https://github.com/jarfernandez/check-image/compare/v0.20.1...v0.20.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* Detect UID 0 as root in `root-user` check ([#168](https://github.com/jarfernandez/check-image/issues/168)) ([c67638f](https://github.com/jarfernandez/check-image/commit/c67638f68c5b50ac4a8d31291f3ff56ca520f3cf))
+
 ## [0.20.1](https://github.com/jarfernandez/check-image/compare/v0.20.0...v0.20.1) (2026-03-08)
 
 
