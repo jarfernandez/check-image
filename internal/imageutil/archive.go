@@ -138,9 +138,15 @@ func extractRegularFile(tarReader *tar.Reader, target string, header *tar.Header
 		return fmt.Errorf("error creating file %s: %w", target, err)
 	}
 
-	// Copy file contents with size limit
-	// #nosec G110 -- Size limit enforced by caller via totalSize tracking
-	written, err := io.Copy(outFile, tarReader)
+	// Copy file contents, capping at header.Size+1 bytes to catch lying headers.
+	// Using header.Size+1 rather than header.Size is deliberate: reading exactly
+	// header.Size+1 bytes from an oversized stream produces written=header.Size+1,
+	// which the size-mismatch check below catches as an error. Without this limit,
+	// a malicious entry declaring a small header.Size but streaming gigabytes would
+	// write unbounded data to disk before the mismatch was detected.
+	// #nosec G110 -- per-file size limit enforced via LimitReader
+	limitedReader := io.LimitReader(tarReader, header.Size+1)
+	written, err := io.Copy(outFile, limitedReader)
 	if err != nil {
 		_ = outFile.Close() // Best effort cleanup
 		return fmt.Errorf("error writing file %s: %w", target, err)

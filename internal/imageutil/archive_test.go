@@ -231,6 +231,56 @@ func TestExtractRegularFile_SizeMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "size mismatch")
 }
 
+// TestExtractRegularFile_OversizedContent verifies that LimitReader prevents
+// unbounded disk writes when a tar entry's actual content is larger than the
+// declared header.Size. A lying header could bypass the aggregate size check
+// (which trusts header.Size) while io.Copy writes unlimited data to disk.
+// With the LimitReader fix, the write is capped at header.Size+1 bytes, and
+// the existing size-mismatch check then rejects the entry with an error.
+// This test confirms both: (1) an error is returned, and (2) the extracted
+// file is at most header.Size+1 bytes — not the full 1000 bytes of actual data.
+func TestExtractRegularFile_OversizedContent(t *testing.T) {
+	// Build an in-memory tar with 1000 bytes of actual content.
+	actualContent := bytes.Repeat([]byte("A"), 1000)
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	err := tw.WriteHeader(&tar.Header{
+		Name:     "file.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0644,
+		Size:     int64(len(actualContent)),
+	})
+	require.NoError(t, err)
+	_, err = tw.Write(actualContent)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+
+	// Advance the tar reader to the entry.
+	tarReader := tar.NewReader(&buf)
+	_, err = tarReader.Next()
+	require.NoError(t, err)
+
+	// Pass a fake header claiming only 10 bytes — the lying-header attack.
+	fakeHeader := &tar.Header{
+		Name:     "file.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0644,
+		Size:     10,
+	}
+
+	targetPath := filepath.Join(t.TempDir(), "extracted.txt")
+	err = extractRegularFile(tarReader, targetPath, fakeHeader)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "size mismatch")
+
+	// Key assertion: LimitReader must have stopped the write at header.Size+1=11 bytes.
+	// Without the LimitReader fix the file would contain all 1000 bytes of actual data.
+	info, statErr := os.Stat(targetPath)
+	require.NoError(t, statErr)
+	assert.LessOrEqual(t, info.Size(), int64(fakeHeader.Size+1),
+		"file on disk must be capped at header.Size+1 bytes, not the full actual content")
+}
+
 // errCloseWriter is a WriteCloser whose writes succeed (in-memory buffer)
 // but whose Close always returns an error. Used to test the close-error path
 // in extractRegularFile without requiring OS-level fault injection.
