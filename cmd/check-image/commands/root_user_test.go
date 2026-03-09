@@ -60,6 +60,24 @@ func TestRunRootUser(t *testing.T) {
 			expectedMsg:  "Image is not configured to run as a non-root user",
 		},
 		{
+			name:         "Root user by UID 0",
+			user:         "0",
+			expectedPass: false,
+			expectedMsg:  "Image is not configured to run as a non-root user",
+		},
+		{
+			name:         "Root user by UID 0 with GID",
+			user:         "0:0",
+			expectedPass: false,
+			expectedMsg:  "Image is not configured to run as a non-root user",
+		},
+		{
+			name:         "Root user by UID 0 with named group",
+			user:         "0:somegroup",
+			expectedPass: false,
+			expectedMsg:  "Image is not configured to run as a non-root user",
+		},
+		{
 			name:         "Empty user (defaults to root)",
 			user:         "",
 			expectedPass: false,
