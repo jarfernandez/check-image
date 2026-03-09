@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,13 +34,17 @@ func TestIsRetryableError(t *testing.T) {
 		{"generic error", errors.New("something went wrong"), false},
 		{"net timeout error", &net.DNSError{IsTimeout: true}, true},
 		{"net DNS not found", &net.DNSError{Err: "no such host"}, true},
-		{"HTTP 503 in message", errors.New("unexpected status code 503 Service Unavailable"), true},
-		{"HTTP 429 in message", errors.New("unexpected status code 429 Too Many Requests"), true},
-		{"HTTP 500 in message", errors.New("unexpected status code 500 Internal Server Error"), true},
-		{"HTTP 502 in message", errors.New("unexpected status code 502 Bad Gateway"), true},
-		{"HTTP 504 in message", errors.New("unexpected status code 504 Gateway Timeout"), true},
-		{"HTTP 404 not retryable", errors.New("unexpected status code 404 Not Found"), false},
-		{"HTTP 401 not retryable", errors.New("unexpected status code 401 Unauthorized"), false},
+		{"transport 429", &transport.Error{StatusCode: 429}, true},
+		{"transport 500", &transport.Error{StatusCode: 500}, true},
+		{"transport 502", &transport.Error{StatusCode: 502}, true},
+		{"transport 503", &transport.Error{StatusCode: 503}, true},
+		{"transport 504", &transport.Error{StatusCode: 504}, true},
+		{"transport 404 not retryable", &transport.Error{StatusCode: 404}, false},
+		{"transport 401 not retryable", &transport.Error{StatusCode: 401}, false},
+		// Verify that plain error strings containing status code digits are no longer
+		// treated as retryable — these were false positives under the old string-matching approach.
+		{"false positive: digest containing 500", errors.New("digest sha256:5001abc failed"), false},
+		{"false positive: port number 5004", errors.New("connection to port 5004 refused"), false},
 	}
 
 	for _, tt := range tests {

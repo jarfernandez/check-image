@@ -7,13 +7,13 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	cr "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	log "github.com/sirupsen/logrus"
 )
@@ -146,10 +146,16 @@ func isRetryableError(err error) bool {
 		return true
 	}
 
-	// HTTP status codes that indicate transient server issues
-	msg := err.Error()
-	for _, code := range []string{"429", "500", "502", "503", "504"} {
-		if strings.Contains(msg, code) {
+	// HTTP status codes that indicate transient server issues.
+	// go-containerregistry returns *transport.Error for HTTP responses, which
+	// carries the status code as a typed integer field. Using a type assertion
+	// is precise and version-stable — substring matching on err.Error() is
+	// fragile because unrelated error messages can accidentally contain "500"
+	// (e.g. digests like sha256:5001a... or port numbers like 5004).
+	var tErr *transport.Error
+	if errors.As(err, &tErr) {
+		switch tErr.StatusCode {
+		case 429, 500, 502, 503, 504:
 			return true
 		}
 	}
