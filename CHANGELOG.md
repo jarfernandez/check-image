@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.3](https://github.com/jarfernandez/check-image/compare/v0.20.2...v0.20.3) (2026-03-09)
+
+
+### Bug Fixes
+
+* Cap per-file `io.Copy` with `LimitReader` in `extractRegularFile` to prevent unbounded disk writes from lying tar headers ([#170](https://github.com/jarfernandez/check-image/issues/170)) ([5bda17b](https://github.com/jarfernandez/check-image/commit/5bda17bc5a5b47701336f5c43d4b93c8452c41f4))
+
 ## [0.20.2](https://github.com/jarfernandez/check-image/compare/v0.20.1...v0.20.2) (2026-03-09)
 
 
