@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
@@ -36,7 +37,7 @@ func runRootUser(ctx context.Context, imageName string) (*output.CheckResult, er
 	}
 	defer cleanup()
 
-	isNonRoot := config.Config.User != "root" && config.Config.User != ""
+	isNonRoot := !isRootUser(config.Config.User)
 
 	var msg string
 	if isNonRoot {
@@ -54,4 +55,16 @@ func runRootUser(ctx context.Context, imageName string) (*output.CheckResult, er
 			User: config.Config.User,
 		},
 	}, nil
+}
+
+// isRootUser reports whether the USER value represents the root account.
+// It checks for the name "root", empty string (Docker default is root), and UID 0
+// in both plain "0" and "0:group" formats, since UID 0 is root regardless of name.
+func isRootUser(user string) bool {
+	if user == "" || user == "root" {
+		return true
+	}
+	// Check for UID 0 (e.g., "0", "0:0", "0:somegroup")
+	userFields := strings.SplitN(user, ":", 2)
+	return userFields[0] == "0"
 }
