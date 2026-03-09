@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.4](https://github.com/jarfernandez/check-image/compare/v0.20.3...v0.20.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* Replace string-matching HTTP status detection in `isRetryableError` with typed `transport.Error` assertion ([#177](https://github.com/jarfernandez/check-image/issues/177)) ([3cb73de](https://github.com/jarfernandez/check-image/commit/3cb73de48ab9a4dcfc501937d24e77cf776686c6))
+
 ## [0.20.3](https://github.com/jarfernandez/check-image/compare/v0.20.2...v0.20.3) (2026-03-09)
 
 
