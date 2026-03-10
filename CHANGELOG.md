@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.6](https://github.com/jarfernandez/check-image/compare/v0.20.5...v0.20.6) (2026-03-10)
+
+
+### Bug Fixes
+
+* Pre-initialize Lip Gloss styles so `FailStyle` renders color even when `PersistentPreRunE` does not run ([#181](https://github.com/jarfernandez/check-image/issues/181)) ([d89d5a9](https://github.com/jarfernandez/check-image/commit/d89d5a95100d7f6e12e90e6a997530776dcef7d1))
+
 ## [0.20.5](https://github.com/jarfernandez/check-image/compare/v0.20.4...v0.20.5) (2026-03-10)
 
 
