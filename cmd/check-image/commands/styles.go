@@ -30,6 +30,13 @@ var (
 // termOut stores the output writer supplied to initRenderer for terminal width detection.
 var termOut io.Writer
 
+func init() {
+	// Pre-initialize styles with auto-detected color so that FailStyle/PassStyle
+	// render correctly even when PersistentPreRunE does not run (e.g. Cobra
+	// rejects arguments before reaching it).
+	initRenderer("auto", os.Stdout)
+}
+
 // initRenderer configures Lip Gloss styles for the given output stream and color mode.
 // colorMode must be one of "auto", "always", or "never".
 // Call from PersistentPreRunE after the --color flag is parsed.

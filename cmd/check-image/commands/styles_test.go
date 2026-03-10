@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -79,6 +80,30 @@ func TestInitRenderer_Auto_NonTTY(t *testing.T) {
 	rendered := PassStyle.Render("hello")
 	assert.Equal(t, "hello", rendered)
 	assert.False(t, strings.Contains(rendered, "\x1b["), "expected no ANSI codes when output is not a TTY")
+}
+
+func TestFailStyle_NotZeroValueAfterInit(t *testing.T) {
+	// Regression test: FailStyle must not be a zero-value Style, even when
+	// PersistentPreRunE does not run (e.g., Cobra rejects arguments before
+	// reaching it). The init() function ensures styles are pre-initialized.
+	if os.Getenv("NO_COLOR") != "" {
+		t.Skip("NO_COLOR is set")
+	}
+
+	// A zero-value Style renders plain text with no ANSI codes.
+	FailStyle = lipgloss.Style{}
+	zeroRendered := FailStyle.Render("Execution error")
+	assert.False(t, strings.Contains(zeroRendered, "\x1b["),
+		"zero-value FailStyle must not contain ANSI codes")
+
+	// After initRenderer (as called by init()), FailStyle must have a foreground color.
+	// Use "always" to force color output regardless of TTY.
+	initRenderer("always", os.Stdout)
+	rendered := FailStyle.Render("Execution error")
+	assert.True(t, strings.Contains(rendered, "\x1b["),
+		"FailStyle must contain ANSI codes after initRenderer")
+
+	t.Cleanup(func() { initRenderer("never", os.Stdout) })
 }
 
 func TestStatusPrefix_Pass(t *testing.T) {
