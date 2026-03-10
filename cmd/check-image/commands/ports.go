@@ -67,6 +67,11 @@ func parseAllowedPortsFrom(portsStr string) ([]int, error) {
 		if err := parseAllowedListFromFile(after, &portsFromFile); err != nil {
 			return nil, err
 		}
+		for _, port := range portsFromFile.AllowedPorts {
+			if port < 1 || port > 65535 {
+				return nil, fmt.Errorf("port %d out of valid range 1-65535", port)
+			}
+		}
 		return portsFromFile.AllowedPorts, nil
 	}
 
@@ -80,6 +85,9 @@ func parseAllowedPortsFrom(portsStr string) ([]int, error) {
 		port, err := strconv.Atoi(trimmed)
 		if err != nil {
 			return nil, fmt.Errorf("invalid port '%s': %w", trimmed, err)
+		}
+		if port < 1 || port > 65535 {
+			return nil, fmt.Errorf("port %d out of valid range 1-65535", port)
 		}
 		ports = append(ports, port)
 	}

@@ -67,9 +67,39 @@ func TestParseAllowedPorts_CommaSeparated(t *testing.T) {
 			errString: "invalid port",
 		},
 		{
-			name:    "Invalid port - negative",
-			input:   "-80",
-			want:    []int{-80}, // Note: parseAllowedPorts doesn't validate port range
+			name:      "Invalid port - negative",
+			input:     "-80",
+			wantErr:   true,
+			errString: "out of valid range",
+		},
+		{
+			name:      "Invalid port - zero",
+			input:     "0",
+			wantErr:   true,
+			errString: "out of valid range",
+		},
+		{
+			name:      "Invalid port - above max",
+			input:     "65536",
+			wantErr:   true,
+			errString: "out of valid range",
+		},
+		{
+			name:      "Invalid port - way above max",
+			input:     "80000",
+			wantErr:   true,
+			errString: "out of valid range",
+		},
+		{
+			name:    "Valid boundary - port 1",
+			input:   "1",
+			want:    []int{1},
+			wantErr: false,
+		},
+		{
+			name:    "Valid boundary - port 65535",
+			input:   "65535",
+			want:    []int{65535},
 			wantErr: false,
 		},
 	}
@@ -147,6 +177,33 @@ func TestParseAllowedPorts_FromFile(t *testing.T) {
 			fileName: "ports.json",
 			want:     nil,
 			wantErr:  false,
+		},
+		{
+			name: "Out of range port in JSON file",
+			fileContent: `{
+				"allowed-ports": [80, 80000]
+			}`,
+			fileName:  "ports.json",
+			wantErr:   true,
+			errString: "out of valid range",
+		},
+		{
+			name: "Negative port in JSON file",
+			fileContent: `{
+				"allowed-ports": [80, -1]
+			}`,
+			fileName:  "ports.json",
+			wantErr:   true,
+			errString: "out of valid range",
+		},
+		{
+			name: "Zero port in YAML file",
+			fileContent: `allowed-ports:
+  - 443
+  - 0`,
+			fileName:  "ports.yaml",
+			wantErr:   true,
+			errString: "out of valid range",
 		},
 	}
 
