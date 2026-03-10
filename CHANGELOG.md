@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.5](https://github.com/jarfernandez/check-image/compare/v0.20.4...v0.20.5) (2026-03-10)
+
+
+### Bug Fixes
+
+* Validate port range 1-65535 in `--allowed-ports` parsing ([#179](https://github.com/jarfernandez/check-image/issues/179)) ([37811d5](https://github.com/jarfernandez/check-image/commit/37811d539aa5fb7b911b6aa5a7cd253bedc2627d))
+
 ## [0.20.4](https://github.com/jarfernandez/check-image/compare/v0.20.3...v0.20.4) (2026-03-09)
 
 
