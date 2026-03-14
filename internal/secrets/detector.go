@@ -34,7 +34,7 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []output.EnvVar
 
 		// Check if this variable is in the exclusion list
 		if isExcluded(varName, policy.ExcludedEnvVars) {
-			log.Debugf("Skipping excluded environment variable: %s", logutil.SanitizeLogValue(varName))
+			log.WithField("var", logutil.SanitizeLogValue(varName)).Debug("Skipping excluded environment variable")
 			continue
 		}
 
@@ -47,7 +47,7 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []output.EnvVar
 					Name:        varName,
 					Description: "sensitive pattern detected",
 				})
-				log.Debugf("Found sensitive environment variable: %s (matches pattern: %s)", logutil.SanitizeLogValue(varName), logutil.SanitizeLogValue(pattern))
+				log.WithFields(log.Fields{"var": logutil.SanitizeLogValue(varName), "pattern": logutil.SanitizeLogValue(pattern)}).Debug("Found sensitive environment variable")
 				break
 			}
 		}
@@ -76,11 +76,11 @@ func CheckFilesInLayers(ctx context.Context, image cr.Image, policy *Policy) ([]
 			return nil, fmt.Errorf("scanning cancelled: %w", err)
 		}
 
-		log.Debugf("Scanning layer %d/%d", i+1, len(layers))
+		log.WithFields(log.Fields{"layer": i + 1, "total": len(layers)}).Debug("Scanning layer")
 
 		findings, err := scanLayer(ctx, layer, i, policy)
 		if err != nil {
-			log.Warnf("Error scanning layer %d: %v", i, err)
+			log.WithFields(log.Fields{"layer": i, "error": err}).Warn("Error scanning layer")
 			continue
 		}
 
@@ -105,7 +105,7 @@ func scanLayer(ctx context.Context, layer cr.Layer, layerIndex int, policy *Poli
 	}
 	defer func() {
 		if closeErr := rc.Close(); closeErr != nil {
-			log.Warnf("failed to close layer reader: %v", closeErr)
+			log.WithField("error", closeErr).Warn("Failed to close layer reader")
 		}
 	}()
 
@@ -133,7 +133,7 @@ func scanLayer(ctx context.Context, layer cr.Layer, layerIndex int, policy *Poli
 
 		// Check if path should be excluded
 		if isPathExcluded(header.Name, policy.ExcludedPaths) {
-			log.Debugf("Skipping excluded path: %s", logutil.SanitizeLogValue(header.Name))
+			log.WithField("path", logutil.SanitizeLogValue(header.Name)).Debug("Skipping excluded path")
 			continue
 		}
 
@@ -144,7 +144,7 @@ func scanLayer(ctx context.Context, layer cr.Layer, layerIndex int, policy *Poli
 				LayerIndex:  layerIndex,
 				Description: description,
 			})
-			log.Debugf("Found sensitive file in layer %d: %s (%s)", layerIndex, logutil.SanitizeLogValue(header.Name), logutil.SanitizeLogValue(description))
+			log.WithFields(log.Fields{"layer": layerIndex, "path": logutil.SanitizeLogValue(header.Name), "description": logutil.SanitizeLogValue(description)}).Debug("Found sensitive file")
 		}
 	}
 

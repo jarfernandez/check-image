@@ -33,7 +33,7 @@ func ReadSecureFile(path string) ([]byte, error) {
 	}
 	defer func() {
 		if closeErr := root.Close(); closeErr != nil {
-			log.Warnf("failed to close root: %v", closeErr)
+			log.WithField("error", closeErr).Warn("Failed to close root")
 		}
 	}()
 
@@ -58,7 +58,7 @@ func ReadSecureFile(path string) ([]byte, error) {
 	}
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
-			log.Warnf("failed to close file: %v", closeErr)
+			log.WithField("error", closeErr).Warn("Failed to close file")
 		}
 	}()
 
