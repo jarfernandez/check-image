@@ -556,7 +556,7 @@ Check Image supports three ways to provide credentials for private registries, a
 2. **Environment variables** (`CHECK_IMAGE_USERNAME` / `CHECK_IMAGE_PASSWORD`)
 3. **`~/.docker/config.json`** and credential helpers (`authn.DefaultKeychain`) — already works without any changes
 
-The same credentials are applied to all registry requests in that invocation. For per-registry credentials, configure Docker's credential helpers in `~/.docker/config.json` as usual.
+Explicit credentials are scoped to the target registry extracted from the image reference. Requests to other registries (e.g., base-layer pulls from a different host) use the default keychain (`~/.docker/config.json` and credential helpers) instead, preventing unintended credential forwarding. For per-registry credentials across multiple invocations, configure Docker's credential helpers in `~/.docker/config.json` as usual.
 
 **Using flags:**
 ```bash
@@ -1010,8 +1010,8 @@ go tool cover -html=coverage.out
 - **internal/registry**: 100.0% coverage
 - **internal/secrets**: 97.4% coverage
 - **internal/fileutil**: 90.0% coverage
-- **internal/imageutil**: 88.6% coverage
-- **cmd/check-image/commands**: 90.8% coverage
+- **internal/imageutil**: 88.7% coverage
+- **cmd/check-image/commands**: 90.6% coverage
 - **cmd/check-image**: 73.9% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

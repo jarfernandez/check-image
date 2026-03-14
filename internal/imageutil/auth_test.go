@@ -9,9 +9,9 @@ import (
 )
 
 func TestStaticKeychain_Resolve(t *testing.T) {
-	kc := &staticKeychain{username: "user", password: "pass"}
+	kc := &staticKeychain{registry: "ghcr.io", username: "user", password: "pass"}
 
-	auth, err := kc.Resolve(nil)
+	auth, err := kc.Resolve(mockResource("ghcr.io"))
 	require.NoError(t, err)
 
 	cfg, err := auth.Authorization()
@@ -20,34 +20,55 @@ func TestStaticKeychain_Resolve(t *testing.T) {
 	assert.Equal(t, "pass", cfg.Password)
 }
 
-func TestStaticKeychain_ResolveIgnoresResource(t *testing.T) {
-	// staticKeychain applies the same credentials regardless of which registry
-	// is being accessed — it resolves the same for any resource value
-	kc := &staticKeychain{username: "user", password: "pass"}
+func TestStaticKeychain_ResolveMatchesRegistry(t *testing.T) {
+	kc := &staticKeychain{registry: "ghcr.io", username: "user", password: "pass"}
 
-	authForNil, err := kc.Resolve(nil)
+	// Matching registry returns credentials
+	auth, err := kc.Resolve(mockResource("ghcr.io"))
 	require.NoError(t, err)
-	cfgNil, err := authForNil.Authorization()
+	cfg, err := auth.Authorization()
 	require.NoError(t, err)
+	assert.Equal(t, "user", cfg.Username)
+	assert.Equal(t, "pass", cfg.Password)
 
-	// Resolve with a non-nil resource (a different registry) — credentials must be the same
-	dockerHub := mockResource("index.docker.io")
-	authForHub, err := kc.Resolve(dockerHub)
+	// Nil resource returns credentials (backward compat)
+	authNil, err := kc.Resolve(nil)
 	require.NoError(t, err)
-	cfgHub, err := authForHub.Authorization()
+	cfgNil, err := authNil.Authorization()
 	require.NoError(t, err)
+	assert.Equal(t, "user", cfgNil.Username)
+}
 
-	ghcr := mockResource("ghcr.io")
-	authForGHCR, err := kc.Resolve(ghcr)
-	require.NoError(t, err)
-	cfgGHCR, err := authForGHCR.Authorization()
-	require.NoError(t, err)
+func TestStaticKeychain_ResolveReturnsAnonymousForDifferentRegistry(t *testing.T) {
+	kc := &staticKeychain{registry: "ghcr.io", username: "user", password: "pass"}
 
-	// Same credentials regardless of resource
-	assert.Equal(t, cfgNil.Username, cfgHub.Username)
-	assert.Equal(t, cfgNil.Password, cfgHub.Password)
-	assert.Equal(t, cfgNil.Username, cfgGHCR.Username)
-	assert.Equal(t, cfgNil.Password, cfgGHCR.Password)
+	// Different registry returns anonymous
+	auth, err := kc.Resolve(mockResource("index.docker.io"))
+	require.NoError(t, err)
+	assert.Equal(t, authn.Anonymous, auth)
+
+	// Another different registry
+	auth2, err := kc.Resolve(mockResource("registry.example.com"))
+	require.NoError(t, err)
+	assert.Equal(t, authn.Anonymous, auth2)
+}
+
+func TestStaticKeychain_ResolveEmptyRegistryMatchesAll(t *testing.T) {
+	// When registry is empty, credentials are returned for any resource
+	// (backward-compatible fallback)
+	kc := &staticKeychain{registry: "", username: "user", password: "pass"}
+
+	auth1, err := kc.Resolve(mockResource("ghcr.io"))
+	require.NoError(t, err)
+	cfg1, err := auth1.Authorization()
+	require.NoError(t, err)
+	assert.Equal(t, "user", cfg1.Username)
+
+	auth2, err := kc.Resolve(mockResource("index.docker.io"))
+	require.NoError(t, err)
+	cfg2, err := auth2.Authorization()
+	require.NoError(t, err)
+	assert.Equal(t, "user", cfg2.Username)
 }
 
 // mockResource implements authn.Resource for testing purposes.
@@ -59,13 +80,13 @@ func (r mockResource) String() string      { return string(r) }
 func TestSetStaticCredentials_SetsMultiKeychain(t *testing.T) {
 	t.Cleanup(func() { ResetKeychain() })
 
-	SetStaticCredentials("myuser", "mypass")
+	SetStaticCredentials("ghcr.io", "myuser", "mypass")
 
 	// activeKeychain should no longer be DefaultKeychain
 	assert.NotEqual(t, authn.DefaultKeychain, activeKeychain)
 
-	// Should be resolvable and return the static credentials
-	auth, err := activeKeychain.Resolve(nil)
+	// Should be resolvable and return the static credentials for the target registry
+	auth, err := activeKeychain.Resolve(mockResource("ghcr.io"))
 	require.NoError(t, err)
 
 	cfg, err := auth.Authorization()
@@ -77,10 +98,10 @@ func TestSetStaticCredentials_SetsMultiKeychain(t *testing.T) {
 func TestSetStaticCredentials_OverridesPreviousCredentials(t *testing.T) {
 	t.Cleanup(func() { ResetKeychain() })
 
-	SetStaticCredentials("first", "pass1")
-	SetStaticCredentials("second", "pass2")
+	SetStaticCredentials("ghcr.io", "first", "pass1")
+	SetStaticCredentials("ghcr.io", "second", "pass2")
 
-	auth, err := activeKeychain.Resolve(nil)
+	auth, err := activeKeychain.Resolve(mockResource("ghcr.io"))
 	require.NoError(t, err)
 
 	cfg, err := auth.Authorization()
@@ -101,7 +122,7 @@ func TestActiveKeychain_ReturnsCurrentKeychain(t *testing.T) {
 	// Before setting credentials, ActiveKeychain returns DefaultKeychain
 	assert.Equal(t, authn.DefaultKeychain, ActiveKeychain())
 
-	SetStaticCredentials("user", "pass")
+	SetStaticCredentials("ghcr.io", "user", "pass")
 
 	// After setting credentials, ActiveKeychain returns the MultiKeychain
 	kc := ActiveKeychain()
@@ -110,7 +131,7 @@ func TestActiveKeychain_ReturnsCurrentKeychain(t *testing.T) {
 }
 
 func TestResetKeychain_RestoresToDefault(t *testing.T) {
-	SetStaticCredentials("user", "pass")
+	SetStaticCredentials("ghcr.io", "user", "pass")
 	assert.NotEqual(t, authn.DefaultKeychain, activeKeychain)
 
 	ResetKeychain()

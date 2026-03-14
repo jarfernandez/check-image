@@ -136,7 +136,7 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 - Username without password (or vice versa) is an error, regardless of source (flags or env)
 - `--password-stdin` reads up to 4KB (`maxPasswordSize`); input exceeding this limit is rejected to prevent memory exhaustion
 - `--password-stdin` cannot be combined with other stdin-consuming flags (`--config -`, `--allowed-ports @-`, etc.) — the first reader wins
-- Static credentials are applied to all registries in that invocation (no per-registry filtering — use Docker credential helpers for that)
+- Static credentials are scoped to the target registry hostname extracted from the image argument. `staticKeychain.Resolve()` compares the request's `RegistryStr()` against the stored registry and returns `authn.Anonymous` for non-matching hosts, preventing unintended credential forwarding to other registries contacted during the same invocation. If the registry cannot be determined (e.g., no image argument, non-registry transport), credentials are applied to all registries as a backward-compatible fallback
 - `activeKeychain` is a package-level variable (acceptable pattern for a single-threaded CLI); `SetStaticCredentials` is idempotent and overwrites any previously set credentials
 
 ### Validation Commands
