@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.7](https://github.com/jarfernandez/check-image/compare/v0.20.6...v0.20.7) (2026-03-14)
+
+
+### Bug Fixes
+
+* Add file size limit to `ReadSecureFile` ([#186](https://github.com/jarfernandez/check-image/issues/186)) ([1ad5942](https://github.com/jarfernandez/check-image/commit/1ad5942b0d7efbac3d68a2676bb6928d7f4e805d))
+* Warn at runtime when `--password` is used on the command line ([#183](https://github.com/jarfernandez/check-image/issues/183)) ([3236975](https://github.com/jarfernandez/check-image/commit/3236975f48021f9cbbef4f87dd2afaeffb30e9ea))
+
 ## [0.20.6](https://github.com/jarfernandez/check-image/compare/v0.20.5...v0.20.6) (2026-03-10)
 
 
