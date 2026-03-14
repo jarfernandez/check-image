@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.9](https://github.com/jarfernandez/check-image/compare/v0.20.8...v0.20.9) (2026-03-14)
+
+
+### Bug Fixes
+
+* Sanitize image-controlled strings in debug log output to prevent log injection ([#189](https://github.com/jarfernandez/check-image/issues/189)) ([8f0dce0](https://github.com/jarfernandez/check-image/commit/8f0dce020808ef7038d9739bee54f6b81faf0d05))
+
+
+### Code Refactoring
+
+* Adopt structured logging with `log.WithFields()` at high-value log sites ([#191](https://github.com/jarfernandez/check-image/issues/191)) ([05cbd5f](https://github.com/jarfernandez/check-image/commit/05cbd5f91c6d53af8f3bc7a04920f42c5e914d02))
+
 ## [0.20.8](https://github.com/jarfernandez/check-image/compare/v0.20.7...v0.20.8) (2026-03-14)
 
 
