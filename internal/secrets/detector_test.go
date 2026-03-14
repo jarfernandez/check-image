@@ -146,6 +146,18 @@ func TestCheckEnvironmentVariables(t *testing.T) {
 			wantLen:  1,
 			wantVars: []string{"PASSWORD"},
 		},
+		{
+			name: "Env var name with embedded newline is still detected",
+			envVars: []string{
+				"DB_PASSWORD\nfake log line=value",
+			},
+			policy: &Policy{
+				CheckEnvVars:    true,
+				ExcludedEnvVars: DefaultExcludedEnvVars,
+			},
+			wantLen:  1,
+			wantVars: []string{"DB_PASSWORD\nfake log line"},
+		},
 	}
 
 	for _, tt := range tests {
