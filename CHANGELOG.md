@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.8](https://github.com/jarfernandez/check-image/compare/v0.20.7...v0.20.8) (2026-03-14)
+
+
+### Bug Fixes
+
+* Input validation improvements (registry transport, docker-archive tag, platform format) ([#187](https://github.com/jarfernandez/check-image/issues/187)) ([62491e3](https://github.com/jarfernandez/check-image/commit/62491e31abdb61500709faa2253d4f00380cf381))
+
 ## [0.20.7](https://github.com/jarfernandez/check-image/compare/v0.20.6...v0.20.7) (2026-03-14)
 
 
