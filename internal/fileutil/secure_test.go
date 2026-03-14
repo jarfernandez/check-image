@@ -119,6 +119,20 @@ func TestReadSecureFile_NonexistentParentDirectory(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot create root for directory")
 }
 
+func TestReadSecureFile_ExceedsSizeLimit(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "toobig.txt")
+
+	// Create a file one byte over the limit
+	content := make([]byte, maxStdinSize+1)
+	err := os.WriteFile(filePath, content, 0600)
+	require.NoError(t, err)
+
+	_, err = ReadSecureFile(filePath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum size")
+}
+
 func TestReadSecureFile_DifferentPermissions(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.txt")
