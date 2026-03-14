@@ -72,6 +72,10 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		if cmd.Flags().Changed("password") {
+			log.Warn("Using --password on the command line exposes credentials in the process list. " +
+				"Prefer --password-stdin or CHECK_IMAGE_PASSWORD environment variable.")
+		}
 		if username != "" {
 			imageutil.SetStaticCredentials(username, password)
 			log.Debugln("Using explicit registry credentials for user:", username)

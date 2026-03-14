@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -677,4 +679,38 @@ func TestResolveRegistryCredentials(t *testing.T) {
 			assert.Equal(t, tt.wantPassword, gotPass)
 		})
 	}
+}
+
+func TestRootCommandAuth_PasswordFlagWarning(t *testing.T) {
+	pwFlag := rootCmd.PersistentFlags().Lookup("password")
+	t.Cleanup(func() {
+		resetAuthState(t)
+		pwFlag.Changed = false
+	})
+
+	// Capture logrus output to assert on the warning message.
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	// Set required global state, consistent with other PersistentPreRunE tests.
+	logLevel = "info"
+	outputFormat = "text"
+	colorMode = "auto"
+
+	// Simulate --username and --password being passed on the command line.
+	// In normal cobra execution, persistent flags are merged into cmd.Flags()
+	// via mergePersistentFlags() before PersistentPreRunE is called. When
+	// calling PersistentPreRunE directly in tests, we must trigger the merge
+	// manually so that cmd.Flags().Changed("password") works correctly.
+	registryUsername = "testuser"
+	registryPassword = "testpass"
+	rootCmd.Flags().AddFlagSet(rootCmd.PersistentFlags())
+	pwFlag.Changed = true
+
+	err := rootCmd.PersistentPreRunE(rootCmd, []string{})
+	require.NoError(t, err)
+
+	assert.Contains(t, buf.String(), "process list")
+	assert.Contains(t, buf.String(), "--password-stdin")
 }
