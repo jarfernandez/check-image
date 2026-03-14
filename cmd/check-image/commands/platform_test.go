@@ -48,9 +48,11 @@ func TestParseAllowedPlatforms_Required(t *testing.T) {
 
 func TestParseAllowedPlatforms_CommaSeparated(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		expected []string
+		name        string
+		input       string
+		expected    []string
+		wantErr     bool
+		errContains string
 	}{
 		{
 			name:     "single platform",
@@ -72,6 +74,24 @@ func TestParseAllowedPlatforms_CommaSeparated(t *testing.T) {
 			input:    " linux/amd64 , linux/arm64 ",
 			expected: []string{"linux/amd64", "linux/arm64"},
 		},
+		{
+			name:        "no slash (1 segment)",
+			input:       "linux-amd64",
+			wantErr:     true,
+			errContains: "invalid platform format",
+		},
+		{
+			name:        "single word",
+			input:       "foo",
+			wantErr:     true,
+			errContains: "invalid platform format",
+		},
+		{
+			name:        "four segments",
+			input:       "linux/amd64/v7/extra",
+			wantErr:     true,
+			errContains: "invalid platform format",
+		},
 	}
 
 	for _, tt := range tests {
@@ -81,6 +101,11 @@ func TestParseAllowedPlatforms_CommaSeparated(t *testing.T) {
 
 			allowedPlatforms = tt.input
 			result, err := parseAllowedPlatforms()
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -128,6 +153,22 @@ func TestParseAllowedPlatforms_FromFile(t *testing.T) {
 		_, err := parseAllowedPlatforms()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read file")
+	})
+
+	t.Run("invalid platform format in file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "platforms.json")
+		content := `{"allowed-platforms": ["linux-amd64"]}`
+		err := os.WriteFile(filePath, []byte(content), 0600)
+		require.NoError(t, err)
+
+		origAllowedPlatforms := allowedPlatforms
+		defer func() { allowedPlatforms = origAllowedPlatforms }()
+
+		allowedPlatforms = "@" + filePath
+		_, err = parseAllowedPlatforms()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid platform format")
 	})
 }
 
