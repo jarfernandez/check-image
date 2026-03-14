@@ -77,9 +77,20 @@ var rootCmd = &cobra.Command{
 				"Prefer --password-stdin or CHECK_IMAGE_PASSWORD environment variable.")
 		}
 		if username != "" {
-			imageutil.SetStaticCredentials(username, password)
-			// Log username only (never password) to aid debugging auth issues.
-			log.Debugln("Using explicit registry credentials for user:", username)
+			// Extract the target registry from the image argument so credentials
+			// are scoped to that host only, preventing unintended forwarding to
+			// other registries contacted during the same invocation.
+			var targetRegistry string
+			if len(args) > 0 {
+				if reg, err := imageutil.GetImageRegistry(args[0]); err == nil {
+					targetRegistry = reg
+				}
+			}
+			imageutil.SetStaticCredentials(targetRegistry, username, password)
+			log.WithFields(log.Fields{
+				"username": username,
+				"registry": targetRegistry,
+			}).Debug("Using explicit registry credentials")
 		}
 
 		return nil
