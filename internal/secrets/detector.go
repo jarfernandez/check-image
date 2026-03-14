@@ -10,6 +10,7 @@ import (
 	cr "github.com/google/go-containerregistry/pkg/v1"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/jarfernandez/check-image/internal/logutil"
 	"github.com/jarfernandez/check-image/internal/output"
 )
 
@@ -33,7 +34,7 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []output.EnvVar
 
 		// Check if this variable is in the exclusion list
 		if isExcluded(varName, policy.ExcludedEnvVars) {
-			log.Debugf("Skipping excluded environment variable: %s", varName)
+			log.Debugf("Skipping excluded environment variable: %s", logutil.SanitizeLogValue(varName))
 			continue
 		}
 
@@ -46,7 +47,7 @@ func CheckEnvironmentVariables(envVars []string, policy *Policy) []output.EnvVar
 					Name:        varName,
 					Description: "sensitive pattern detected",
 				})
-				log.Debugf("Found sensitive environment variable: %s (matches pattern: %s)", varName, pattern)
+				log.Debugf("Found sensitive environment variable: %s (matches pattern: %s)", logutil.SanitizeLogValue(varName), logutil.SanitizeLogValue(pattern))
 				break
 			}
 		}
@@ -132,7 +133,7 @@ func scanLayer(ctx context.Context, layer cr.Layer, layerIndex int, policy *Poli
 
 		// Check if path should be excluded
 		if isPathExcluded(header.Name, policy.ExcludedPaths) {
-			log.Debugf("Skipping excluded path: %s", header.Name)
+			log.Debugf("Skipping excluded path: %s", logutil.SanitizeLogValue(header.Name))
 			continue
 		}
 
@@ -143,7 +144,7 @@ func scanLayer(ctx context.Context, layer cr.Layer, layerIndex int, policy *Poli
 				LayerIndex:  layerIndex,
 				Description: description,
 			})
-			log.Debugf("Found sensitive file in layer %d: %s (%s)", layerIndex, header.Name, description)
+			log.Debugf("Found sensitive file in layer %d: %s (%s)", layerIndex, logutil.SanitizeLogValue(header.Name), logutil.SanitizeLogValue(description))
 		}
 	}
 

@@ -961,6 +961,7 @@ The hooks run automatically on `git commit`. You can also:
 - `internal/fileutil/`: Provides file reading utilities with support for JSON/YAML parsing and stdin input.
 - `internal/imageutil/`: Provides utilities for interacting with container images, such as fetching images from local or remote sources and retrieving image configurations.
 - `internal/labels/`: Handles label policy loading and validation for required OCI annotations.
+- `internal/logutil/`: Provides log sanitization utilities that strip control characters from image-controlled strings before they reach log output.
 - `internal/output/`: Defines output format types, result structs, and JSON rendering helpers.
 - `internal/registry/`: Manages registry policies, including trusted and excluded registries.
 - `internal/secrets/`: Handles secrets detection, including policy loading and scanning for sensitive data in environment variables and files.
@@ -980,7 +981,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 94.1% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 94.2% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -1005,6 +1006,7 @@ go tool cover -html=coverage.out
 - **internal/version**: 100.0% coverage
 - **internal/output**: 100.0% coverage
 - **internal/labels**: 100.0% coverage
+- **internal/logutil**: 100.0% coverage
 - **internal/registry**: 100.0% coverage
 - **internal/secrets**: 97.4% coverage
 - **internal/fileutil**: 90.0% coverage
