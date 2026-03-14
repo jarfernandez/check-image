@@ -352,11 +352,12 @@ In `internal/secrets/`:
 Four workflows in `.github/workflows/`:
 
 #### `ci.yml` — Continuous Integration
-Runs on every push to `main` and on pull requests. Four parallel jobs:
+Runs on every push to `main` and on pull requests. Five parallel jobs:
 1. **validate-pr**: (PRs only) Validates PR title follows Conventional Commits format using `action-semantic-pull-request`.
 2. **test**: Runs `go test ./...` with `-race` and coverage on ubuntu/macos/windows matrix. Uploads coverage to Codecov (ubuntu only).
 3. **lint**: Runs `golangci-lint`, `gofmt`, `go vet`, and verifies `go.mod` is tidy.
-4. **build**: Cross-compiles for linux/darwin/windows × amd64/arm64 to verify compilation.
+4. **security**: Installs and runs `govulncheck ./...` to detect known CVEs in direct and transitive dependencies. Fails the build if any reachable vulnerability is found. Run locally with: `go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...`. If govulncheck reports a vulnerability, the fix is to update the affected dependency (`go get <module>@<patched-version> && go mod tidy`) or assess whether the vulnerable code path is actually reachable and document the exception if not.
+5. **build**: Cross-compiles for linux/darwin/windows × amd64/arm64 to verify compilation.
 
 #### `codeql.yml` — Security Analysis
 Runs on push to `main`, PRs to `main`, and weekly (Monday 06:00 UTC). Performs CodeQL static analysis on Go code with `security-extended` queries.
