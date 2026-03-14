@@ -422,9 +422,8 @@ func TestGetImage_DockerArchiveTransport(t *testing.T) {
 	err = tarball.WriteToFile(tarPath, tag, img)
 	require.NoError(t, err)
 
-	// Load the image from docker-archive without specifying tag
-	// (will load the first/only image in the archive)
-	loadedImg, cleanup, err := GetImage(context.Background(), "docker-archive:"+tarPath)
+	// Load the image from docker-archive with a tag
+	loadedImg, cleanup, err := GetImage(context.Background(), "docker-archive:"+tarPath+":test/image:latest")
 	require.NoError(t, err)
 	defer cleanup()
 	require.NotNil(t, loadedImg)
@@ -435,6 +434,21 @@ func TestGetImage_DockerArchiveTransport(t *testing.T) {
 	loadedDigest, err := loadedImg.Digest()
 	require.NoError(t, err)
 	assert.Equal(t, origDigest, loadedDigest)
+}
+
+// TestGetImage_DockerArchiveTransport_NoTag verifies that docker-archive requires a tag.
+func TestGetImage_DockerArchiveTransport_NoTag(t *testing.T) {
+	tmpDir := t.TempDir()
+	tarPath := filepath.Join(tmpDir, "docker-image.tar")
+
+	// Create a minimal tar file so ParseReference succeeds (file existence is not checked at parse time)
+	f, err := os.Create(tarPath)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	_, _, err = GetImage(context.Background(), "docker-archive:"+tarPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "docker-archive transport requires a tag")
 }
 
 func TestRetryWithBackoff(t *testing.T) {
@@ -691,10 +705,10 @@ func TestGetDockerArchiveImage_EmptyTag(t *testing.T) {
 	err = file.Close()
 	require.NoError(t, err)
 
-	// Empty tag should not error in parsing, but will fail to load
+	// Empty tag must be rejected explicitly before attempting to load
 	_, err = GetDockerArchiveImage(tarPath, "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "error loading docker archive")
+	assert.Contains(t, err.Error(), "docker-archive transport requires a tag")
 }
 
 // Tests for GetOCIArchiveImage

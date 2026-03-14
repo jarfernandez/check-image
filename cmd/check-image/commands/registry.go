@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/jarfernandez/check-image/internal/imageutil"
 	"github.com/jarfernandez/check-image/internal/output"
@@ -60,18 +59,24 @@ func init() {
 }
 
 func runRegistry(_ context.Context, imageName string, policyPath string) (*output.CheckResult, error) {
+	// Check transport type directly before attempting registry extraction.
+	// Non-registry transports (oci, oci-archive, docker-archive) have no registry.
+	ref, err := imageutil.ParseReference(imageName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse image reference: %w", err)
+	}
+	if ref.Transport != imageutil.TransportDaemonRegistry {
+		return &output.CheckResult{
+			Check:   checkRegistry,
+			Image:   imageName,
+			Passed:  true,
+			Message: "Registry validation skipped (not applicable for this transport)",
+			Details: output.RegistryDetails{Skipped: true},
+		}, nil
+	}
+
 	imageRegistry, err := imageutil.GetImageRegistry(imageName)
 	if err != nil {
-		// Check if this is a non-registry transport
-		if strings.Contains(err.Error(), "not applicable") {
-			return &output.CheckResult{
-				Check:   checkRegistry,
-				Image:   imageName,
-				Passed:  true,
-				Message: "Registry validation skipped (not applicable for this transport)",
-				Details: output.RegistryDetails{Skipped: true},
-			}, nil
-		}
 		return nil, fmt.Errorf("unable to get image registry: %w", err)
 	}
 

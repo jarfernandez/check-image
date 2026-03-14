@@ -163,20 +163,20 @@ func isRetryableError(err error) bool {
 	return false
 }
 
-// GetDockerArchiveImage retrieves an image from a Docker tarball (docker save format)
+// GetDockerArchiveImage retrieves an image from a Docker tarball (docker save format).
+// A non-empty tag is required; use the format docker-archive:/path.tar:tag.
 func GetDockerArchiveImage(tarballPath string, tag string) (cr.Image, error) {
-	// Parse the tag if provided
-	var nameTag *name.Tag
-	if tag != "" {
-		parsedTag, err := name.NewTag(tag)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing tag %s: %w", tag, err)
-		}
-		nameTag = &parsedTag
+	if tag == "" {
+		return nil, fmt.Errorf("docker-archive transport requires a tag (e.g., docker-archive:/path.tar:tag)")
+	}
+
+	parsedTag, err := name.NewTag(tag)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing tag %s: %w", tag, err)
 	}
 
 	// Load image from tarball
-	image, err := tarball.ImageFromPath(tarballPath, nameTag)
+	image, err := tarball.ImageFromPath(tarballPath, &parsedTag)
 	if err != nil {
 		return nil, fmt.Errorf("error loading docker archive from %s: %w", tarballPath, err)
 	}
@@ -243,7 +243,7 @@ func GetImage(ctx context.Context, imageName string) (cr.Image, func(), error) {
 		return GetOCIArchiveImage(ref.Path, reference)
 
 	case TransportDockerArchive:
-		// Docker tarball - load directly
+		// Docker tarball - load directly.
 		img, err := GetDockerArchiveImage(ref.Path, ref.Tag)
 		if err != nil {
 			return nil, func() {}, err

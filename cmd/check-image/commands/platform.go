@@ -68,6 +68,11 @@ func parseAllowedPlatformsFrom(platformsStr string) ([]string, error) {
 		if err := parseAllowedListFromFile(after, &platformsFromFile); err != nil {
 			return nil, err
 		}
+		for _, p := range platformsFromFile.AllowedPlatforms {
+			if err := validatePlatformFormat(p); err != nil {
+				return nil, err
+			}
+		}
 		return platformsFromFile.AllowedPlatforms, nil
 	}
 
@@ -78,10 +83,22 @@ func parseAllowedPlatformsFrom(platformsStr string) ([]string, error) {
 		if trimmed == "" {
 			continue
 		}
+		if err := validatePlatformFormat(trimmed); err != nil {
+			return nil, err
+		}
 		platforms = append(platforms, trimmed)
 	}
 
 	return platforms, nil
+}
+
+// validatePlatformFormat checks that platform follows the OS/Architecture[/Variant] format.
+func validatePlatformFormat(platform string) error {
+	segments := strings.Split(platform, "/")
+	if len(segments) < 2 || len(segments) > 3 {
+		return fmt.Errorf("invalid platform format %q: expected OS/Architecture or OS/Architecture/Variant", platform)
+	}
+	return nil
 }
 
 func runPlatform(ctx context.Context, imageName string, allowedPlatformsList []string) (*output.CheckResult, error) {
