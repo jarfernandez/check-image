@@ -47,6 +47,10 @@ func ReadSecureFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("path is a directory, not a file")
 	}
 
+	if info.Size() > maxStdinSize {
+		return nil, fmt.Errorf("file exceeds maximum size of %d bytes", maxStdinSize)
+	}
+
 	// Open and read file using the scoped root
 	file, err := root.Open(fileName)
 	if err != nil {
