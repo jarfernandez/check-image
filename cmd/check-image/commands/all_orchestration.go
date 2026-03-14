@@ -290,7 +290,7 @@ func printSectionHeader(name string, outFmt output.Format) {
 func runSingleCheck(ctx context.Context, check checkDef, imageName string) output.CheckResult {
 	result, err := check.run(ctx, imageName)
 	if err != nil {
-		log.Errorf("Check %s failed with error: %v", check.name, err)
+		log.WithFields(log.Fields{"check": check.name, "error": err}).Error("Check failed")
 		UpdateResult(ExecutionError)
 		return output.CheckResult{
 			Check:   check.name,
@@ -325,7 +325,7 @@ func executeChecks(ctx context.Context, checks []checkDef, imageName string, out
 	var results []output.CheckResult
 
 	for _, check := range checks {
-		log.Debugf("Running check: %s", check.name)
+		log.WithField("check", check.name).Debug("Running check")
 		printSectionHeader(check.name, outFmt)
 		result := runSingleCheck(ctx, check, imageName)
 		results = append(results, result)

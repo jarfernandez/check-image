@@ -120,8 +120,7 @@ func retryWithBackoff(ctx context.Context, attempts int, baseWait time.Duration,
 
 		if attempt < attempts {
 			backoff := baseWait * (1 << uint(attempt))
-			log.Debugf("Retryable error on attempt %d/%d: %v; retrying in %v",
-				attempt+1, attempts+1, err, backoff)
+			log.WithFields(log.Fields{"attempt": attempt + 1, "max": attempts + 1, "error": err, "retry_in": backoff.String()}).Debug("Retrying after transient error")
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
