@@ -78,6 +78,7 @@ var rootCmd = &cobra.Command{
 		}
 		if username != "" {
 			imageutil.SetStaticCredentials(username, password)
+			// Log username only (never password) to aid debugging auth issues.
 			log.Debugln("Using explicit registry credentials for user:", username)
 		}
 
