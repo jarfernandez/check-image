@@ -206,11 +206,25 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 - Returns `PlatformDetails` with `platform` and `allowed-platforms` (kebab-case JSON)
 - Sample config files: `config/allowed-platforms.yaml`, `config/allowed-platforms.json`
 
+**user**: Validates that the image user meets security requirements
+- Flags: `--user-policy` (optional, JSON or YAML file), `--min-uid` (optional), `--max-uid` (optional), `--blocked-users` (comma-separated, optional), `--require-numeric` (optional)
+- Without flags/policy: basic non-root check (same behavior as `root-user`)
+- With policy file or flags: enforces UID ranges, blocked usernames, numeric UID requirements
+- CLI flags override policy file values; `cmd.Flags().Changed()` distinguishes "not set" from "explicitly set to 0"
+- Validates raw `config.Config.User` string only (no `/etc/passwd` resolution available)
+- Always enforces: non-empty USER, not "root", not UID 0 (regardless of policy)
+- Policy validation: `min-uid` must not exceed `max-uid`; UID range checks only apply to numeric UIDs
+- Collects all violations (no short-circuit); reports machine-readable `rule` and human-readable `message`
+- Returns `UserDetails` with `user`, `user-part`, `group-part`, `is-numeric`, `uid`, violations, and policy constraints
+- Implementation: `internal/user/` package (`policy.go`, `validator.go`), `cmd/check-image/commands/user.go`
+- Coexists with `root-user` in `all` — no automatic exclusion; user manages with `--skip`/`--include`
+- Sample config files: `config/user-policy.yaml`, `config/user-policy.json`
+
 **all**: Runs all validation checks on a container image at once
-- Flags: `--config` (`-c`, config file), `--include` (comma-separated checks to run), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--allowed-platforms`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`, `--allow-shell-form`)
+- Flags: `--config` (`-c`, config file), `--include` (comma-separated checks to run), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--allowed-platforms`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`, `--allow-shell-form`, `--user-policy`, `--min-uid`, `--max-uid`, `--blocked-users`, `--require-numeric`)
 - `--include` and `--skip` are mutually exclusive
 - Precedence: CLI flags > config file values > defaults; `--include` and `--skip` always take precedence over config file check selection
-- Without `--config`: runs all 10 checks with defaults (except skipped, or only included)
+- Without `--config`: runs all 11 checks with defaults (except skipped, or only included)
 - With `--config`: only runs checks present in the config file (except skipped); `--include` overrides config check selection
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
 - Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runPlatformForAll()` calls `parseAllowedPlatforms()` before `runPlatform()`
@@ -235,6 +249,7 @@ Sample configuration files are in `config/`:
 - `labels-policy.yaml` / `labels-policy.json`: Required labels validation policy
 - `config.yaml` / `config.json`: All-checks configuration (defines which checks to run and their parameters for the `all` command)
 - `secrets-policy.yaml` / `secrets-policy.json`: Secrets detection policy with exclusions
+- `user-policy.yaml` / `user-policy.json`: User validation policy with UID ranges and blocked users
 
 Both JSON and YAML formats are supported throughout the tool. Format detection is by file extension (`.yaml`, `.yml` for YAML, otherwise JSON).
 
@@ -243,6 +258,7 @@ All file arguments support reading from stdin using `-` as the path, enabling dy
 - `--registry-policy -` - Read registry policy from stdin
 - `--labels-policy -` - Read labels policy from stdin
 - `--secrets-policy -` - Read secrets policy from stdin
+- `--user-policy -` - Read user policy from stdin
 - `--allowed-ports @-` - Read allowed ports from stdin
 - `--config -` - Read all-checks config from stdin
 
@@ -289,6 +305,13 @@ The `all` command config file supports embedding policies directly as objects in
     },
     "ports": {
       "allowed-ports": [80, 443]
+    },
+    "user": {
+      "user-policy": {
+        "min-uid": 1000,
+        "max-uid": 65534,
+        "blocked-users": ["daemon", "nobody"]
+      }
     }
   }
 }
