@@ -22,7 +22,6 @@ var (
 
 	headerStyle  lipgloss.Style
 	sectionStyle lipgloss.Style
-	keyStyle     lipgloss.Style
 	valueStyle   lipgloss.Style
 	dimStyle     lipgloss.Style
 )
@@ -59,8 +58,7 @@ func initRenderer(colorMode string, out io.Writer) {
 	FailStyle = r.NewStyle().Foreground(lipgloss.Color("1")) // red
 	headerStyle = r.NewStyle().Bold(true)
 	sectionStyle = r.NewStyle().Bold(true).Foreground(lipgloss.Color("12")) // bright blue
-	keyStyle = r.NewStyle().Bold(true)
-	valueStyle = r.NewStyle().Foreground(lipgloss.Color("6")) // cyan
+	valueStyle = r.NewStyle().Foreground(lipgloss.Color("6"))               // cyan
 	dimStyle = r.NewStyle().Faint(true)
 }
 
