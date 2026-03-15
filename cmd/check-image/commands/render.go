@@ -206,19 +206,16 @@ func renderPlatformText(r *output.CheckResult) {
 
 func renderUserText(r *output.CheckResult) {
 	d := mustDetails[output.UserDetails](r)
-	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking USER directive of image %s", r.Image)))
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking user of image %s", r.Image)))
 
 	if d.User == "" {
-		fmt.Println(keyStyle.Render("USER:") + " " + dimStyle.Render("(not set)"))
+		fmt.Println(keyStyle.Render("User:") + " " + dimStyle.Render("(not set)"))
 	} else {
-		fmt.Printf("USER: %s\n", valueStyle.Render(d.User))
+		fmt.Printf("User: %s\n", valueStyle.Render(d.User))
 	}
 
-	if len(d.Violations) > 0 {
-		fmt.Println(keyStyle.Render("Violations:"))
-		for _, v := range d.Violations {
-			fmt.Printf("  - %s\n", FailStyle.Render(v.Message))
-		}
+	for _, v := range d.Violations {
+		fmt.Printf("  - %s\n", FailStyle.Render(v.Message))
 	}
 
 	fmt.Println(statusPrefix(r.Passed) + r.Message)

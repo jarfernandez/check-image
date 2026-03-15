@@ -57,7 +57,7 @@ func init() {
 	userCmd.Flags().UintVar(&userMinUID, "min-uid", 0, "Minimum allowed UID (optional)")
 	userCmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "Maximum allowed UID (optional)")
 	userCmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "Comma-separated list of blocked usernames (optional)")
-	userCmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "Require USER to be a numeric UID (optional)")
+	userCmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "Require user to be a numeric UID (optional)")
 }
 
 // resolveUserPolicy builds a *user.Policy from the combination of --user-policy file

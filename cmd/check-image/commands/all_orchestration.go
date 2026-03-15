@@ -83,7 +83,7 @@ func init() {
 	allCmd.Flags().UintVar(&userMinUID, "min-uid", 0, "Minimum allowed UID (optional)")
 	allCmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "Maximum allowed UID (optional)")
 	allCmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "Comma-separated list of blocked usernames (optional)")
-	allCmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "Require USER to be a numeric UID (optional)")
+	allCmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "Require user to be a numeric UID (optional)")
 }
 
 type checkDef struct {

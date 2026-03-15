@@ -57,7 +57,7 @@ func runRootUser(ctx context.Context, imageName string) (*output.CheckResult, er
 	}, nil
 }
 
-// isRootUser reports whether the USER value represents the root account.
+// isRootUser reports whether the user value represents the root account.
 // It checks for the name "root", empty string (Docker default is root), and UID 0
 // in both plain "0" and "0:group" formats, since UID 0 is root regardless of name.
 func isRootUser(user string) bool {

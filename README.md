@@ -480,13 +480,13 @@ Options:
 - `--min-uid`: Minimum allowed UID (optional)
 - `--max-uid`: Maximum allowed UID (optional)
 - `--blocked-users`: Comma-separated list of blocked usernames (optional)
-- `--require-numeric`: Require USER to be a numeric UID (optional)
+- `--require-numeric`: Require user to be a numeric UID (optional)
 
 Without any flags or policy file, performs a basic non-root check (same behavior as `root-user`). With flags or a policy file, enforces UID ranges, blocked usernames, and numeric UID requirements.
 
 Precedence: CLI flags override policy file values. When both are provided, the policy file is loaded first, then CLI flags are overlaid on top.
 
-**Limitation:** Without the image's `/etc/passwd`, username-to-UID resolution is not possible. The command validates the raw `User` field string only. UID range checks (`--min-uid`, `--max-uid`) only apply when the USER is a numeric value.
+**Limitation:** Without the image's `/etc/passwd`, username-to-UID resolution is not possible. The command validates the raw `User` field string only. UID range checks (`--min-uid`, `--max-uid`) only apply when the user is a numeric value.
 
 The `user` command coexists with `root-user` — both can run in the `all` command simultaneously. Use `--skip` or `--include` to control which checks run.
 
@@ -516,7 +516,7 @@ Options:
 - `--min-uid`: Minimum allowed UID
 - `--max-uid`: Maximum allowed UID
 - `--blocked-users`: Comma-separated list of blocked usernames
-- `--require-numeric`: Require USER to be a numeric UID
+- `--require-numeric`: Require user to be a numeric UID
 - `--fail-fast`: Stop on first check failure (default: false)
 
 Note: `--include` and `--skip` are mutually exclusive.

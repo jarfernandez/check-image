@@ -586,10 +586,9 @@ func TestRunUser_TextOutput_WithViolations(t *testing.T) {
 		renderUserText(result)
 	})
 
-	assert.Contains(t, out, "Checking USER directive of image")
-	assert.Contains(t, out, "USER:")
+	assert.Contains(t, out, "Checking user of image")
+	assert.Contains(t, out, "User:")
 	assert.Contains(t, out, "500")
-	assert.Contains(t, out, "Violations:")
 	assert.Contains(t, out, "below minimum 1000")
 	assert.Contains(t, out, "does not meet requirements")
 }
@@ -605,8 +604,7 @@ func TestRunUser_TextOutput_NotSet(t *testing.T) {
 	})
 
 	assert.Contains(t, out, "(not set)")
-	assert.Contains(t, out, "Violations:")
-	assert.Contains(t, out, "not set (defaults to root)")
+	assert.Contains(t, out, "user must not be root")
 }
 
 func TestRunUser_TextOutput_Passing(t *testing.T) {
@@ -619,10 +617,9 @@ func TestRunUser_TextOutput_Passing(t *testing.T) {
 		renderUserText(result)
 	})
 
-	assert.Contains(t, out, "USER:")
+	assert.Contains(t, out, "User:")
 	assert.Contains(t, out, "1000")
 	assert.Contains(t, out, "meets all requirements")
-	assert.NotContains(t, out, "Violations:")
 }
 
 func TestUserCommand_RunE(t *testing.T) {

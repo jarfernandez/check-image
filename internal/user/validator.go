@@ -60,7 +60,7 @@ func ValidateUser(user string, policy *Policy) Result {
 	if user == "" {
 		violations = append(violations, Violation{
 			Rule:    "non-empty",
-			Message: "USER directive is not set (defaults to root)",
+			Message: "user must not be root",
 		})
 		return Result{Passed: false, Violations: violations}
 	}
@@ -69,7 +69,7 @@ func ValidateUser(user string, policy *Policy) Result {
 	if info.UserPart == "root" {
 		violations = append(violations, Violation{
 			Rule:    "non-root",
-			Message: "USER directive must not be root",
+			Message: "user must not be root",
 		})
 		return Result{Passed: false, Violations: violations}
 	}
@@ -78,7 +78,7 @@ func ValidateUser(user string, policy *Policy) Result {
 	if info.IsNumeric && *info.UID == 0 {
 		violations = append(violations, Violation{
 			Rule:    "non-root-uid",
-			Message: "UID 0 is root",
+			Message: "user must not be root",
 		})
 		return Result{Passed: false, Violations: violations}
 	}
@@ -92,7 +92,7 @@ func ValidateUser(user string, policy *Policy) Result {
 	if policy.RequireNumeric != nil && *policy.RequireNumeric && !info.IsNumeric {
 		violations = append(violations, Violation{
 			Rule:    "require-numeric",
-			Message: fmt.Sprintf("USER %q must be a numeric UID", info.UserPart),
+			Message: fmt.Sprintf("user %q must be a numeric UID", info.UserPart),
 		})
 	}
 

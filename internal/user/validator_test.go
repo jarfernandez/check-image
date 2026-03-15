@@ -351,7 +351,7 @@ func TestValidateUser_ViolationMessages(t *testing.T) {
 	t.Run("non-empty violation message", func(t *testing.T) {
 		result := ValidateUser("", nil)
 		require.Len(t, result.Violations, 1)
-		assert.Equal(t, "USER directive is not set (defaults to root)", result.Violations[0].Message)
+		assert.Equal(t, "user must not be root", result.Violations[0].Message)
 	})
 
 	t.Run("min-uid violation message", func(t *testing.T) {
@@ -375,7 +375,7 @@ func TestValidateUser_ViolationMessages(t *testing.T) {
 	t.Run("require-numeric violation message", func(t *testing.T) {
 		result := ValidateUser("appuser", &Policy{RequireNumeric: ptrBool(true)})
 		require.Len(t, result.Violations, 1)
-		assert.Equal(t, `USER "appuser" must be a numeric UID`, result.Violations[0].Message)
+		assert.Equal(t, `user "appuser" must be a numeric UID`, result.Violations[0].Message)
 	})
 }
 

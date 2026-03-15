@@ -212,7 +212,7 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 - With policy file or flags: enforces UID ranges, blocked usernames, numeric UID requirements
 - CLI flags override policy file values; `cmd.Flags().Changed()` distinguishes "not set" from "explicitly set to 0"
 - Validates raw `config.Config.User` string only (no `/etc/passwd` resolution available)
-- Always enforces: non-empty USER, not "root", not UID 0 (regardless of policy)
+- Always enforces: non-empty user, not "root", not UID 0 (regardless of policy)
 - Policy validation: `min-uid` must not exceed `max-uid`; UID range checks only apply to numeric UIDs
 - Collects all violations (no short-circuit); reports machine-readable `rule` and human-readable `message`
 - Returns `UserDetails` with `user`, `user-part`, `group-part`, `is-numeric`, `uid`, violations, and policy constraints
