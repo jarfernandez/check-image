@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.10](https://github.com/jarfernandez/check-image/compare/v0.20.9...v0.20.10) (2026-03-15)
+
+
+### Bug Fixes
+
+* Scope `staticKeychain` credentials to target registry hostname ([#193](https://github.com/jarfernandez/check-image/issues/193)) ([8d595e1](https://github.com/jarfernandez/check-image/commit/8d595e1c5aee19383aa2aa69cc873b9f5187c435))
+* Skip `platform` check in Test Action workflow jobs that lack config ([8c227ab](https://github.com/jarfernandez/check-image/commit/8c227ab196b8b59403aa4e7e360ee36ce27f4973))
+* Verify SHA-256 checksum of downloaded binary in GitHub Action ([a55bf13](https://github.com/jarfernandez/check-image/commit/a55bf1371affdc29ac42f1537432013e29c4e8a2))
+
 ## [0.20.9](https://github.com/jarfernandez/check-image/compare/v0.20.8...v0.20.9) (2026-03-14)
 
 
