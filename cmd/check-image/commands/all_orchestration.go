@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jarfernandez/check-image/internal/output"
+	"github.com/jarfernandez/check-image/internal/user"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -20,7 +21,7 @@ var allCmd = &cobra.Command{
 	Short: "Run all validation checks on a container image",
 	Long: `Run all validation checks on a container image at once.
 
-By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform).
+By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform, user).
 Use --config to specify which checks to run and their parameters.
 Use --include to run only specific checks.
 Use --skip to skip specific checks.
@@ -64,8 +65,8 @@ func init() {
 	rootCmd.AddCommand(allCmd)
 
 	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Configuration file (JSON or YAML) (optional)")
-	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform) (optional)")
-	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform) (optional)")
+	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform, user) (optional)")
+	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform, user) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", defaultMaxAgeDays, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", defaultMaxSizeMB, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", defaultMaxLayerCount, "Maximum number of layers (optional)")
@@ -78,6 +79,11 @@ func init() {
 	allCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first check failure (optional)")
 	allCmd.Flags().BoolVar(&allowShellForm, "allow-shell-form", false, "Allow shell form for entrypoint or cmd (optional)")
 	allCmd.Flags().StringVar(&allowedPlatforms, "allowed-platforms", "", "Comma-separated list of allowed platforms or @<file> with JSON or YAML array")
+	allCmd.Flags().StringVar(&userPolicy, "user-policy", "", "User policy file (JSON or YAML) (optional)")
+	allCmd.Flags().UintVar(&userMinUID, "min-uid", 0, "Minimum allowed UID (optional)")
+	allCmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "Maximum allowed UID (optional)")
+	allCmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "Comma-separated list of blocked usernames (optional)")
+	allCmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "Require user to be a numeric UID (optional)")
 }
 
 type checkDef struct {
@@ -101,6 +107,11 @@ type checkParams struct {
 	labelsPolicy     string
 	allowShellForm   bool
 	allowedPlatforms string
+	userPolicy       string
+	userMinUID       uint
+	userMaxUID       uint
+	blockedUsers     string
+	requireNumeric   bool
 }
 
 func currentCheckParams() checkParams {
@@ -116,6 +127,11 @@ func currentCheckParams() checkParams {
 		labelsPolicy:     labelsPolicy,
 		allowShellForm:   allowShellForm,
 		allowedPlatforms: allowedPlatforms,
+		userPolicy:       userPolicy,
+		userMinUID:       userMinUID,
+		userMaxUID:       userMaxUID,
+		blockedUsers:     blockedUsers,
+		requireNumeric:   requireNumeric,
 	}
 }
 
@@ -160,6 +176,13 @@ func buildCheckDefs(cfg *allConfig, p checkParams) []checkDef {
 			}
 			return runPlatform(ctx, img, platforms)
 		}, renderPlatformText},
+		{checkUser, noCfg || cfg.Checks.User != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
+			policy, err := buildUserPolicyFromParams(p)
+			if err != nil {
+				return nil, err
+			}
+			return runUser(ctx, img, policy)
+		}, renderUserText},
 	}
 }
 
@@ -182,6 +205,51 @@ func determineChecks(cfg *allConfig, skipMap map[string]bool, includeMap map[str
 	}
 
 	return checks
+}
+
+// buildUserPolicyFromParams constructs a *user.Policy from checkParams values.
+// This mirrors resolveUserPolicy but reads from the captured params instead of
+// package-level globals, keeping buildCheckDefs independent of mutable state.
+func buildUserPolicyFromParams(p checkParams) (*user.Policy, error) {
+	var policy *user.Policy
+
+	if p.userPolicy != "" {
+		loaded, err := user.LoadUserPolicy(p.userPolicy)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load user policy: %w", err)
+		}
+		policy = loaded
+	}
+
+	// Check if any individual values differ from defaults (they were set via config or CLI)
+	hasOverrides := p.userMinUID != 0 || p.userMaxUID != 0 || p.blockedUsers != "" || p.requireNumeric
+
+	if !hasOverrides {
+		return policy, nil
+	}
+
+	if policy == nil {
+		policy = &user.Policy{}
+	}
+
+	if p.userMinUID != 0 {
+		policy.MinUID = &p.userMinUID
+	}
+	if p.userMaxUID != 0 {
+		policy.MaxUID = &p.userMaxUID
+	}
+	if p.blockedUsers != "" {
+		policy.BlockedUsers = parseBlockedUsers(p.blockedUsers)
+	}
+	if p.requireNumeric {
+		policy.RequireNumeric = &p.requireNumeric
+	}
+
+	if err := policy.Validate(); err != nil {
+		return nil, err
+	}
+
+	return policy, nil
 }
 
 func runAll(cmd *cobra.Command, imageName string) error {

@@ -83,21 +83,21 @@ func TestAllCommandFlags(t *testing.T) {
 }
 
 func TestDetermineChecks(t *testing.T) {
-	t.Run("no config no skip runs all 10 checks", func(t *testing.T) {
+	t.Run("no config no skip runs all 11 checks", func(t *testing.T) {
 		checks := determineChecks(nil, nil, nil, currentCheckParams())
-		assert.Len(t, checks, 10)
+		assert.Len(t, checks, 11)
 
 		names := make([]string, len(checks))
 		for i, c := range checks {
 			names[i] = c.name
 		}
-		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint", "platform"}, names)
+		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint", "platform", "user"}, names)
 	})
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
 		checks := determineChecks(nil, skipMap, nil, currentCheckParams())
-		assert.Len(t, checks, 8)
+		assert.Len(t, checks, 9)
 
 		for _, c := range checks {
 			assert.NotEqual(t, "registry", c.name)
@@ -138,7 +138,7 @@ func TestDetermineChecks(t *testing.T) {
 			"age": true, "size": true, "ports": true,
 			"registry": true, "root-user": true, "secrets": true,
 			"healthcheck": true, "labels": true, "entrypoint": true,
-			"platform": true,
+			"platform": true, "user": true,
 		}
 		checks := determineChecks(nil, skipMap, nil, currentCheckParams())
 		assert.Len(t, checks, 0)
@@ -166,6 +166,7 @@ func TestDetermineChecks(t *testing.T) {
 				Labels:      &labelsCheckConfig{},
 				Entrypoint:  &entrypointCheckConfig{},
 				Platform:    &platformCheckConfig{},
+				User:        &userCheckConfig{},
 			},
 		}
 		checks := determineChecks(cfg, nil, nil, currentCheckParams())
@@ -203,6 +204,11 @@ func doResetGlobals() {
 	includeChecks = ""
 	failFast = false
 	allowedPlatforms = ""
+	userPolicy = ""
+	userMinUID = 0
+	userMaxUID = 0
+	blockedUsers = ""
+	requireNumeric = false
 	imageutil.ResetKeychain()
 }
 
@@ -286,7 +292,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
 	resetAllGlobals(t)
-	skipChecks = "root-user,registry,healthcheck,labels,entrypoint,platform" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
+	skipChecks = "root-user,registry,healthcheck,labels,entrypoint,platform,user" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
 
 	// Image runs as root but we skip root-user check
 	imageRef := createTestImage(t, testImageOptions{
@@ -473,7 +479,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 
 func TestRunAll_SkipAll(t *testing.T) {
 	resetAllGlobals(t)
-	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint,platform"
+	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint,platform,user"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000",
@@ -709,10 +715,10 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
 			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
-			"platform": true,
+			"platform": true, "user": true,
 		}
 		checks := determineChecks(nil, nil, includeMap, currentCheckParams())
-		assert.Len(t, checks, 10)
+		assert.Len(t, checks, 11)
 	})
 }
 
@@ -726,7 +732,7 @@ func TestSkippedCheckNames(t *testing.T) {
 	t.Run("with include map", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true}
 		names := skippedCheckNames(nil, includeMap)
-		assert.Len(t, names, 8)
+		assert.Len(t, names, 9)
 		assert.NotContains(t, names, "age")
 		assert.NotContains(t, names, "size")
 		assert.Contains(t, names, "ports")
@@ -737,6 +743,7 @@ func TestSkippedCheckNames(t *testing.T) {
 		assert.Contains(t, names, "labels")
 		assert.Contains(t, names, "entrypoint")
 		assert.Contains(t, names, "platform")
+		assert.Contains(t, names, "user")
 	})
 
 	t.Run("with neither", func(t *testing.T) {
@@ -748,7 +755,7 @@ func TestSkippedCheckNames(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
 			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
-			"platform": true,
+			"platform": true, "user": true,
 		}
 		names := skippedCheckNames(nil, includeMap)
 		assert.Nil(t, names)
@@ -1328,6 +1335,228 @@ func TestRenderEmptyResult_JSONMode(t *testing.T) {
 
 // TestRunAll_EntrypointWithCmdField tests that the entrypoint check renders
 // both Entrypoint and Cmd fields when an image defines both.
+func TestRunAll_UserIncluded(t *testing.T) {
+	resetAllGlobals(t)
+	includeChecks = "user"
+	userMinUID = 1000
+
+	imageRef := createTestImage(t, testImageOptions{
+		user: "5000",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "── user")
+	assert.Contains(t, out, "Running 1 checks")
+}
+
+func TestRunAll_UserFailsMinUID(t *testing.T) {
+	resetAllGlobals(t)
+	includeChecks = "user"
+	userMinUID = 1000
+
+	// UID 500 is below min-uid 1000
+	imageRef := createTestImage(t, testImageOptions{
+		user: "500",
+	})
+
+	// Mark min-uid as changed to simulate CLI --min-uid 1000
+	require.NoError(t, allCmd.Flags().Set("min-uid", "1000"))
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	assert.Contains(t, out, "── user")
+	assert.Contains(t, out, "below minimum")
+}
+
+func TestRunAll_UserAndRootUserBothPass(t *testing.T) {
+	resetAllGlobals(t)
+	includeChecks = "root-user,user"
+
+	// Non-root user with high UID -> both root-user and user pass
+	imageRef := createTestImage(t, testImageOptions{
+		user: "1000",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "── root-user")
+	assert.Contains(t, out, "── user")
+	assert.Contains(t, out, "Running 2 checks")
+}
+
+func TestRunAll_UserFailsButRootUserPasses(t *testing.T) {
+	resetAllGlobals(t)
+	includeChecks = "root-user,user"
+	userMinUID = 1000
+
+	// UID 500: non-root (root-user passes), but below min-uid (user fails)
+	imageRef := createTestImage(t, testImageOptions{
+		user: "500",
+	})
+
+	// Mark min-uid as changed
+	require.NoError(t, allCmd.Flags().Set("min-uid", "1000"))
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	assert.Contains(t, out, "── root-user")
+	assert.Contains(t, out, "── user")
+}
+
+func TestRunAll_UserSkipped(t *testing.T) {
+	resetAllGlobals(t)
+	skipChecks = "registry,healthcheck,labels,platform,user"
+
+	imageRef := createTestImage(t, testImageOptions{
+		user:       "1000",
+		created:    time.Now().Add(-10 * 24 * time.Hour),
+		layerCount: 2,
+		entrypoint: []string{"/docker-entrypoint.sh"},
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.NotContains(t, out, "── user")
+}
+
+func TestRunAll_UserWithConfig(t *testing.T) {
+	resetAllGlobals(t)
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := `checks:
+  user:
+    min-uid: 1000
+    max-uid: 65534
+    blocked-users:
+      - daemon
+      - nobody
+`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+
+	imageRef := createTestImage(t, testImageOptions{
+		user: "5000",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "── user")
+	assert.Contains(t, out, "Running 1 checks")
+}
+
+func TestRunAll_UserWithConfigFails(t *testing.T) {
+	resetAllGlobals(t)
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.yaml")
+	content := `checks:
+  user:
+    blocked-users:
+      - nobody
+`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+
+	imageRef := createTestImage(t, testImageOptions{
+		user: "nobody",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationFailed, Result)
+	assert.Contains(t, out, "── user")
+}
+
+func TestRunAll_UserWithInlinePolicy(t *testing.T) {
+	resetAllGlobals(t)
+
+	tmpDir := t.TempDir()
+	cfgFile := filepath.Join(tmpDir, "config.json")
+	content := `{
+		"checks": {
+			"user": {
+				"user-policy": {
+					"min-uid": 1000,
+					"max-uid": 65534
+				}
+			}
+		}
+	}`
+	err := os.WriteFile(cfgFile, []byte(content), 0600)
+	require.NoError(t, err)
+
+	configFile = cfgFile
+
+	imageRef := createTestImage(t, testImageOptions{
+		user: "5000",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, ValidationSucceeded, Result)
+	assert.Contains(t, out, "── user")
+}
+
+func TestRunAll_UserJSONOutput(t *testing.T) {
+	resetAllGlobals(t)
+	includeChecks = "user"
+	OutputFmt = output.FormatJSON
+
+	imageRef := createTestImage(t, testImageOptions{
+		user: "1000",
+	})
+
+	out := captureStdout(t, func() {
+		err := runAll(allCmd, imageRef)
+		require.NoError(t, err)
+	})
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal([]byte(out), &data))
+	assert.Equal(t, true, data["passed"])
+	checks := data["checks"].([]any)
+	require.Len(t, checks, 1)
+	userCheck := checks[0].(map[string]any)
+	assert.Equal(t, "user", userCheck["check"])
+	assert.Equal(t, true, userCheck["passed"])
+}
+
 func TestRunAll_EntrypointWithCmdField(t *testing.T) {
 	resetAllGlobals(t)
 	includeChecks = "entrypoint"

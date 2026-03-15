@@ -34,6 +34,7 @@ var textRenderers = map[string]func(*output.CheckResult){
 	checkLabels:      renderLabelsText,
 	checkEntrypoint:  renderEntrypointText,
 	checkPlatform:    renderPlatformText,
+	checkUser:        renderUserText,
 }
 
 // renderResult renders a CheckResult according to the given output format.
@@ -200,6 +201,23 @@ func renderPlatformText(r *output.CheckResult) {
 	d := mustDetails[output.PlatformDetails](r)
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking platform of image %s", r.Image)))
 	fmt.Printf("Image platform: %s\n", valueStyle.Render(d.Platform))
+	fmt.Println(statusPrefix(r.Passed) + r.Message)
+}
+
+func renderUserText(r *output.CheckResult) {
+	d := mustDetails[output.UserDetails](r)
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking user of image %s", r.Image)))
+
+	if d.User == "" {
+		fmt.Println(keyStyle.Render("User:") + " " + dimStyle.Render("(not set)"))
+	} else {
+		fmt.Printf("User: %s\n", valueStyle.Render(d.User))
+	}
+
+	for _, v := range d.Violations {
+		fmt.Printf("  - %s\n", FailStyle.Render(v.Message))
+	}
+
 	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 

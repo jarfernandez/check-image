@@ -468,6 +468,28 @@ Options:
 
 The platform string is constructed as `OS/Architecture` (e.g., `linux/amd64`) or `OS/Architecture/Variant` for architectures with variants (e.g., `linux/arm/v7`). The check validates the resolved image's platform — the platform of the concrete image that would actually be executed, not a manifest index listing.
 
+#### `user`
+Validates that the image user meets security requirements.
+
+```bash
+check-image user <image> [--user-policy <file>] [--min-uid <n>] [--max-uid <n>] [--blocked-users <list>] [--require-numeric]
+```
+
+Options:
+- `--user-policy`: Path to user policy file (JSON or YAML, optional). Supports `-` for stdin
+- `--min-uid`: Minimum allowed UID (optional)
+- `--max-uid`: Maximum allowed UID (optional)
+- `--blocked-users`: Comma-separated list of blocked usernames (optional)
+- `--require-numeric`: Require user to be a numeric UID (optional)
+
+Without any flags or policy file, performs a basic non-root check (same behavior as `root-user`). With flags or a policy file, enforces UID ranges, blocked usernames, and numeric UID requirements.
+
+Precedence: CLI flags override policy file values. When both are provided, the policy file is loaded first, then CLI flags are overlaid on top.
+
+**Limitation:** Without the image's `/etc/passwd`, username-to-UID resolution is not possible. The command validates the raw `User` field string only. UID range checks (`--min-uid`, `--max-uid`) only apply when the user is a numeric value.
+
+The `user` command coexists with `root-user` — both can run in the `all` command simultaneously. Use `--skip` or `--include` to control which checks run.
+
 #### `all`
 Runs all validation checks on a container image at once.
 
@@ -477,8 +499,8 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
-- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform)
-- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform)
+- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform, user)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform, user)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
 - `--max-layers`, `-y`: Maximum number of layers (default: 20)
@@ -490,12 +512,17 @@ Options:
 - `--skip-env-vars`: Skip environment variable checks in secrets detection
 - `--skip-files`: Skip file system checks in secrets detection
 - `--allow-shell-form`: Allow shell form for entrypoint or cmd
+- `--user-policy`: User policy file (JSON or YAML)
+- `--min-uid`: Minimum allowed UID
+- `--max-uid`: Maximum allowed UID
+- `--blocked-users`: Comma-separated list of blocked usernames
+- `--require-numeric`: Require user to be a numeric UID
 - `--fail-fast`: Stop on first check failure (default: false)
 
 Note: `--include` and `--skip` are mutually exclusive.
 
 Precedence rules:
-1. Without `--config`: all 10 checks run with defaults, except those in `--skip`
+1. Without `--config`: all 11 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
 3. `--include` overrides config file check selection (runs only specified checks)
 4. CLI flags override config file values
@@ -752,6 +779,15 @@ Example usage:
 check-image secrets nginx:latest --secrets-policy config/secrets-policy.json
 ```
 
+### User Policy Files
+- `config/user-policy.json` - Sample user validation policy in JSON format
+- `config/user-policy.yaml` - Sample user validation policy in YAML format
+
+Example usage:
+```bash
+check-image user nginx:latest --user-policy config/user-policy.yaml
+```
+
 ### All Checks Configuration Files
 - `config/config.json` - Sample configuration for the `all` command in JSON format
 - `config/config.yaml` - Sample configuration for the `all` command in YAML format
@@ -793,6 +829,12 @@ cat secrets-policy.yaml | \
   check-image secrets nginx:latest --secrets-policy -
 ```
 
+**User policy from stdin:**
+```bash
+echo '{"min-uid": 1000, "max-uid": 65534}' | \
+  check-image user nginx:latest --user-policy -
+```
+
 **Allowed ports from stdin:**
 ```bash
 echo '{"allowed-ports": [80, 443]}' | \
@@ -818,7 +860,7 @@ envsubst < config-template.yaml | \
 
 ### Inline Configuration
 
-The `all` command configuration files support **inline policy embedding**, allowing you to define `registry-policy` and `secrets-policy` as objects directly in the config file instead of referencing separate files. This simplifies deployment by consolidating all configuration into a single file.
+The `all` command configuration files support **inline policy embedding**, allowing you to define `registry-policy`, `secrets-policy`, `labels-policy`, and `user-policy` as objects directly in the config file instead of referencing separate files. This simplifies deployment by consolidating all configuration into a single file.
 
 **Example files:**
 - `config/config-inline.json` - Complete configuration with inline policies (JSON)
@@ -981,6 +1023,7 @@ The hooks run automatically on `git commit`. You can also:
 - `internal/output/`: Defines output format types, result structs, and JSON rendering helpers.
 - `internal/registry/`: Manages registry policies, including trusted and excluded registries.
 - `internal/secrets/`: Handles secrets detection, including policy loading and scanning for sensitive data in environment variables and files.
+- `internal/user/`: Handles user policy loading and validation for UID ranges, blocked usernames, and numeric UID requirements.
 - `internal/version/`: Manages the application version string, injected at build time via ldflags.
 - `config/`: Contains sample configuration files for registry policies, allowed ports, labels, secrets detection, and all-checks configuration.
 - `go.mod`: Defines the module and its dependencies.
@@ -997,7 +1040,7 @@ The hooks run automatically on `git commit`. You can also:
 
 ## Testing
 
-The project has comprehensive unit tests with 94.2% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
+The project has comprehensive unit tests with 94.6% overall coverage. All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity.
 
 ### Running Tests
 
@@ -1024,10 +1067,11 @@ go tool cover -html=coverage.out
 - **internal/labels**: 100.0% coverage
 - **internal/logutil**: 100.0% coverage
 - **internal/registry**: 100.0% coverage
+- **internal/user**: 100.0% coverage
 - **internal/secrets**: 97.4% coverage
 - **internal/fileutil**: 90.0% coverage
 - **internal/imageutil**: 88.7% coverage
-- **cmd/check-image/commands**: 90.6% coverage
+- **cmd/check-image/commands**: 91.5% coverage
 - **cmd/check-image**: 73.9% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.

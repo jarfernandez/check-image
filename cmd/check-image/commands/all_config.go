@@ -24,12 +24,14 @@ const (
 	checkLabels      = "labels"
 	checkEntrypoint  = "entrypoint"
 	checkPlatform    = "platform"
+	checkUser        = "user"
 )
 
 // validCheckNames lists all check names recognized by the all command.
 var validCheckNames = []string{
 	checkAge, checkSize, checkPorts, checkRegistry, checkRootUser,
 	checkSecrets, checkHealthcheck, checkLabels, checkEntrypoint, checkPlatform,
+	checkUser,
 }
 
 // allConfig represents the configuration file structure for the all command.
@@ -48,6 +50,7 @@ type allChecksConfig struct {
 	Labels      *labelsCheckConfig      `json:"labels,omitempty"       yaml:"labels,omitempty"`
 	Entrypoint  *entrypointCheckConfig  `json:"entrypoint,omitempty"   yaml:"entrypoint,omitempty"`
 	Platform    *platformCheckConfig    `json:"platform,omitempty"     yaml:"platform,omitempty"`
+	User        *userCheckConfig        `json:"user,omitempty"         yaml:"user,omitempty"`
 }
 
 type ageCheckConfig struct {
@@ -87,6 +90,14 @@ type labelsCheckConfig struct {
 
 type platformCheckConfig struct {
 	AllowedPlatforms any `json:"allowed-platforms,omitempty" yaml:"allowed-platforms,omitempty"`
+}
+
+type userCheckConfig struct {
+	UserPolicy     any      `json:"user-policy,omitempty"      yaml:"user-policy,omitempty"`
+	MinUID         *uint    `json:"min-uid,omitempty"          yaml:"min-uid,omitempty"`
+	MaxUID         *uint    `json:"max-uid,omitempty"          yaml:"max-uid,omitempty"`
+	BlockedUsers   []string `json:"blocked-users,omitempty"    yaml:"blocked-users,omitempty"`
+	RequireNumeric *bool    `json:"require-numeric,omitempty"  yaml:"require-numeric,omitempty"`
 }
 
 // parseCheckNameList parses a comma-separated list of check names and validates
@@ -160,6 +171,7 @@ func applyConfigValues(cmd *cobra.Command, cfg *allConfig) (func(), error) {
 		newApplyResult(applyRegistryConfig(cmd, cfg.Checks.Registry)),
 		newApplyResult(applySecretsConfig(cmd, cfg.Checks.Secrets)),
 		newApplyResult(applyLabelsConfig(cmd, cfg.Checks.Labels)),
+		newApplyResult(applyUserConfig(cmd, cfg.Checks.User)),
 	}
 
 	combined := func() {
@@ -260,6 +272,34 @@ func applyPlatformConfig(cmd *cobra.Command, cfg *platformCheckConfig) {
 	if cfg != nil && cfg.AllowedPlatforms != nil && !cmd.Flags().Changed("allowed-platforms") {
 		allowedPlatforms = formatAllowedList(cfg.AllowedPlatforms)
 	}
+}
+
+func applyUserConfig(cmd *cobra.Command, cfg *userCheckConfig) (func(), error) {
+	if cfg == nil {
+		return func() {}, nil
+	}
+	cleanup := func() {}
+	if cfg.UserPolicy != nil && !cmd.Flags().Changed("user-policy") {
+		path, cl, err := inlinePolicyToTempFile("user-policy", cfg.UserPolicy)
+		if err != nil {
+			return func() {}, fmt.Errorf("failed to apply inline user-policy: %w", err)
+		}
+		userPolicy = path
+		cleanup = cl
+	}
+	if cfg.MinUID != nil && !cmd.Flags().Changed("min-uid") {
+		userMinUID = *cfg.MinUID
+	}
+	if cfg.MaxUID != nil && !cmd.Flags().Changed("max-uid") {
+		userMaxUID = *cfg.MaxUID
+	}
+	if cfg.BlockedUsers != nil && !cmd.Flags().Changed("blocked-users") {
+		blockedUsers = strings.Join(cfg.BlockedUsers, ",")
+	}
+	if cfg.RequireNumeric != nil && !cmd.Flags().Changed("require-numeric") {
+		requireNumeric = *cfg.RequireNumeric
+	}
+	return cleanup, nil
 }
 
 // formatAllowedList converts a config value ([]any or string) to a comma-separated string.
