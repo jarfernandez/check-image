@@ -584,6 +584,22 @@ export CHECK_IMAGE_PASSWORD=mypassword
 check-image healthcheck my-registry.example.com/private-image:latest
 ```
 
+> **Security note:** Environment variables are readable from `/proc/<pid>/environ` by processes running as the same OS user. In CI/CD systems, always set `CHECK_IMAGE_PASSWORD` as a **masked secret** so the value is redacted from logs:
+>
+> ```yaml
+> # GitHub Actions
+> env:
+>   CHECK_IMAGE_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+>   CHECK_IMAGE_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
+> ```
+>
+> On shared machines, prefer `--password-stdin` or pass the variable inline to limit its lifetime to a single command:
+>
+> ```bash
+> CHECK_IMAGE_USERNAME="myuser" CHECK_IMAGE_PASSWORD="mytoken" \
+>   check-image healthcheck my-registry.example.com/private-image:latest
+> ```
+
 **Using `~/.docker/config.json` (already works — no flags needed):**
 ```bash
 docker login my-registry.example.com
