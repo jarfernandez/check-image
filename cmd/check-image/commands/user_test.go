@@ -625,6 +625,230 @@ func TestRunUser_TextOutput_Passing(t *testing.T) {
 	assert.NotContains(t, out, "Violations:")
 }
 
+func TestUserCommand_RunE(t *testing.T) {
+	t.Run("basic non-root passes", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		imageRef := createTestImage(t, testImageOptions{user: "1000", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationSucceeded, Result)
+		assert.Contains(t, out, "meets all requirements")
+	})
+
+	t.Run("root user fails", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		imageRef := createTestImage(t, testImageOptions{user: "root", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, out, "does not meet requirements")
+	})
+
+	t.Run("with policy file passes", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		tmpDir := t.TempDir()
+		policyPath := filepath.Join(tmpDir, "policy.yaml")
+		require.NoError(t, os.WriteFile(policyPath, []byte("min-uid: 1000\nmax-uid: 65534\n"), 0600))
+		userPolicy = policyPath
+
+		imageRef := createTestImage(t, testImageOptions{user: "5000", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationSucceeded, Result)
+		assert.Contains(t, out, "meets all requirements")
+	})
+
+	t.Run("with policy file fails", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		tmpDir := t.TempDir()
+		policyPath := filepath.Join(tmpDir, "policy.json")
+		require.NoError(t, os.WriteFile(policyPath, []byte(`{"min-uid": 1000}`), 0600))
+		userPolicy = policyPath
+
+		imageRef := createTestImage(t, testImageOptions{user: "500", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, out, "below minimum")
+	})
+
+	t.Run("with CLI flags overriding policy", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		// Policy says min-uid: 2000 (UID 1500 would fail)
+		tmpDir := t.TempDir()
+		policyPath := filepath.Join(tmpDir, "policy.yaml")
+		require.NoError(t, os.WriteFile(policyPath, []byte("min-uid: 2000\n"), 0600))
+		userPolicy = policyPath
+
+		// CLI overrides min-uid to 1000 (UID 1500 should now pass)
+		require.NoError(t, userCmd.Flags().Set("min-uid", "1000"))
+
+		imageRef := createTestImage(t, testImageOptions{user: "1500", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationSucceeded, Result)
+		assert.Contains(t, out, "meets all requirements")
+	})
+
+	t.Run("with CLI flags only", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		require.NoError(t, userCmd.Flags().Set("min-uid", "1000"))
+		require.NoError(t, userCmd.Flags().Set("blocked-users", "daemon,nobody"))
+
+		imageRef := createTestImage(t, testImageOptions{user: "daemon", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, out, "blocked")
+	})
+
+	t.Run("invalid policy file returns error", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		userPolicy = "/nonexistent/policy.yaml"
+
+		imageRef := createTestImage(t, testImageOptions{user: "1000", created: time.Now()})
+
+		err := userCmd.RunE(userCmd, []string{imageRef})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unable to load user policy")
+	})
+
+	t.Run("JSON output", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatJSON
+
+		require.NoError(t, userCmd.Flags().Set("min-uid", "1000"))
+
+		imageRef := createTestImage(t, testImageOptions{user: "500", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		var parsed map[string]any
+		require.NoError(t, json.Unmarshal([]byte(out), &parsed))
+		assert.Equal(t, "user", parsed["check"])
+		assert.Equal(t, false, parsed["passed"])
+
+		details := parsed["details"].(map[string]any)
+		assert.Equal(t, "500", details["user"])
+		violations := details["violations"].([]any)
+		require.Len(t, violations, 1)
+		v := violations[0].(map[string]any)
+		assert.Equal(t, "min-uid", v["rule"])
+	})
+
+	t.Run("stdin policy", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		r, w, err := os.Pipe()
+		require.NoError(t, err)
+		os.Stdin = r
+
+		go func() {
+			_, _ = w.Write([]byte(`{"min-uid": 2000}`))
+			w.Close()
+		}()
+
+		userPolicy = "-"
+
+		imageRef := createTestImage(t, testImageOptions{user: "1000", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, out, "below minimum")
+	})
+
+	t.Run("empty user fails", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		imageRef := createTestImage(t, testImageOptions{user: "", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, out, "(not set)")
+	})
+
+	t.Run("require-numeric via CLI flag", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+		OutputFmt = output.FormatText
+
+		require.NoError(t, userCmd.Flags().Set("require-numeric", "true"))
+
+		imageRef := createTestImage(t, testImageOptions{user: "appuser", created: time.Now()})
+
+		out := captureStdout(t, func() {
+			err := userCmd.RunE(userCmd, []string{imageRef})
+			require.NoError(t, err)
+		})
+
+		assert.Equal(t, ValidationFailed, Result)
+		assert.Contains(t, out, "numeric")
+	})
+}
+
 func ptrUintCmd(v uint) *uint {
 	return &v
 }
