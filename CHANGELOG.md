@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0](https://github.com/jarfernandez/check-image/compare/v0.20.10...v0.21.0) (2026-03-15)
+
+
+### Features
+
+* Add `user` command with policy-based validation ([#197](https://github.com/jarfernandez/check-image/issues/197)) ([f37ae30](https://github.com/jarfernandez/check-image/commit/f37ae30e5a5359ff444d3b8e9326ef23be80370f))
+
 ## [0.20.10](https://github.com/jarfernandez/check-image/compare/v0.20.9...v0.20.10) (2026-03-15)
 
 
