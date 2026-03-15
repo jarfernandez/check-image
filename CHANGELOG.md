@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.1](https://github.com/jarfernandez/check-image/compare/v0.21.0...v0.21.1) (2026-03-15)
+
+
+### Code Refactoring
+
+* Remove `keyStyle` and align text output across commands ([#199](https://github.com/jarfernandez/check-image/issues/199)) ([75df619](https://github.com/jarfernandez/check-image/commit/75df619bb5449ebe4d55393f01b45010de3c2746))
+
 ## [0.21.0](https://github.com/jarfernandez/check-image/compare/v0.20.10...v0.21.0) (2026-03-15)
 
 
