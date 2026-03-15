@@ -117,6 +117,26 @@ type EntrypointDetails struct {
 	Cmd              []string `json:"cmd,omitempty"`
 }
 
+// UserDetails holds details for the user check.
+type UserDetails struct {
+	User           string          `json:"user"`
+	UserPart       string          `json:"user-part,omitempty"`
+	GroupPart      string          `json:"group-part,omitempty"`
+	IsNumeric      bool            `json:"is-numeric"`
+	UID            *uint64         `json:"uid,omitempty"`
+	MinUID         *uint           `json:"min-uid,omitempty"`
+	MaxUID         *uint           `json:"max-uid,omitempty"`
+	BlockedUsers   []string        `json:"blocked-users,omitempty"`
+	RequireNumeric bool            `json:"require-numeric,omitempty"`
+	Violations     []UserViolation `json:"violations,omitempty"`
+}
+
+// UserViolation represents a single user validation failure.
+type UserViolation struct {
+	Rule    string `json:"rule"`
+	Message string `json:"message"`
+}
+
 // AllResult is the aggregated result for the "all" command.
 type AllResult struct {
 	Image   string        `json:"image"`

@@ -1120,6 +1120,281 @@ func TestInlinePolicyToTempFile_JSONMarshalError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to marshal inline test-policy")
 }
 
+func TestLoadAllConfig_UserSection(t *testing.T) {
+	t.Run("YAML with user config fields", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cfgFile := filepath.Join(tmpDir, "config.yaml")
+		content := `checks:
+  user:
+    min-uid: 1000
+    max-uid: 65534
+    blocked-users:
+      - daemon
+      - nobody
+    require-numeric: true
+`
+		err := os.WriteFile(cfgFile, []byte(content), 0600)
+		require.NoError(t, err)
+
+		cfg, err := loadAllConfig(cfgFile)
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Checks.User)
+		require.NotNil(t, cfg.Checks.User.MinUID)
+		assert.Equal(t, uint(1000), *cfg.Checks.User.MinUID)
+		require.NotNil(t, cfg.Checks.User.MaxUID)
+		assert.Equal(t, uint(65534), *cfg.Checks.User.MaxUID)
+		assert.Equal(t, []string{"daemon", "nobody"}, cfg.Checks.User.BlockedUsers)
+		require.NotNil(t, cfg.Checks.User.RequireNumeric)
+		assert.True(t, *cfg.Checks.User.RequireNumeric)
+	})
+
+	t.Run("JSON with user inline policy", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cfgFile := filepath.Join(tmpDir, "config.json")
+		content := `{
+			"checks": {
+				"user": {
+					"user-policy": {
+						"min-uid": 1000,
+						"blocked-users": ["daemon"]
+					}
+				}
+			}
+		}`
+		err := os.WriteFile(cfgFile, []byte(content), 0600)
+		require.NoError(t, err)
+
+		cfg, err := loadAllConfig(cfgFile)
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Checks.User)
+		require.NotNil(t, cfg.Checks.User.UserPolicy)
+		policyObj, ok := cfg.Checks.User.UserPolicy.(map[string]any)
+		require.True(t, ok, "user-policy should be a map")
+		assert.Contains(t, policyObj, "min-uid")
+	})
+
+	t.Run("JSON with user policy file path", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cfgFile := filepath.Join(tmpDir, "config.json")
+		content := `{
+			"checks": {
+				"user": {
+					"user-policy": "config/user-policy.yaml"
+				}
+			}
+		}`
+		err := os.WriteFile(cfgFile, []byte(content), 0600)
+		require.NoError(t, err)
+
+		cfg, err := loadAllConfig(cfgFile)
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Checks.User)
+		assert.Equal(t, "config/user-policy.yaml", cfg.Checks.User.UserPolicy)
+	})
+
+	t.Run("empty user section enables check", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cfgFile := filepath.Join(tmpDir, "config.yaml")
+		content := `checks:
+  user: {}
+`
+		err := os.WriteFile(cfgFile, []byte(content), 0600)
+		require.NoError(t, err)
+
+		cfg, err := loadAllConfig(cfgFile)
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Checks.User)
+		assert.Nil(t, cfg.Checks.User.MinUID)
+		assert.Nil(t, cfg.Checks.User.MaxUID)
+		assert.Nil(t, cfg.Checks.User.BlockedUsers)
+		assert.Nil(t, cfg.Checks.User.RequireNumeric)
+		assert.Nil(t, cfg.Checks.User.UserPolicy)
+	})
+}
+
+func TestApplyUserConfig(t *testing.T) {
+	t.Run("config values applied when flags not changed", func(t *testing.T) {
+		origUserPolicy := userPolicy
+		origUserMinUID := userMinUID
+		origUserMaxUID := userMaxUID
+		origBlockedUsers := blockedUsers
+		origRequireNumeric := requireNumeric
+		defer func() {
+			userPolicy = origUserPolicy
+			userMinUID = origUserMinUID
+			userMaxUID = origUserMaxUID
+			blockedUsers = origBlockedUsers
+			requireNumeric = origRequireNumeric
+		}()
+
+		userPolicy = ""
+		userMinUID = 0
+		userMaxUID = 0
+		blockedUsers = ""
+		requireNumeric = false
+
+		min := uint(1000)
+		max := uint(65534)
+		rn := true
+
+		cmd := &cobra.Command{}
+		cmd.Flags().StringVar(&userPolicy, "user-policy", "", "")
+		cmd.Flags().UintVar(&userMinUID, "min-uid", 0, "")
+		cmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "")
+		cmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "")
+		cmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "")
+
+		cfg := &userCheckConfig{
+			MinUID:         &min,
+			MaxUID:         &max,
+			BlockedUsers:   []string{"daemon", "nobody"},
+			RequireNumeric: &rn,
+		}
+
+		cleanup, err := applyUserConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
+
+		assert.Equal(t, uint(1000), userMinUID)
+		assert.Equal(t, uint(65534), userMaxUID)
+		assert.Equal(t, "daemon,nobody", blockedUsers)
+		assert.True(t, requireNumeric)
+	})
+
+	t.Run("CLI flags override config values", func(t *testing.T) {
+		origUserMinUID := userMinUID
+		origBlockedUsers := blockedUsers
+		defer func() {
+			userMinUID = origUserMinUID
+			blockedUsers = origBlockedUsers
+		}()
+
+		userMinUID = 500
+		blockedUsers = "cli-user"
+
+		min := uint(1000)
+
+		cmd := &cobra.Command{}
+		cmd.Flags().StringVar(&userPolicy, "user-policy", "", "")
+		cmd.Flags().UintVar(&userMinUID, "min-uid", 0, "")
+		cmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "")
+		cmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "")
+		cmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "")
+		require.NoError(t, cmd.Flags().Set("min-uid", "500"))
+		require.NoError(t, cmd.Flags().Set("blocked-users", "cli-user"))
+
+		cfg := &userCheckConfig{
+			MinUID:       &min,
+			BlockedUsers: []string{"daemon"},
+		}
+
+		cleanup, err := applyUserConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
+
+		// min-uid should keep CLI value
+		assert.Equal(t, uint(500), userMinUID)
+		// blocked-users should keep CLI value
+		assert.Equal(t, "cli-user", blockedUsers)
+	})
+
+	t.Run("nil config does nothing", func(t *testing.T) {
+		origUserMinUID := userMinUID
+		defer func() { userMinUID = origUserMinUID }()
+
+		cmd := &cobra.Command{}
+		// Use a local var so UintVar doesn't overwrite the global with its default
+		var localMinUID uint
+		cmd.Flags().StringVar(&userPolicy, "user-policy", "", "")
+		cmd.Flags().UintVar(&localMinUID, "min-uid", 0, "")
+		cmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "")
+		cmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "")
+		cmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "")
+
+		userMinUID = 42
+
+		cleanup, err := applyUserConfig(cmd, nil)
+		t.Cleanup(cleanup)
+		require.NoError(t, err)
+		assert.Equal(t, uint(42), userMinUID)
+	})
+
+	t.Run("inline policy creates temp file", func(t *testing.T) {
+		origUserPolicy := userPolicy
+		defer func() { userPolicy = origUserPolicy }()
+
+		userPolicy = ""
+
+		cmd := &cobra.Command{}
+		cmd.Flags().StringVar(&userPolicy, "user-policy", "", "")
+		cmd.Flags().UintVar(&userMinUID, "min-uid", 0, "")
+		cmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "")
+		cmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "")
+		cmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "")
+
+		cfg := &userCheckConfig{
+			UserPolicy: map[string]any{
+				"min-uid": float64(1000),
+			},
+		}
+
+		cleanup, err := applyUserConfig(cmd, cfg)
+		require.NoError(t, err)
+		assert.NotEmpty(t, userPolicy)
+		assert.Contains(t, userPolicy, "user-policy-")
+
+		// Verify temp file content
+		data, readErr := os.ReadFile(userPolicy)
+		require.NoError(t, readErr)
+		assert.Contains(t, string(data), "min-uid")
+
+		cleanup()
+		_, statErr := os.Stat(userPolicy)
+		assert.True(t, os.IsNotExist(statErr), "temp file should be removed by cleanup")
+	})
+
+	t.Run("invalid inline policy type returns error", func(t *testing.T) {
+		origUserPolicy := userPolicy
+		defer func() { userPolicy = origUserPolicy }()
+
+		userPolicy = "original"
+
+		cmd := &cobra.Command{}
+		cmd.Flags().StringVar(&userPolicy, "user-policy", "", "")
+		cmd.Flags().UintVar(&userMinUID, "min-uid", 0, "")
+		cmd.Flags().UintVar(&userMaxUID, "max-uid", 0, "")
+		cmd.Flags().StringVar(&blockedUsers, "blocked-users", "", "")
+		cmd.Flags().BoolVar(&requireNumeric, "require-numeric", false, "")
+
+		cfg := &userCheckConfig{
+			UserPolicy: 42,
+		}
+
+		cleanup, err := applyUserConfig(cmd, cfg)
+		t.Cleanup(cleanup)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to apply inline user-policy")
+	})
+}
+
+func TestDetermineChecks_UserInConfig(t *testing.T) {
+	cfg := &allConfig{
+		Checks: allChecksConfig{
+			User: &userCheckConfig{},
+		},
+	}
+
+	checks := determineChecks(cfg, nil, nil, currentCheckParams())
+	names := make([]string, 0, len(checks))
+	for _, c := range checks {
+		names = append(names, c.name)
+	}
+
+	assert.Contains(t, names, "user")
+	assert.NotContains(t, names, "age")
+	assert.NotContains(t, names, "registry")
+}
+
 func TestApplyRegistryConfig(t *testing.T) {
 	t.Run("config value applied when flag not changed", func(t *testing.T) {
 		origRegistryPolicy := registryPolicy
