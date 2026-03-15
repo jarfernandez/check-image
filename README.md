@@ -263,7 +263,7 @@ The action also generates a **Step Summary** visible in the GitHub Actions UI wi
 
 ### Requirements
 
-The action downloads the check-image binary from GitHub Releases, so no additional dependencies are needed for validating remote registry images. To validate local Docker images (e.g., after `docker build`), Docker must be available on the runner — this is satisfied by default on `ubuntu-latest` runners.
+The action downloads the check-image binary from GitHub Releases and verifies its SHA-256 checksum against the `checksums.txt` published by GoReleaser before execution. No additional dependencies are needed for validating remote registry images. To validate local Docker images (e.g., after `docker build`), Docker must be available on the runner — this is satisfied by default on `ubuntu-latest` runners.
 
 ## Usage
 
