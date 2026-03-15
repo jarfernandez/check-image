@@ -294,6 +294,150 @@ func TestParseBlockedUsers(t *testing.T) {
 	}
 }
 
+// resetUserCmdFlags resets the Changed state of all user-related flags on
+// userCmd. Cobra's pflag.Flag.Changed persists across subtests when using
+// a shared command, so we must clear it explicitly.
+func resetUserCmdFlags(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{"user-policy", "min-uid", "max-uid", "blocked-users", "require-numeric"} {
+		f := userCmd.Flags().Lookup(name)
+		if f != nil {
+			f.Changed = false
+		}
+	}
+	t.Cleanup(func() {
+		for _, name := range []string{"user-policy", "min-uid", "max-uid", "blocked-users", "require-numeric"} {
+			f := userCmd.Flags().Lookup(name)
+			if f != nil {
+				f.Changed = false
+			}
+		}
+	})
+}
+
+func TestResolveUserPolicy(t *testing.T) {
+	t.Run("no flags no policy returns nil", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		policy, err := resolveUserPolicy(userCmd)
+		require.NoError(t, err)
+		assert.Nil(t, policy)
+	})
+
+	t.Run("policy file only", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		tmpDir := t.TempDir()
+		policyPath := filepath.Join(tmpDir, "policy.yaml")
+		content := "min-uid: 1000\nmax-uid: 65534\n"
+		require.NoError(t, os.WriteFile(policyPath, []byte(content), 0600))
+
+		userPolicy = policyPath
+
+		policy, err := resolveUserPolicy(userCmd)
+		require.NoError(t, err)
+		require.NotNil(t, policy)
+		require.NotNil(t, policy.MinUID)
+		assert.Equal(t, uint(1000), *policy.MinUID)
+		require.NotNil(t, policy.MaxUID)
+		assert.Equal(t, uint(65534), *policy.MaxUID)
+	})
+
+	t.Run("flags only create policy", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		require.NoError(t, userCmd.Flags().Set("min-uid", "500"))
+		require.NoError(t, userCmd.Flags().Set("blocked-users", "daemon,nobody"))
+
+		policy, err := resolveUserPolicy(userCmd)
+		require.NoError(t, err)
+		require.NotNil(t, policy)
+		require.NotNil(t, policy.MinUID)
+		assert.Equal(t, uint(500), *policy.MinUID)
+		assert.Equal(t, []string{"daemon", "nobody"}, policy.BlockedUsers)
+		// max-uid was not set, so should remain nil
+		assert.Nil(t, policy.MaxUID)
+	})
+
+	t.Run("flags override policy file", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		tmpDir := t.TempDir()
+		policyPath := filepath.Join(tmpDir, "policy.yaml")
+		content := "min-uid: 2000\nmax-uid: 65534\nblocked-users:\n  - daemon\n"
+		require.NoError(t, os.WriteFile(policyPath, []byte(content), 0600))
+
+		userPolicy = policyPath
+		require.NoError(t, userCmd.Flags().Set("min-uid", "500"))
+
+		policy, err := resolveUserPolicy(userCmd)
+		require.NoError(t, err)
+		require.NotNil(t, policy)
+		// min-uid overridden by CLI
+		require.NotNil(t, policy.MinUID)
+		assert.Equal(t, uint(500), *policy.MinUID)
+		// max-uid from policy file
+		require.NotNil(t, policy.MaxUID)
+		assert.Equal(t, uint(65534), *policy.MaxUID)
+		// blocked-users from policy file (not overridden)
+		assert.Equal(t, []string{"daemon"}, policy.BlockedUsers)
+	})
+
+	t.Run("require-numeric flag", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		require.NoError(t, userCmd.Flags().Set("require-numeric", "true"))
+
+		policy, err := resolveUserPolicy(userCmd)
+		require.NoError(t, err)
+		require.NotNil(t, policy)
+		require.NotNil(t, policy.RequireNumeric)
+		assert.True(t, *policy.RequireNumeric)
+	})
+
+	t.Run("max-uid flag only", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		require.NoError(t, userCmd.Flags().Set("max-uid", "65534"))
+
+		policy, err := resolveUserPolicy(userCmd)
+		require.NoError(t, err)
+		require.NotNil(t, policy)
+		require.NotNil(t, policy.MaxUID)
+		assert.Equal(t, uint(65534), *policy.MaxUID)
+		assert.Nil(t, policy.MinUID)
+	})
+
+	t.Run("invalid policy file returns error", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		userPolicy = "/nonexistent/policy.yaml"
+
+		_, err := resolveUserPolicy(userCmd)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unable to load user policy")
+	})
+
+	t.Run("invalid min-uid > max-uid returns validation error", func(t *testing.T) {
+		resetAllGlobals(t)
+		resetUserCmdFlags(t)
+
+		require.NoError(t, userCmd.Flags().Set("min-uid", "5000"))
+		require.NoError(t, userCmd.Flags().Set("max-uid", "1000"))
+
+		_, err := resolveUserPolicy(userCmd)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "min-uid")
+	})
+}
+
 func TestRunUser_WithPolicyFile_YAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	policyPath := filepath.Join(tmpDir, "policy.yaml")
