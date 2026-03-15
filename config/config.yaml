@@ -19,3 +19,5 @@ checks:
   entrypoint: {}
   platform:
     allowed-platforms: "@config/allowed-platforms.yaml"
+  user:
+    user-policy: config/user-policy.yaml

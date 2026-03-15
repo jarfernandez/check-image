@@ -26,6 +26,9 @@
     "entrypoint": {},
     "platform": {
       "allowed-platforms": "@config/allowed-platforms.json"
+    },
+    "user": {
+      "user-policy": "config/user-policy.json"
     }
   }
 }

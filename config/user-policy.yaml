@@ -1,0 +1,9 @@
+min-uid: 1000
+max-uid: 65534
+blocked-users:
+  - daemon
+  - bin
+  - sys
+  - nobody
+  - www-data
+require-numeric: false
