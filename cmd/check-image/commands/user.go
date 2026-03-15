@@ -159,8 +159,6 @@ func runUser(ctx context.Context, imageName string, policy *user.Policy) (*outpu
 
 	details := output.UserDetails{
 		User:       userValue,
-		UserPart:   info.UserPart,
-		GroupPart:  info.GroupPart,
 		IsNumeric:  info.IsNumeric,
 		UID:        info.UID,
 		Violations: violations,

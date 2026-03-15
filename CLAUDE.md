@@ -215,7 +215,7 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 - Always enforces: non-empty user, not "root", not UID 0 (regardless of policy)
 - Policy validation: `min-uid` must not exceed `max-uid`; UID range checks only apply to numeric UIDs
 - Collects all violations (no short-circuit); reports machine-readable `rule` and human-readable `message`
-- Returns `UserDetails` with `user`, `user-part`, `group-part`, `is-numeric`, `uid`, violations, and policy constraints
+- Returns `UserDetails` with `user`, `is-numeric`, `uid`, violations, and policy constraints
 - Implementation: `internal/user/` package (`policy.go`, `validator.go`), `cmd/check-image/commands/user.go`
 - Coexists with `root-user` in `all` — no automatic exclusion; user manages with `--skip`/`--include`
 - Sample config files: `config/user-policy.yaml`, `config/user-policy.json`

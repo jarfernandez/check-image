@@ -248,7 +248,7 @@ func TestRunUser_DetailsOmitPolicyWhenNil(t *testing.T) {
 	assert.False(t, details.RequireNumeric)
 }
 
-func TestRunUser_UserPartAndGroupPart(t *testing.T) {
+func TestRunUser_UserWithGroup(t *testing.T) {
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000:2000",
 		created: time.Now(),
@@ -261,8 +261,6 @@ func TestRunUser_UserPartAndGroupPart(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, "1000:2000", details.User)
-	assert.Equal(t, "1000", details.UserPart)
-	assert.Equal(t, "2000", details.GroupPart)
 	assert.True(t, details.IsNumeric)
 	require.NotNil(t, details.UID)
 	assert.Equal(t, uint64(1000), *details.UID)
@@ -537,7 +535,6 @@ func TestRunUser_JSONOutput(t *testing.T) {
 
 	details := parsed["details"].(map[string]any)
 	assert.Equal(t, "500", details["user"])
-	assert.Equal(t, "500", details["user-part"])
 	assert.Equal(t, true, details["is-numeric"])
 	assert.Equal(t, float64(500), details["uid"])
 	assert.Equal(t, float64(1000), details["min-uid"])

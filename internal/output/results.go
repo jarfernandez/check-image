@@ -120,8 +120,6 @@ type EntrypointDetails struct {
 // UserDetails holds details for the user check.
 type UserDetails struct {
 	User           string          `json:"user"`
-	UserPart       string          `json:"user-part,omitempty"`
-	GroupPart      string          `json:"group-part,omitempty"`
 	IsNumeric      bool            `json:"is-numeric"`
 	UID            *uint64         `json:"uid,omitempty"`
 	MinUID         *uint           `json:"min-uid,omitempty"`
