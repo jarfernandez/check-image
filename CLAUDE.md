@@ -339,6 +339,7 @@ In `internal/secrets/`:
 - **Type**: Composite action that downloads the check-image binary from GitHub Releases (like Trivy), giving native Docker daemon access
 - **Files**: `action.yml` (action definition), `entrypoint.sh` (binary download + input-to-CLI mapping script)
 - **How it works**: Downloads the check-image binary for the runner's OS/arch from GitHub Releases, then runs `check-image all` directly on the runner. Maps `RUNNER_OS`/`RUNNER_ARCH` to goreleaser archive names (e.g., `Linux`/`X64` → `linux`/`amd64`)
+- **Integrity verification**: Downloads `checksums.txt` from the same release and verifies the SHA-256 hash of the binary archive before extraction. Uses `sha256sum` (Linux) or `shasum -a 256` (macOS). Aborts with exit code 2 if verification fails
 - **Command**: Always runs `check-image all` — individual check selection is done via the `checks` input (passed directly as `--include`) or the `skip` input (passed as `--skip`). The two inputs are mutually exclusive
 - **Output capture**: stdout (JSON) is captured separately from stderr (logs). JSON goes to the `json` output, logs go to the workflow log
 - **Step summary**: Generates `$GITHUB_STEP_SUMMARY` with results table, failed check details, and collapsible full JSON (uses `jq`, pre-installed on GitHub runners)

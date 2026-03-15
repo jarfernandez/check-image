@@ -7,6 +7,37 @@ set -euo pipefail
 
 readonly REPO="jarfernandez/check-image"
 
+# --- Verify SHA-256 checksum of downloaded archive ---
+verify_checksum() {
+  local checksums_file="$1"
+  local target_file="$2"
+  local expected_name="$3"
+
+  local expected_hash
+  expected_hash=$(grep "  ${expected_name}$" "${checksums_file}" | awk '{print $1}')
+
+  if [[ -z "${expected_hash}" ]]; then
+    echo "::error::Checksum not found for ${expected_name} in checksums.txt"
+    exit 2
+  fi
+
+  local actual_hash
+  if command -v sha256sum &>/dev/null; then
+    actual_hash=$(sha256sum "${target_file}" | awk '{print $1}')
+  else
+    actual_hash=$(shasum -a 256 "${target_file}" | awk '{print $1}')
+  fi
+
+  if [[ "${expected_hash}" != "${actual_hash}" ]]; then
+    echo "::error::Checksum verification failed for ${expected_name}"
+    echo "::error::Expected: ${expected_hash}"
+    echo "::error::Actual:   ${actual_hash}"
+    exit 2
+  fi
+
+  echo "Checksum verified: ${expected_name}"
+}
+
 # --- Map runner OS/arch to goreleaser archive names ---
 map_os() {
   case "${RUNNER_OS}" in
@@ -47,17 +78,30 @@ install_check_image() {
 
   echo "::group::Installing check-image v${version}"
 
+  # Download checksums file for integrity verification
+  local checksums_url="${url}/checksums.txt"
+  echo "Downloading: ${checksums_url}"
+  curl -fsSL "${checksums_url}" -o "${install_dir}/checksums.txt"
+
   if [[ "${os}" == "windows" ]]; then
-    local archive_url="${url}/${archive_name}.zip"
+    local archive_file="${archive_name}.zip"
+    local archive_url="${url}/${archive_file}"
     echo "Downloading: ${archive_url}"
-    curl -fsSL "${archive_url}" -o "${install_dir}/check-image.zip"
-    unzip -o -q "${install_dir}/check-image.zip" -d "${install_dir}"
-    rm -f "${install_dir}/check-image.zip"
+    curl -fsSL "${archive_url}" -o "${install_dir}/${archive_file}"
+    verify_checksum "${install_dir}/checksums.txt" "${install_dir}/${archive_file}" "${archive_file}"
+    unzip -o -q "${install_dir}/${archive_file}" -d "${install_dir}"
+    rm -f "${install_dir}/${archive_file}"
   else
-    local archive_url="${url}/${archive_name}.tar.gz"
+    local archive_file="${archive_name}.tar.gz"
+    local archive_url="${url}/${archive_file}"
     echo "Downloading: ${archive_url}"
-    curl -fsSL "${archive_url}" | tar xz -C "${install_dir}"
+    curl -fsSL "${archive_url}" -o "${install_dir}/${archive_file}"
+    verify_checksum "${install_dir}/checksums.txt" "${install_dir}/${archive_file}" "${archive_file}"
+    tar xz -C "${install_dir}" -f "${install_dir}/${archive_file}"
+    rm -f "${install_dir}/${archive_file}"
   fi
+
+  rm -f "${install_dir}/checksums.txt"
 
   # Add to PATH for this step
   echo "${install_dir}" >> "${GITHUB_PATH}"
