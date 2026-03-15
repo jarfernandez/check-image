@@ -93,7 +93,7 @@ func renderPortsText(r *output.CheckResult) {
 		return
 	}
 
-	fmt.Println(keyStyle.Render("Exposed ports:"))
+	fmt.Println("Exposed ports:")
 	for _, port := range d.ExposedPorts {
 		fmt.Printf("  - %s\n", valueStyle.Render(fmt.Sprintf("%d", port)))
 	}
@@ -104,7 +104,7 @@ func renderPortsText(r *output.CheckResult) {
 	}
 
 	if len(d.UnauthorizedPorts) > 0 {
-		fmt.Println(keyStyle.Render("The following ports are not in the allowed list:"))
+		fmt.Println("The following ports are not in the allowed list:")
 		for _, port := range d.UnauthorizedPorts {
 			fmt.Printf("  - %s\n", FailStyle.Render(fmt.Sprintf("%d", port)))
 		}
@@ -138,14 +138,14 @@ func renderSecretsText(r *output.CheckResult) {
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking secrets in image %s", r.Image)))
 
 	if len(d.EnvVarFindings) > 0 {
-		fmt.Printf("\n%s\n", keyStyle.Render("Environment Variables:"))
+		fmt.Printf("\nEnvironment variables:\n")
 		for _, finding := range d.EnvVarFindings {
 			fmt.Printf("  - %s (%s)\n", FailStyle.Render(finding.Name), finding.Description)
 		}
 	}
 
 	if len(d.FileFindings) > 0 {
-		fmt.Printf("\n%s\n", keyStyle.Render("Files with Sensitive Patterns:"))
+		fmt.Printf("\nFiles:\n")
 
 		// Group findings by layer for better readability
 		layerMap := make(map[int][]output.FileFinding)
@@ -209,7 +209,7 @@ func renderUserText(r *output.CheckResult) {
 	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking user of image %s", r.Image)))
 
 	if d.User == "" {
-		fmt.Println(keyStyle.Render("User:") + " " + dimStyle.Render("(not set)"))
+		fmt.Println("User: " + dimStyle.Render("(not set)"))
 	} else {
 		fmt.Printf("User: %s\n", valueStyle.Render(d.User))
 	}
@@ -227,7 +227,7 @@ func renderLabelsText(r *output.CheckResult) {
 
 	// Show required labels
 	if len(d.RequiredLabels) > 0 {
-		fmt.Printf("\n%s\n", keyStyle.Render("Required labels:"))
+		fmt.Printf("\nRequired labels:\n")
 		for _, req := range d.RequiredLabels {
 			switch {
 			case req.Pattern != "":
@@ -242,7 +242,7 @@ func renderLabelsText(r *output.CheckResult) {
 
 	// Show actual labels from image
 	if len(d.ActualLabels) > 0 {
-		fmt.Printf("\n%s\n", keyStyle.Render(fmt.Sprintf("Actual labels (%d):", len(d.ActualLabels))))
+		fmt.Printf("\nActual labels:\n")
 		// Sort keys for deterministic output
 		keys := make([]string, 0, len(d.ActualLabels))
 		for k := range d.ActualLabels {
@@ -250,7 +250,7 @@ func renderLabelsText(r *output.CheckResult) {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			fmt.Printf("  %s: %s\n", k, d.ActualLabels[k])
+			fmt.Printf("  - %s: %s\n", k, d.ActualLabels[k])
 		}
 	} else {
 		fmt.Println("\nNo labels found in image")
@@ -258,7 +258,7 @@ func renderLabelsText(r *output.CheckResult) {
 
 	// Show missing labels
 	if len(d.MissingLabels) > 0 {
-		fmt.Printf("\n%s\n", keyStyle.Render(fmt.Sprintf("Missing labels (%d):", len(d.MissingLabels))))
+		fmt.Printf("\nMissing labels:\n")
 		for _, name := range d.MissingLabels {
 			fmt.Printf("  - %s\n", FailStyle.Render(name))
 		}
@@ -266,7 +266,7 @@ func renderLabelsText(r *output.CheckResult) {
 
 	// Show invalid labels
 	if len(d.InvalidLabels) > 0 {
-		fmt.Printf("\n%s\n", keyStyle.Render(fmt.Sprintf("Invalid labels (%d):", len(d.InvalidLabels))))
+		fmt.Printf("\nInvalid labels:\n")
 		for _, inv := range d.InvalidLabels {
 			fmt.Printf("  - %s: %s\n", FailStyle.Render(inv.Name), inv.Reason)
 		}

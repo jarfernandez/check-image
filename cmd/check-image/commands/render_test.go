@@ -106,7 +106,7 @@ func TestRenderResult_TextMode(t *testing.T) {
 				},
 				Message: "Secrets found",
 			},
-			expectedParts: []string{"Checking secrets", "myapp:latest", "Environment Variables:", "API_KEY", "Files with Sensitive Patterns:", "id_rsa", "Total findings: 2"},
+			expectedParts: []string{"Checking secrets", "myapp:latest", "Environment variables:", "API_KEY", "Files:", "id_rsa", "Total findings: 2"},
 		},
 		{
 			name: "Labels check",
@@ -547,8 +547,8 @@ func TestRenderSecretsText_NoSecrets(t *testing.T) {
 	assert.Contains(t, captured, "Checking secrets in image clean-app:latest")
 	assert.Contains(t, captured, "Total findings: 0")
 	assert.Contains(t, captured, "No secrets found")
-	assert.NotContains(t, captured, "Environment Variables:")
-	assert.NotContains(t, captured, "Files with Sensitive Patterns:")
+	assert.NotContains(t, captured, "Environment variables:")
+	assert.NotContains(t, captured, "Files:")
 }
 
 func TestRenderSecretsText_EnvVarsOnly(t *testing.T) {
@@ -573,11 +573,11 @@ func TestRenderSecretsText_EnvVarsOnly(t *testing.T) {
 		renderSecretsText(result)
 	})
 
-	assert.Contains(t, captured, "Environment Variables:")
+	assert.Contains(t, captured, "Environment variables:")
 	assert.Contains(t, captured, "API_KEY (Contains 'key')")
 	assert.Contains(t, captured, "DB_PASSWORD (Contains 'password')")
 	assert.Contains(t, captured, "Total findings: 2 (2 environment variables, 0 files)")
-	assert.NotContains(t, captured, "Files with Sensitive Patterns:")
+	assert.NotContains(t, captured, "Files:")
 }
 
 func TestRenderSecretsText_FilesOnly(t *testing.T) {
@@ -602,13 +602,13 @@ func TestRenderSecretsText_FilesOnly(t *testing.T) {
 		renderSecretsText(result)
 	})
 
-	assert.Contains(t, captured, "Files with Sensitive Patterns:")
+	assert.Contains(t, captured, "Files:")
 	assert.Contains(t, captured, "Layer 1:")
 	assert.Contains(t, captured, "/root/.ssh/id_rsa (SSH private key)")
 	assert.Contains(t, captured, "Layer 2:")
 	assert.Contains(t, captured, "/etc/shadow (Shadow file)")
 	assert.Contains(t, captured, "Total findings: 2 (0 environment variables, 2 files)")
-	assert.NotContains(t, captured, "Environment Variables:")
+	assert.NotContains(t, captured, "Environment variables:")
 }
 
 func TestRenderSecretsText_Mixed(t *testing.T) {
@@ -635,9 +635,9 @@ func TestRenderSecretsText_Mixed(t *testing.T) {
 		renderSecretsText(result)
 	})
 
-	assert.Contains(t, captured, "Environment Variables:")
+	assert.Contains(t, captured, "Environment variables:")
 	assert.Contains(t, captured, "SECRET_TOKEN")
-	assert.Contains(t, captured, "Files with Sensitive Patterns:")
+	assert.Contains(t, captured, "Files:")
 	assert.Contains(t, captured, "Layer 1:")
 	assert.Contains(t, captured, "/app/.env")
 	assert.Contains(t, captured, "/app/.aws/credentials")
@@ -732,9 +732,9 @@ func TestRenderLabelsText_AllValid(t *testing.T) {
 	assert.Contains(t, captured, "Required labels:")
 	assert.Contains(t, captured, "maintainer (existence check)")
 	assert.Contains(t, captured, "version (pattern:")
-	assert.Contains(t, captured, "Actual labels (2):")
-	assert.Contains(t, captured, "maintainer: John Doe")
-	assert.Contains(t, captured, "version: v1.2.3")
+	assert.Contains(t, captured, "Actual labels:")
+	assert.Contains(t, captured, "- maintainer: John Doe")
+	assert.Contains(t, captured, "- version: v1.2.3")
 	assert.Contains(t, captured, "All required labels are present and valid")
 	assert.NotContains(t, captured, "Missing labels")
 	assert.NotContains(t, captured, "Invalid labels")
@@ -762,7 +762,7 @@ func TestRenderLabelsText_MissingLabels(t *testing.T) {
 	})
 
 	assert.Contains(t, captured, "No labels found in image")
-	assert.Contains(t, captured, "Missing labels (2):")
+	assert.Contains(t, captured, "Missing labels:")
 	assert.Contains(t, captured, "- maintainer")
 	assert.Contains(t, captured, "- version")
 	assert.Contains(t, captured, "Missing required labels")
@@ -795,7 +795,7 @@ func TestRenderLabelsText_InvalidValues(t *testing.T) {
 		renderLabelsText(result)
 	})
 
-	assert.Contains(t, captured, "Invalid labels (2):")
+	assert.Contains(t, captured, "Invalid labels:")
 	assert.Contains(t, captured, "- version: value \"1.2\" does not match pattern")
 	assert.Contains(t, captured, "- vendor: expected \"MyCompany\"")
 	assert.Contains(t, captured, "Invalid label values")
@@ -853,7 +853,7 @@ func TestRenderLabelsText_EmptyLabels(t *testing.T) {
 	})
 
 	assert.Contains(t, captured, "No labels found in image")
-	assert.Contains(t, captured, "Missing labels (1):")
+	assert.Contains(t, captured, "Missing labels:")
 	assert.NotContains(t, captured, "Actual labels")
 }
 
