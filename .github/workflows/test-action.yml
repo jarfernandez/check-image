@@ -9,7 +9,7 @@ on:
 
 jobs:
   test-defaults:
-    name: Test with defaults (skip registry and labels)
+    name: Test with defaults (skip checks requiring config)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,7 +21,7 @@ jobs:
         continue-on-error: true
         with:
           image: nginx:latest
-          skip: registry,labels
+          skip: registry,labels,platform
 
       - name: Verify action produced valid output
         run: |
@@ -70,7 +70,7 @@ jobs:
         with:
           image: nginx:latest
           config: config/config-inline.yaml
-          skip: registry,labels
+          skip: registry,labels,platform
 
       - name: Verify config file was processed
         run: |
