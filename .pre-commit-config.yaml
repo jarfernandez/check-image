@@ -34,6 +34,16 @@ repos:
       - id: golangci-lint-mod
         args: [--config=.golangci.yml]
 
+  # Apply Go code modernization rewrites
+  - repo: local
+    hooks:
+      - id: go-fix
+        name: go-fix
+        entry: go fix ./...
+        language: system
+        pass_filenames: false
+        types: [go]
+
   # Security scanning (warning only, does not block commits)
   - repo: local
     hooks:

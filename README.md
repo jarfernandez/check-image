@@ -936,7 +936,7 @@ go install ./cmd/check-image
 
 ### Pre-Commit Hooks
 
-This project uses pre-commit hooks to enforce code quality and formatting standards before each commit. The hooks automatically run `gofmt`, `go vet`, `golangci-lint`, `go mod tidy`, execute tests with `go-test-mod`, and validate commit messages follow Conventional Commits format.
+This project uses pre-commit hooks to enforce code quality and formatting standards before each commit. The hooks automatically run `gofmt`, `go fix`, `go vet`, `golangci-lint`, `go mod tidy`, execute tests with `go-test-mod`, and validate commit messages follow Conventional Commits format.
 
 #### Installation
 
@@ -995,6 +995,7 @@ The hooks run automatically on `git commit`. You can also:
 - Config validation: YAML and JSON syntax
 - Go formatting: `gofmt`
 - Go tidying: `go mod tidy`
+- Go modernization: `go fix` (applies API migration rewrites, e.g., `//go:fix inline`)
 - Go analysis: `go vet`
 - Go linting: `golangci-lint` (see `.golangci.yml` for configuration)
 - Go tests: `go test` via `go-test-mod`

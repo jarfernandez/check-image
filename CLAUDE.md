@@ -465,11 +465,11 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
-- Run `go fix ./...` to apply any API migration rewrites.
-- Run `go vet` and `golangci-lint` to ensure idiomatic Go.
+- Run `go fix ./...` to apply any API migration rewrites (e.g., inlining `//go:fix inline` functions to use `new(v)` syntax). This is enforced by the `go-fix` pre-commit hook.
+- Run `go vet` and `golangci-lint` to ensure idiomatic Go. The `modernize` linter (enabled by default in golangci-lint v2) detects code that `go fix` would rewrite, catching missed modernization in CI.
 - Keep `go.mod` tidy.
 - Run `pre-commit run --all-files` explicitly before committing and fix any reported issues before proceeding.
-- Pre-commit hooks enforce these requirements automatically on `git commit` as well.
+- Pre-commit hooks enforce these requirements automatically on `git commit` as well. The `go-fix` hook runs `go fix ./...` to apply code modernization rewrites before linting and testing.
 - See `.golangci.yml` for linter configuration (balanced settings).
 - Install hooks with: `pre-commit install && pre-commit install --hook-type commit-msg`.
 
