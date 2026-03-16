@@ -56,7 +56,7 @@ The `UpdateResult()` helper in `root.go` enforces this precedence. The iota orde
 - Controlled by the `--output`/`-o` global flag (values: `text` default, `json`)
 - Color output controlled by the `--color` global flag (values: `auto` default, `always`, `never`); only applies to `--output=text`
 - `internal/output/format.go`: Defines `Format` type, `ParseFormat()`, and `RenderJSON()` helper
-- `internal/output/results.go`: Result structs (`CheckResult`, `AgeDetails`, `SizeDetails`, `PortsDetails`, `RegistryDetails`, `RootUserDetails`, `HealthcheckDetails`, `SecretsDetails`, `LabelsDetails`, `AllResult`, `Summary`, `VersionResult`)
+- `internal/output/results.go`: Result structs (`CheckResult`, `AgeDetails`, `SizeDetails`, `PortsDetails`, `RegistryDetails`, `HealthcheckDetails`, `SecretsDetails`, `LabelsDetails`, `AllResult`, `Summary`, `VersionResult`)
 - `cmd/check-image/commands/render.go`: Text renderers for each check; `renderResult()` dispatches to JSON or text based on `OutputFmt`
 - `cmd/check-image/commands/styles.go`: Lip Gloss styles (`PassStyle`, `FailStyle`, `headerStyle`, `keyStyle`, `valueStyle`, `dimStyle`); `initRenderer(colorMode, out)` configures the renderer and updates all styles; `statusPrefix(passed)` returns colored ✓/✗; called from `PersistentPreRunE` after `--color` is parsed
 - In JSON mode, `main.go` suppresses the final "Validation succeeded/failed" text message (it's already in the JSON)
@@ -160,10 +160,6 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 - File format: `{"allowed-ports": [80, 443]}`
 - Parses ports from image config's `ExposedPorts` field (format: "8080/tcp")
 
-**root-user**: Validates that image runs as non-root
-- No flags
-- Checks if `config.Config.User` is empty or "root"
-
 **healthcheck**: Validates that the image has a healthcheck defined
 - No flags
 - Checks if `config.Config.Healthcheck` is not nil, has a non-empty test command, and test is not `["NONE"]` (explicitly disabled)
@@ -208,7 +204,7 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 
 **user**: Validates that the image user meets security requirements
 - Flags: `--user-policy` (optional, JSON or YAML file), `--min-uid` (optional), `--max-uid` (optional), `--blocked-users` (comma-separated, optional), `--require-numeric` (optional)
-- Without flags/policy: basic non-root check (same behavior as `root-user`)
+- Without flags/policy: basic non-root check (rejects empty user, "root", and UID 0)
 - With policy file or flags: enforces UID ranges, blocked usernames, numeric UID requirements
 - CLI flags override policy file values; `cmd.Flags().Changed()` distinguishes "not set" from "explicitly set to 0"
 - Validates raw `config.Config.User` string only (no `/etc/passwd` resolution available)
@@ -217,14 +213,13 @@ Implemented with `authn.NewMultiKeychain(staticKC, authn.DefaultKeychain)`.
 - Collects all violations (no short-circuit); reports machine-readable `rule` and human-readable `message`
 - Returns `UserDetails` with `user`, `is-numeric`, `uid`, violations, and policy constraints
 - Implementation: `internal/user/` package (`policy.go`, `validator.go`), `cmd/check-image/commands/user.go`
-- Coexists with `root-user` in `all` — no automatic exclusion; user manages with `--skip`/`--include`
 - Sample config files: `config/user-policy.yaml`, `config/user-policy.json`
 
 **all**: Runs all validation checks on a container image at once
 - Flags: `--config` (`-c`, config file), `--include` (comma-separated checks to run), `--skip` (comma-separated checks to skip), `--fail-fast` (stop on first failure), plus all individual check flags (`--max-age`, `--max-size`, `--max-layers`, `--allowed-ports`, `--allowed-platforms`, `--registry-policy`, `--labels-policy`, `--secrets-policy`, `--skip-env-vars`, `--skip-files`, `--allow-shell-form`, `--user-policy`, `--min-uid`, `--max-uid`, `--blocked-users`, `--require-numeric`)
 - `--include` and `--skip` are mutually exclusive
 - Precedence: CLI flags > config file values > defaults; `--include` and `--skip` always take precedence over config file check selection
-- Without `--config`: runs all 11 checks with defaults (except skipped, or only included)
+- Without `--config`: runs all 10 checks with defaults (except skipped, or only included)
 - With `--config`: only runs checks present in the config file (except skipped); `--include` overrides config check selection
 - Uses `applyConfigValues()` with `cmd.Flags().Changed()` to respect CLI overrides
 - Wrappers: `runPortsForAll()` calls `parseAllowedPorts()` before `runPorts()`; `runPlatformForAll()` calls `parseAllowedPlatforms()` before `runPlatform()`
@@ -390,7 +385,7 @@ Runs on push to `main`, PRs to `main`, and weekly (Monday 06:00 UTC). Performs C
 Runs on every push to `main`. Three chained jobs:
 1. **release-please**: Creates/updates a release PR with changelog and version bump. On merge, creates the git tag and GitHub release. Exports `releases_created` and `tag_name`.
 2. **goreleaser**: Depends on release-please. Only runs when `releases_created == 'true'`. Builds binaries for linux/darwin (amd64/arm64) and windows (amd64 only), uploads to the GitHub release via `mode: append`.
-3. **docker**: Depends on both release-please and goreleaser. Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), validates image with check-image (dogfooding: size, root-user, ports, secrets), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
+3. **docker**: Depends on both release-please and goreleaser. Only runs when `releases_created == 'true'`. Lints Dockerfile with hadolint, builds single-arch image for Trivy security scanning (CRITICAL/HIGH), validates image with check-image (dogfooding: size, user, ports, secrets), then builds and pushes multi-arch image (linux/amd64, linux/arm64) to GHCR with semver tags via `docker/metadata-action`.
 
 All release jobs must be in the same workflow because tags created by `GITHUB_TOKEN` do not trigger other workflows (GitHub limitation to prevent infinite loops).
 
@@ -470,11 +465,11 @@ All release jobs must be in the same workflow because tags created by `GITHUB_TO
 
 #### Formatting and Tooling
 - Format code with `gofmt`.
-- Run `go fix ./...` to apply any API migration rewrites.
-- Run `go vet` and `golangci-lint` to ensure idiomatic Go.
+- Run `go fix ./...` to apply any API migration rewrites (e.g., inlining `//go:fix inline` functions to use `new(v)` syntax). This is enforced by the `go-fix` pre-commit hook.
+- Run `go vet` and `golangci-lint` to ensure idiomatic Go. The `modernize` linter (enabled by default in golangci-lint v2) detects code that `go fix` would rewrite, catching missed modernization in CI.
 - Keep `go.mod` tidy.
 - Run `pre-commit run --all-files` explicitly before committing and fix any reported issues before proceeding.
-- Pre-commit hooks enforce these requirements automatically on `git commit` as well.
+- Pre-commit hooks enforce these requirements automatically on `git commit` as well. The `go-fix` hook runs `go fix ./...` to apply code modernization rewrites before linting and testing.
 - See `.golangci.yml` for linter configuration (balanced settings).
 - Install hooks with: `pre-commit install && pre-commit install --hook-type commit-msg`.
 

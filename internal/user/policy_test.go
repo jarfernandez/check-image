@@ -187,29 +187,29 @@ func TestPolicyValidate(t *testing.T) {
 		},
 		{
 			name:   "min-uid only",
-			policy: Policy{MinUID: ptrUint(1000)},
+			policy: Policy{MinUID: new(uint(1000))},
 		},
 		{
 			name:   "max-uid only",
-			policy: Policy{MaxUID: ptrUint(65534)},
+			policy: Policy{MaxUID: new(uint(65534))},
 		},
 		{
 			name:   "min-uid equals max-uid",
-			policy: Policy{MinUID: ptrUint(1000), MaxUID: ptrUint(1000)},
+			policy: Policy{MinUID: new(uint(1000)), MaxUID: new(uint(1000))},
 		},
 		{
 			name:   "min-uid less than max-uid",
-			policy: Policy{MinUID: ptrUint(1000), MaxUID: ptrUint(65534)},
+			policy: Policy{MinUID: new(uint(1000)), MaxUID: new(uint(65534))},
 		},
 		{
 			name:        "min-uid exceeds max-uid",
-			policy:      Policy{MinUID: ptrUint(65534), MaxUID: ptrUint(1000)},
+			policy:      Policy{MinUID: new(uint(65534)), MaxUID: new(uint(1000))},
 			wantErr:     true,
 			errContains: "min-uid (65534) must not exceed max-uid (1000)",
 		},
 		{
 			name:   "min-uid zero with max-uid",
-			policy: Policy{MinUID: ptrUint(0), MaxUID: ptrUint(65534)},
+			policy: Policy{MinUID: new(uint(0)), MaxUID: new(uint(65534))},
 		},
 	}
 
@@ -237,8 +237,4 @@ func TestLoadUserPolicy_MinExceedsMax(t *testing.T) {
 	_, err := LoadUserPolicy(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "min-uid (65534) must not exceed max-uid (1000)")
-}
-
-func ptrUint(v uint) *uint {
-	return &v
 }

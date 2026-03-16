@@ -23,7 +23,7 @@ var userCmd = &cobra.Command{
 	Short: "Validate that the image user meets security requirements",
 	Long: `Validate that the image user meets security requirements.
 
-Without any flags or policy file, performs a basic non-root check (same as root-user).
+Without any flags or policy file, performs a basic non-root check.
 With flags or a policy file, enforces UID ranges, blocked usernames, and numeric UID requirements.
 
 ` + imageArgFormatsDoc,

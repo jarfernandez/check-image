@@ -30,14 +30,14 @@ func TestParseUser(t *testing.T) {
 			input:     "1000",
 			userPart:  "1000",
 			isNumeric: true,
-			uid:       ptrUint64(1000),
+			uid:       new(uint64(1000)),
 		},
 		{
 			name:      "UID zero",
 			input:     "0",
 			userPart:  "0",
 			isNumeric: true,
-			uid:       ptrUint64(0),
+			uid:       new(uint64(0)),
 		},
 		{
 			name:      "UID with GID",
@@ -45,7 +45,7 @@ func TestParseUser(t *testing.T) {
 			userPart:  "1000",
 			groupPart: "1000",
 			isNumeric: true,
-			uid:       ptrUint64(1000),
+			uid:       new(uint64(1000)),
 		},
 		{
 			name:      "username with group",
@@ -73,7 +73,7 @@ func TestParseUser(t *testing.T) {
 			userPart:  "0",
 			groupPart: "somegroup",
 			isNumeric: true,
-			uid:       ptrUint64(0),
+			uid:       new(uint64(0)),
 		},
 	}
 
@@ -190,27 +190,27 @@ func TestValidateUser_WithPolicy(t *testing.T) {
 		{
 			name:   "UID in range passes",
 			user:   "1000",
-			policy: &Policy{MinUID: ptrUint(1000), MaxUID: ptrUint(65534)},
+			policy: &Policy{MinUID: new(uint(1000)), MaxUID: new(uint(65534))},
 			passed: true,
 		},
 		{
 			name:       "UID below minimum",
 			user:       "500",
-			policy:     &Policy{MinUID: ptrUint(1000)},
+			policy:     &Policy{MinUID: new(uint(1000))},
 			passed:     false,
 			violations: []string{"min-uid"},
 		},
 		{
 			name:       "UID above maximum",
 			user:       "70000",
-			policy:     &Policy{MaxUID: ptrUint(65534)},
+			policy:     &Policy{MaxUID: new(uint(65534))},
 			passed:     false,
 			violations: []string{"max-uid"},
 		},
 		{
 			name:       "UID below minimum and above maximum",
 			user:       "500",
-			policy:     &Policy{MinUID: ptrUint(1000), MaxUID: ptrUint(400)},
+			policy:     &Policy{MinUID: new(uint(1000)), MaxUID: new(uint(400))},
 			passed:     false,
 			violations: []string{"min-uid", "max-uid"},
 		},
@@ -230,65 +230,65 @@ func TestValidateUser_WithPolicy(t *testing.T) {
 		{
 			name:       "require numeric with username",
 			user:       "appuser",
-			policy:     &Policy{RequireNumeric: ptrBool(true)},
+			policy:     &Policy{RequireNumeric: new(true)},
 			passed:     false,
 			violations: []string{"require-numeric"},
 		},
 		{
 			name:   "require numeric with UID",
 			user:   "1000",
-			policy: &Policy{RequireNumeric: ptrBool(true)},
+			policy: &Policy{RequireNumeric: new(true)},
 			passed: true,
 		},
 		{
 			name:   "require numeric false with username",
 			user:   "appuser",
-			policy: &Policy{RequireNumeric: ptrBool(false)},
+			policy: &Policy{RequireNumeric: new(false)},
 			passed: true,
 		},
 		{
 			name:   "username not affected by UID range",
 			user:   "appuser",
-			policy: &Policy{MinUID: ptrUint(1000), MaxUID: ptrUint(65534)},
+			policy: &Policy{MinUID: new(uint(1000)), MaxUID: new(uint(65534))},
 			passed: true,
 		},
 		{
 			name:       "username blocked and require-numeric",
 			user:       "daemon",
-			policy:     &Policy{BlockedUsers: []string{"daemon"}, RequireNumeric: ptrBool(true)},
+			policy:     &Policy{BlockedUsers: []string{"daemon"}, RequireNumeric: new(true)},
 			passed:     false,
 			violations: []string{"require-numeric", "blocked-user"},
 		},
 		{
 			name:   "UID at exact minimum boundary",
 			user:   "1000",
-			policy: &Policy{MinUID: ptrUint(1000)},
+			policy: &Policy{MinUID: new(uint(1000))},
 			passed: true,
 		},
 		{
 			name:   "UID at exact maximum boundary",
 			user:   "65534",
-			policy: &Policy{MaxUID: ptrUint(65534)},
+			policy: &Policy{MaxUID: new(uint(65534))},
 			passed: true,
 		},
 		{
 			name:       "UID one below minimum",
 			user:       "999",
-			policy:     &Policy{MinUID: ptrUint(1000)},
+			policy:     &Policy{MinUID: new(uint(1000))},
 			passed:     false,
 			violations: []string{"min-uid"},
 		},
 		{
 			name:       "UID one above maximum",
 			user:       "65535",
-			policy:     &Policy{MaxUID: ptrUint(65534)},
+			policy:     &Policy{MaxUID: new(uint(65534))},
 			passed:     false,
 			violations: []string{"max-uid"},
 		},
 		{
 			name:   "UID with group and policy passes",
 			user:   "1000:1000",
-			policy: &Policy{MinUID: ptrUint(1000), MaxUID: ptrUint(65534)},
+			policy: &Policy{MinUID: new(uint(1000)), MaxUID: new(uint(65534))},
 			passed: true,
 		},
 		{
@@ -323,7 +323,7 @@ func TestValidateUser_WithPolicy(t *testing.T) {
 
 func TestValidateUser_AlwaysEnforcedRegardlessOfPolicy(t *testing.T) {
 	// Even with a permissive policy, root checks are always enforced
-	policy := &Policy{MinUID: ptrUint(0), MaxUID: ptrUint(65534)}
+	policy := &Policy{MinUID: new(uint(0)), MaxUID: new(uint(65534))}
 
 	t.Run("empty user fails even with policy", func(t *testing.T) {
 		result := ValidateUser("", policy)
@@ -355,13 +355,13 @@ func TestValidateUser_ViolationMessages(t *testing.T) {
 	})
 
 	t.Run("min-uid violation message", func(t *testing.T) {
-		result := ValidateUser("500", &Policy{MinUID: ptrUint(1000)})
+		result := ValidateUser("500", &Policy{MinUID: new(uint(1000))})
 		require.Len(t, result.Violations, 1)
 		assert.Equal(t, "UID 500 is below minimum 1000", result.Violations[0].Message)
 	})
 
 	t.Run("max-uid violation message", func(t *testing.T) {
-		result := ValidateUser("70000", &Policy{MaxUID: ptrUint(65534)})
+		result := ValidateUser("70000", &Policy{MaxUID: new(uint(65534))})
 		require.Len(t, result.Violations, 1)
 		assert.Equal(t, "UID 70000 is above maximum 65534", result.Violations[0].Message)
 	})
@@ -373,16 +373,8 @@ func TestValidateUser_ViolationMessages(t *testing.T) {
 	})
 
 	t.Run("require-numeric violation message", func(t *testing.T) {
-		result := ValidateUser("appuser", &Policy{RequireNumeric: ptrBool(true)})
+		result := ValidateUser("appuser", &Policy{RequireNumeric: new(true)})
 		require.Len(t, result.Violations, 1)
 		assert.Equal(t, `user "appuser" must be a numeric UID`, result.Violations[0].Message)
 	})
-}
-
-func ptrUint64(v uint64) *uint64 {
-	return &v
-}
-
-func ptrBool(v bool) *bool {
-	return &v
 }

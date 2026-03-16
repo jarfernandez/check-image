@@ -78,16 +78,6 @@ func TestRenderResult_TextMode(t *testing.T) {
 			expectedParts: []string{"Checking registry", "docker.io/nginx:latest", "Image registry: docker.io", "Registry is trusted"},
 		},
 		{
-			name: "Root user check",
-			result: &output.CheckResult{
-				Check:   checkRootUser,
-				Image:   "nginx:latest",
-				Passed:  true,
-				Message: "Image runs as non-root user",
-			},
-			expectedParts: []string{"Checking if image nginx:latest", "non-root user", "Image runs as non-root user"},
-		},
-		{
 			name: "Secrets check",
 			result: &output.CheckResult{
 				Check:  checkSecrets,
@@ -491,38 +481,6 @@ func TestRenderRegistryText_Skipped(t *testing.T) {
 	assert.Contains(t, captured, "Checking registry of image oci:/local/path:tag")
 	assert.Contains(t, captured, "Registry validation skipped (not applicable for this transport)")
 	assert.NotContains(t, captured, "Image registry:")
-}
-
-func TestRenderRootUserText_NonRoot(t *testing.T) {
-	result := &output.CheckResult{
-		Check:   checkRootUser,
-		Image:   "nginx:latest",
-		Passed:  true,
-		Message: "Image runs as non-root user",
-	}
-
-	captured := captureStdout(t, func() {
-		renderRootUserText(result)
-	})
-
-	assert.Contains(t, captured, "Checking if image nginx:latest is configured to run as a non-root user")
-	assert.Contains(t, captured, "Image runs as non-root user")
-}
-
-func TestRenderRootUserText_Root(t *testing.T) {
-	result := &output.CheckResult{
-		Check:   checkRootUser,
-		Image:   "old-app:v1",
-		Passed:  false,
-		Message: "Image runs as root user",
-	}
-
-	captured := captureStdout(t, func() {
-		renderRootUserText(result)
-	})
-
-	assert.Contains(t, captured, "Checking if image old-app:v1 is configured to run as a non-root user")
-	assert.Contains(t, captured, "Image runs as root user")
 }
 
 func TestRenderSecretsText_NoSecrets(t *testing.T) {

@@ -18,7 +18,6 @@ const (
 	checkSize        = "size"
 	checkPorts       = "ports"
 	checkRegistry    = "registry"
-	checkRootUser    = "root-user"
 	checkSecrets     = "secrets"
 	checkHealthcheck = "healthcheck"
 	checkLabels      = "labels"
@@ -29,7 +28,7 @@ const (
 
 // validCheckNames lists all check names recognized by the all command.
 var validCheckNames = []string{
-	checkAge, checkSize, checkPorts, checkRegistry, checkRootUser,
+	checkAge, checkSize, checkPorts, checkRegistry,
 	checkSecrets, checkHealthcheck, checkLabels, checkEntrypoint, checkPlatform,
 	checkUser,
 }
@@ -44,7 +43,6 @@ type allChecksConfig struct {
 	Size        *sizeCheckConfig        `json:"size,omitempty"      yaml:"size,omitempty"`
 	Ports       *portsCheckConfig       `json:"ports,omitempty"     yaml:"ports,omitempty"`
 	Registry    *registryCheckConfig    `json:"registry,omitempty"  yaml:"registry,omitempty"`
-	RootUser    *rootUserCheckConfig    `json:"root-user,omitempty" yaml:"root-user,omitempty"`
 	Secrets     *secretsCheckConfig     `json:"secrets,omitempty"   yaml:"secrets,omitempty"`
 	Healthcheck *healthcheckCheckConfig `json:"healthcheck,omitempty"  yaml:"healthcheck,omitempty"`
 	Labels      *labelsCheckConfig      `json:"labels,omitempty"       yaml:"labels,omitempty"`
@@ -69,8 +67,6 @@ type portsCheckConfig struct {
 type registryCheckConfig struct {
 	RegistryPolicy any `json:"registry-policy,omitempty" yaml:"registry-policy,omitempty"`
 }
-
-type rootUserCheckConfig struct{}
 
 type healthcheckCheckConfig struct{}
 

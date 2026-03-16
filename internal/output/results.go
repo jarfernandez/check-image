@@ -46,11 +46,6 @@ type RegistryDetails struct {
 	Skipped  bool   `json:"skipped,omitempty"`
 }
 
-// RootUserDetails holds details for the root-user check.
-type RootUserDetails struct {
-	User string `json:"user"`
-}
-
 // SecretsDetails holds details for the secrets check.
 type SecretsDetails struct {
 	EnvVarFindings []EnvVarFinding `json:"env-var-findings,omitempty"`

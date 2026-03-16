@@ -15,7 +15,6 @@
         "trusted-registries": ["index.docker.io", "docker.io", "ghcr.io", "gcr.io", "quay.io"]
       }
     },
-    "root-user": {},
     "secrets": {
       "secrets-policy": {
         "check-env-vars": true,
