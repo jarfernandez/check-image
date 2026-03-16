@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0](https://github.com/jarfernandez/check-image/compare/v0.21.1...v1.0.0) (2026-03-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* The `root-user` command has been removed. Use `user` instead, which provides the same basic non-root check plus additional policy-based validation (UID ranges, blocked users, numeric UID requirements).
+
+### Features
+
+* Remove `root-user` command in favor of `user` command ([#201](https://github.com/jarfernandez/check-image/issues/201)) ([43ca533](https://github.com/jarfernandez/check-image/commit/43ca533e9323ddca6bc94ef9b3edf5d43a0824f9))
+
+
+### Bug Fixes
+
+* Use `release-as` to target v1.0.0 instead of editing manifest ([#203](https://github.com/jarfernandez/check-image/issues/203)) ([e24f54a](https://github.com/jarfernandez/check-image/commit/e24f54a1585f037f0784d26801f780cdde461e50))
+
 ## [0.21.1](https://github.com/jarfernandez/check-image/compare/v0.21.0...v0.21.1) (2026-03-15)
 
 
