@@ -23,18 +23,13 @@ repos:
     hooks:
       - id: actionlint
 
-  # Go-specific hooks
+  # Go formatting and modernization
   - repo: https://github.com/tekwizely/pre-commit-golang
     rev: v1.0.0-rc.1
     hooks:
       - id: go-fmt
         args: [-w]
-      - id: go-mod-tidy
-      - id: go-vet-mod
-      - id: golangci-lint-mod
-        args: [--config=.golangci.yml]
 
-  # Apply Go code modernization rewrites
   - repo: local
     hooks:
       - id: go-fix
@@ -43,6 +38,15 @@ repos:
         language: system
         pass_filenames: false
         types: [go]
+
+  # Go analysis, linting, and testing
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+      - id: go-mod-tidy
+      - id: go-vet-mod
+      - id: golangci-lint-mod
+        args: [--config=.golangci.yml]
 
   # Security scanning (warning only, does not block commits)
   - repo: local
