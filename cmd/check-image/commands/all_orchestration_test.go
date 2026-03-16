@@ -83,21 +83,21 @@ func TestAllCommandFlags(t *testing.T) {
 }
 
 func TestDetermineChecks(t *testing.T) {
-	t.Run("no config no skip runs all 11 checks", func(t *testing.T) {
+	t.Run("no config no skip runs all 10 checks", func(t *testing.T) {
 		checks := determineChecks(nil, nil, nil, currentCheckParams())
-		assert.Len(t, checks, 11)
+		assert.Len(t, checks, 10)
 
 		names := make([]string, len(checks))
 		for i, c := range checks {
 			names[i] = c.name
 		}
-		assert.Equal(t, []string{"age", "size", "ports", "registry", "root-user", "secrets", "healthcheck", "labels", "entrypoint", "platform", "user"}, names)
+		assert.Equal(t, []string{"age", "size", "ports", "registry", "secrets", "healthcheck", "labels", "entrypoint", "platform", "user"}, names)
 	})
 
 	t.Run("skip excludes checks", func(t *testing.T) {
 		skipMap := map[string]bool{"registry": true, "secrets": true}
 		checks := determineChecks(nil, skipMap, nil, currentCheckParams())
-		assert.Len(t, checks, 9)
+		assert.Len(t, checks, 8)
 
 		for _, c := range checks {
 			assert.NotEqual(t, "registry", c.name)
@@ -108,35 +108,35 @@ func TestDetermineChecks(t *testing.T) {
 	t.Run("config selects subset", func(t *testing.T) {
 		cfg := &allConfig{
 			Checks: allChecksConfig{
-				Age:      &ageCheckConfig{},
-				RootUser: &rootUserCheckConfig{},
+				Age:  &ageCheckConfig{},
+				User: &userCheckConfig{},
 			},
 		}
 		checks := determineChecks(cfg, nil, nil, currentCheckParams())
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
-		assert.Equal(t, "root-user", checks[1].name)
+		assert.Equal(t, "user", checks[1].name)
 	})
 
 	t.Run("config plus skip", func(t *testing.T) {
 		cfg := &allConfig{
 			Checks: allChecksConfig{
-				Age:      &ageCheckConfig{},
-				Size:     &sizeCheckConfig{},
-				RootUser: &rootUserCheckConfig{},
+				Age:  &ageCheckConfig{},
+				Size: &sizeCheckConfig{},
+				User: &userCheckConfig{},
 			},
 		}
 		skipMap := map[string]bool{"size": true}
 		checks := determineChecks(cfg, skipMap, nil, currentCheckParams())
 		assert.Len(t, checks, 2)
 		assert.Equal(t, "age", checks[0].name)
-		assert.Equal(t, "root-user", checks[1].name)
+		assert.Equal(t, "user", checks[1].name)
 	})
 
 	t.Run("skip all gives 0 checks", func(t *testing.T) {
 		skipMap := map[string]bool{
 			"age": true, "size": true, "ports": true,
-			"registry": true, "root-user": true, "secrets": true,
+			"registry": true, "secrets": true,
 			"healthcheck": true, "labels": true, "entrypoint": true,
 			"platform": true, "user": true,
 		}
@@ -160,7 +160,6 @@ func TestDetermineChecks(t *testing.T) {
 				Size:        &sizeCheckConfig{},
 				Ports:       &portsCheckConfig{},
 				Registry:    &registryCheckConfig{},
-				RootUser:    &rootUserCheckConfig{},
 				Secrets:     &secretsCheckConfig{},
 				Healthcheck: &healthcheckCheckConfig{},
 				Labels:      &labelsCheckConfig{},
@@ -261,7 +260,7 @@ func TestRunAll_AllChecksPass(t *testing.T) {
 	assert.Equal(t, ValidationSucceeded, Result)
 	assert.Contains(t, output, "── age")
 	assert.Contains(t, output, "── size")
-	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── user")
 	assert.Contains(t, output, "── secrets")
 	assert.NotContains(t, output, "── registry")
 }
@@ -270,7 +269,7 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 	resetAllGlobals(t)
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 
-	// Image runs as root -> root-user check fails
+	// Image runs as root -> user check fails
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "root",
 		created:    time.Now().Add(-10 * 24 * time.Hour),
@@ -286,15 +285,15 @@ func TestRunAll_OneCheckFails_OthersContinue(t *testing.T) {
 	// Verify other checks still ran
 	assert.Contains(t, output, "── age")
 	assert.Contains(t, output, "── size")
-	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── user")
 	assert.Contains(t, output, "── secrets")
 }
 
 func TestRunAll_SkipFailingCheck(t *testing.T) {
 	resetAllGlobals(t)
-	skipChecks = "root-user,registry,healthcheck,labels,entrypoint,platform,user" // skip root-user (would fail) and checks that require policy files or missing healthcheck/entrypoint
+	skipChecks = "user,registry,healthcheck,labels,entrypoint,platform" // skip user (would fail) and checks that require policy files or missing healthcheck/entrypoint
 
-	// Image runs as root but we skip root-user check
+	// Image runs as root but we skip user check
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "root",
 		created:    time.Now().Add(-10 * 24 * time.Hour),
@@ -307,7 +306,7 @@ func TestRunAll_SkipFailingCheck(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationSucceeded, Result)
-	assert.NotContains(t, output, "── root-user")
+	assert.NotContains(t, output, "── user")
 	assert.NotContains(t, output, "── registry")
 }
 
@@ -319,7 +318,7 @@ func TestRunAll_ConfigSelectsSubset(t *testing.T) {
 	content := `checks:
   age:
     max-age: 90
-  root-user: {}
+  user: {}
 `
 	err := os.WriteFile(cfgFile, []byte(content), 0600)
 	require.NoError(t, err)
@@ -339,7 +338,7 @@ func TestRunAll_ConfigSelectsSubset(t *testing.T) {
 
 	assert.Equal(t, ValidationSucceeded, Result)
 	assert.Contains(t, output, "── age")
-	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── user")
 	assert.NotContains(t, output, "── size")
 	assert.NotContains(t, output, "── ports")
 	assert.NotContains(t, output, "── registry")
@@ -357,7 +356,7 @@ func TestRunAll_ConfigPlusSkip(t *testing.T) {
     max-age: 90
   size:
     max-size: 500
-  root-user: {}
+  user: {}
 `
 	err := os.WriteFile(cfgFile, []byte(content), 0600)
 	require.NoError(t, err)
@@ -378,7 +377,7 @@ func TestRunAll_ConfigPlusSkip(t *testing.T) {
 
 	assert.Equal(t, ValidationSucceeded, Result)
 	assert.Contains(t, output, "── age")
-	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── user")
 	assert.NotContains(t, output, "── size")
 	assert.Contains(t, output, "Running 2 checks")
 }
@@ -479,7 +478,7 @@ func TestRunAll_PortsWithoutAllowedPorts(t *testing.T) {
 
 func TestRunAll_SkipAll(t *testing.T) {
 	resetAllGlobals(t)
-	skipChecks = "age,size,ports,registry,root-user,secrets,healthcheck,labels,entrypoint,platform,user"
+	skipChecks = "age,size,ports,registry,secrets,healthcheck,labels,entrypoint,platform,user"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:    "1000",
@@ -531,11 +530,11 @@ func TestAllCommandFailFastFlag(t *testing.T) {
 
 func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 	resetAllGlobals(t)
-	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,entrypoint,platform" // skip checks that require policy files or extra config
 	failFast = true
 
-	// Image runs as root -> root-user check fails
-	// age and size run before root-user, secrets runs after
+	// Image runs as root -> user check fails
+	// age, size, ports, secrets run before user
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "root",
 		created:    time.Now().Add(-10 * 24 * time.Hour),
@@ -548,15 +547,13 @@ func TestRunAll_FailFast_StopsOnValidationFailure(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationFailed, Result)
-	// root-user should have run and failed
-	assert.Contains(t, output, "── root-user")
-	// secrets comes after root-user, should NOT have run
-	assert.NotContains(t, output, "── secrets")
+	// user should have run and failed
+	assert.Contains(t, output, "── user")
 }
 
 func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 	resetAllGlobals(t)
-	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
+	skipChecks = "registry,healthcheck,labels,entrypoint,platform" // skip checks that require policy files or extra config
 	failFast = true
 
 	// Provide invalid allowed-ports to cause an execution error in ports check
@@ -576,9 +573,9 @@ func TestRunAll_FailFast_StopsOnExecutionError(t *testing.T) {
 	assert.Equal(t, ExecutionError, Result)
 	// ports should have run (and errored)
 	assert.Contains(t, output, "── ports")
-	// root-user and secrets come after ports, should NOT have run
-	assert.NotContains(t, output, "── root-user")
+	// secrets and user come after ports, should NOT have run
 	assert.NotContains(t, output, "── secrets")
+	assert.NotContains(t, output, "── user")
 }
 
 func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
@@ -586,7 +583,7 @@ func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	skipChecks = "registry,healthcheck,labels,platform" // skip checks that require policy files or missing healthcheck
 	failFast = false
 
-	// Image runs as root -> root-user check fails
+	// Image runs as root -> user check fails
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "root",
 		created:    time.Now().Add(-10 * 24 * time.Hour),
@@ -599,10 +596,10 @@ func TestRunAll_FailFastDisabled_RunsAllChecks(t *testing.T) {
 	})
 
 	assert.Equal(t, ValidationFailed, Result)
-	// All checks should have run despite root-user failure
+	// All checks should have run despite user failure
 	assert.Contains(t, output, "── age")
 	assert.Contains(t, output, "── size")
-	assert.Contains(t, output, "── root-user")
+	assert.Contains(t, output, "── user")
 	assert.Contains(t, output, "── secrets")
 }
 
@@ -670,15 +667,15 @@ func TestDetermineChecks_HealthcheckInConfig(t *testing.T) {
 	cfg := &allConfig{
 		Checks: allChecksConfig{
 			Age:         &ageCheckConfig{},
-			RootUser:    &rootUserCheckConfig{},
+			User:        &userCheckConfig{},
 			Healthcheck: &healthcheckCheckConfig{},
 		},
 	}
 	checks := determineChecks(cfg, nil, nil, currentCheckParams())
 	assert.Len(t, checks, 3)
 	assert.Equal(t, "age", checks[0].name)
-	assert.Equal(t, "root-user", checks[1].name)
-	assert.Equal(t, "healthcheck", checks[2].name)
+	assert.Equal(t, "healthcheck", checks[1].name)
+	assert.Equal(t, "user", checks[2].name)
 }
 
 func TestDetermineChecks_IncludeMap(t *testing.T) {
@@ -693,11 +690,11 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 	t.Run("includeMap overrides config selection", func(t *testing.T) {
 		cfg := &allConfig{
 			Checks: allChecksConfig{
-				Age:      &ageCheckConfig{},
-				RootUser: &rootUserCheckConfig{},
+				Age:  &ageCheckConfig{},
+				User: &userCheckConfig{},
 			},
 		}
-		// Config enables age and root-user, but --include asks only for size
+		// Config enables age and user, but --include asks only for size
 		includeMap := map[string]bool{"size": true}
 		checks := determineChecks(cfg, nil, includeMap, currentCheckParams())
 		assert.Len(t, checks, 1)
@@ -714,11 +711,11 @@ func TestDetermineChecks_IncludeMap(t *testing.T) {
 	t.Run("includeMap all checks", func(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
-			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
+			"secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
 			"platform": true, "user": true,
 		}
 		checks := determineChecks(nil, nil, includeMap, currentCheckParams())
-		assert.Len(t, checks, 11)
+		assert.Len(t, checks, 10)
 	})
 }
 
@@ -732,12 +729,11 @@ func TestSkippedCheckNames(t *testing.T) {
 	t.Run("with include map", func(t *testing.T) {
 		includeMap := map[string]bool{"age": true, "size": true}
 		names := skippedCheckNames(nil, includeMap)
-		assert.Len(t, names, 9)
+		assert.Len(t, names, 8)
 		assert.NotContains(t, names, "age")
 		assert.NotContains(t, names, "size")
 		assert.Contains(t, names, "ports")
 		assert.Contains(t, names, "registry")
-		assert.Contains(t, names, "root-user")
 		assert.Contains(t, names, "secrets")
 		assert.Contains(t, names, "healthcheck")
 		assert.Contains(t, names, "labels")
@@ -754,7 +750,7 @@ func TestSkippedCheckNames(t *testing.T) {
 	t.Run("include all checks returns nil", func(t *testing.T) {
 		includeMap := map[string]bool{
 			"age": true, "size": true, "ports": true, "registry": true,
-			"root-user": true, "secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
+			"secrets": true, "healthcheck": true, "labels": true, "entrypoint": true,
 			"platform": true, "user": true,
 		}
 		names := skippedCheckNames(nil, includeMap)
@@ -784,7 +780,7 @@ func TestRunAll_IncludeAndSkipMutuallyExclusive(t *testing.T) {
 
 func TestRunAll_IncludeSelectsSubset(t *testing.T) {
 	resetAllGlobals(t)
-	includeChecks = "age,root-user"
+	includeChecks = "age,user"
 
 	imageRef := createTestImage(t, testImageOptions{
 		user:       "1000",
@@ -799,7 +795,7 @@ func TestRunAll_IncludeSelectsSubset(t *testing.T) {
 
 	assert.Equal(t, ValidationSucceeded, Result)
 	assert.Contains(t, out, "── age")
-	assert.Contains(t, out, "── root-user")
+	assert.Contains(t, out, "── user")
 	assert.NotContains(t, out, "── size")
 	assert.NotContains(t, out, "── ports")
 	assert.NotContains(t, out, "── registry")
@@ -817,13 +813,13 @@ func TestRunAll_IncludeOverridesConfig(t *testing.T) {
 	content := `checks:
   age:
     max-age: 90
-  root-user: {}
+  user: {}
 `
 	err := os.WriteFile(cfgFile, []byte(content), 0600)
 	require.NoError(t, err)
 
 	configFile = cfgFile
-	// Config enables age and root-user, but --include overrides to only size
+	// Config enables age and user, but --include overrides to only size
 	includeChecks = "size"
 
 	imageRef := createTestImage(t, testImageOptions{
@@ -840,7 +836,7 @@ func TestRunAll_IncludeOverridesConfig(t *testing.T) {
 	assert.Equal(t, ValidationSucceeded, Result)
 	assert.Contains(t, out, "── size")
 	assert.NotContains(t, out, "── age")
-	assert.NotContains(t, out, "── root-user")
+	assert.NotContains(t, out, "── user")
 	assert.Contains(t, out, "Running 1 checks")
 }
 
@@ -1234,7 +1230,7 @@ func TestRenderAllJSON_WithFailures(t *testing.T) {
 
 	results := []output.CheckResult{
 		{Check: checkAge, Image: "nginx:latest", Passed: true, Message: "Image is recent"},
-		{Check: checkRootUser, Image: "nginx:latest", Passed: false, Message: "Image runs as root"},
+		{Check: checkUser, Image: "nginx:latest", Passed: false, Message: "Image runs as root"},
 		{Check: checkSize, Image: "nginx:latest", Passed: false, Message: "check failed with error: some error", Error: "some error"},
 	}
 
@@ -1375,49 +1371,6 @@ func TestRunAll_UserFailsMinUID(t *testing.T) {
 	assert.Equal(t, ValidationFailed, Result)
 	assert.Contains(t, out, "── user")
 	assert.Contains(t, out, "below minimum")
-}
-
-func TestRunAll_UserAndRootUserBothPass(t *testing.T) {
-	resetAllGlobals(t)
-	includeChecks = "root-user,user"
-
-	// Non-root user with high UID -> both root-user and user pass
-	imageRef := createTestImage(t, testImageOptions{
-		user: "1000",
-	})
-
-	out := captureStdout(t, func() {
-		err := runAll(allCmd, imageRef)
-		require.NoError(t, err)
-	})
-
-	assert.Equal(t, ValidationSucceeded, Result)
-	assert.Contains(t, out, "── root-user")
-	assert.Contains(t, out, "── user")
-	assert.Contains(t, out, "Running 2 checks")
-}
-
-func TestRunAll_UserFailsButRootUserPasses(t *testing.T) {
-	resetAllGlobals(t)
-	includeChecks = "root-user,user"
-	userMinUID = 1000
-
-	// UID 500: non-root (root-user passes), but below min-uid (user fails)
-	imageRef := createTestImage(t, testImageOptions{
-		user: "500",
-	})
-
-	// Mark min-uid as changed
-	require.NoError(t, allCmd.Flags().Set("min-uid", "1000"))
-
-	out := captureStdout(t, func() {
-		err := runAll(allCmd, imageRef)
-		require.NoError(t, err)
-	})
-
-	assert.Equal(t, ValidationFailed, Result)
-	assert.Contains(t, out, "── root-user")
-	assert.Contains(t, out, "── user")
 }
 
 func TestRunAll_UserSkipped(t *testing.T) {

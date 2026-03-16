@@ -115,7 +115,7 @@ jobs:
         uses: ./
         with:
           image: check-image:scan
-          checks: size,root-user,ports,secrets
+          checks: size,user,ports,secrets
           max-size: '20'
 
       - name: Log in to GitHub Container Registry

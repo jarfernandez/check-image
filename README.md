@@ -107,8 +107,8 @@ docker run --rm ghcr.io/jarfernandez/check-image age nginx:latest --max-age 30
 # Check image size
 docker run --rm ghcr.io/jarfernandez/check-image size nginx:latest --max-size 100
 
-# Check for root user
-docker run --rm ghcr.io/jarfernandez/check-image root-user nginx:latest
+# Check user security requirements
+docker run --rm ghcr.io/jarfernandez/check-image user nginx:latest
 
 # Run all checks with JSON output
 docker run --rm ghcr.io/jarfernandez/check-image all nginx:latest -o json
@@ -179,7 +179,7 @@ The config file determines which checks to run and their parameters. See [All Ch
 - uses: jarfernandez/check-image@v0.21.1 # x-release-please-version
   with:
     image: nginx:latest
-    checks: age,size,root-user
+    checks: age,size,user
     max-age: '30'
     max-size: '200'
 ```
@@ -388,13 +388,6 @@ check-image ports <image> --allowed-ports <ports>
 Options:
 - `--allowed-ports`: Comma-separated list of allowed ports or `@<file>` with JSON/YAML array
 
-#### `root-user`
-Validates that the image runs as non-root user.
-
-```bash
-check-image root-user <image>
-```
-
 #### `healthcheck`
 Validates that the image has a healthcheck defined.
 
@@ -482,13 +475,11 @@ Options:
 - `--blocked-users`: Comma-separated list of blocked usernames (optional)
 - `--require-numeric`: Require user to be a numeric UID (optional)
 
-Without any flags or policy file, performs a basic non-root check (same behavior as `root-user`). With flags or a policy file, enforces UID ranges, blocked usernames, and numeric UID requirements.
+Without any flags or policy file, performs a basic non-root check (rejects empty user, "root", and UID 0). With flags or a policy file, enforces UID ranges, blocked usernames, and numeric UID requirements.
 
 Precedence: CLI flags override policy file values. When both are provided, the policy file is loaded first, then CLI flags are overlaid on top.
 
 **Limitation:** Without the image's `/etc/passwd`, username-to-UID resolution is not possible. The command validates the raw `User` field string only. UID range checks (`--min-uid`, `--max-uid`) only apply when the user is a numeric value.
-
-The `user` command coexists with `root-user` — both can run in the `all` command simultaneously. Use `--skip` or `--include` to control which checks run.
 
 #### `all`
 Runs all validation checks on a container image at once.
@@ -499,8 +490,8 @@ check-image all <image> [flags]
 
 Options:
 - `--config`, `-c`: Path to configuration file (JSON or YAML)
-- `--include`: Comma-separated list of checks to run (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform, user)
-- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, root-user, healthcheck, secrets, labels, entrypoint, platform, user)
+- `--include`: Comma-separated list of checks to run (age, size, ports, registry, healthcheck, secrets, labels, entrypoint, platform, user)
+- `--skip`: Comma-separated list of checks to skip (age, size, ports, registry, healthcheck, secrets, labels, entrypoint, platform, user)
 - `--max-age`, `-a`: Maximum age in days (default: 90)
 - `--max-size`, `-m`: Maximum size in MB (default: 500)
 - `--max-layers`, `-y`: Maximum number of layers (default: 20)
@@ -522,7 +513,7 @@ Options:
 Note: `--include` and `--skip` are mutually exclusive.
 
 Precedence rules:
-1. Without `--config`: all 11 checks run with defaults, except those in `--skip`
+1. Without `--config`: all 10 checks run with defaults, except those in `--skip`
 2. With `--config`: only checks present in the config file run, except those in `--skip`
 3. `--include` overrides config file check selection (runs only specified checks)
 4. CLI flags override config file values
@@ -599,7 +590,7 @@ echo "mytoken" | check-image age my-registry.example.com/private-image:latest \
   --password-stdin
 
 # Or read from a file
-check-image root-user my-registry.example.com/private-image:latest \
+check-image user my-registry.example.com/private-image:latest \
   --username myuser \
   --password-stdin < ~/.secrets/registry-token
 ```
@@ -1071,7 +1062,7 @@ go tool cover -html=coverage.out
 - **internal/secrets**: 97.4% coverage
 - **internal/fileutil**: 90.0% coverage
 - **internal/imageutil**: 88.7% coverage
-- **cmd/check-image/commands**: 91.5% coverage
+- **cmd/check-image/commands**: 91.6% coverage
 - **cmd/check-image**: 73.9% coverage
 
 All tests are deterministic, fast, and run without requiring Docker daemon, registry access, or network connectivity. Tests use in-memory images, temporary directories, and OCI layout structures for validation.
@@ -1118,7 +1109,7 @@ Releases are fully automated using [release-please](https://github.com/googleapi
    - **docker job**:
      - Lints `Dockerfile` with hadolint
      - Builds a single-arch image (`linux/amd64`) for Trivy security scanning (CRITICAL/HIGH vulnerabilities)
-     - Validates the image with check-image itself (dogfooding: size, root-user, ports, secrets)
+     - Validates the image with check-image itself (dogfooding: size, user, ports, secrets)
      - Builds and pushes a multi-arch image (`linux/amd64`, `linux/arm64`) to GHCR with semver tags (`major.minor.patch`, `major.minor`, `major`, `latest`)
 
 ### Supported Platforms

@@ -97,6 +97,12 @@ func TestRunUser_BasicNonRoot(t *testing.T) {
 			expectedMsg:  "Image user does not meet requirements",
 		},
 		{
+			name:         "root UID 0 with named group",
+			user:         "0:somegroup",
+			expectedPass: false,
+			expectedMsg:  "Image user does not meet requirements",
+		},
+		{
 			name:         "empty user defaults to root",
 			user:         "",
 			expectedPass: false,
@@ -137,20 +143,20 @@ func TestRunUser_WithPolicy(t *testing.T) {
 		{
 			name:         "UID in range passes",
 			user:         "1000",
-			policy:       &user.Policy{MinUID: ptrUintCmd(1000), MaxUID: ptrUintCmd(65534)},
+			policy:       &user.Policy{MinUID: new(uint(1000)), MaxUID: new(uint(65534))},
 			expectedPass: true,
 		},
 		{
 			name:           "UID below minimum fails",
 			user:           "500",
-			policy:         &user.Policy{MinUID: ptrUintCmd(1000)},
+			policy:         &user.Policy{MinUID: new(uint(1000))},
 			expectedPass:   false,
 			violationRules: []string{"min-uid"},
 		},
 		{
 			name:           "UID above maximum fails",
 			user:           "70000",
-			policy:         &user.Policy{MaxUID: ptrUintCmd(65534)},
+			policy:         &user.Policy{MaxUID: new(uint(65534))},
 			expectedPass:   false,
 			violationRules: []string{"max-uid"},
 		},
@@ -164,14 +170,14 @@ func TestRunUser_WithPolicy(t *testing.T) {
 		{
 			name:           "require numeric with username fails",
 			user:           "appuser",
-			policy:         &user.Policy{RequireNumeric: ptrBoolCmd(true)},
+			policy:         &user.Policy{RequireNumeric: new(true)},
 			expectedPass:   false,
 			violationRules: []string{"require-numeric"},
 		},
 		{
 			name:         "require numeric with UID passes",
 			user:         "1000",
-			policy:       &user.Policy{RequireNumeric: ptrBoolCmd(true)},
+			policy:       &user.Policy{RequireNumeric: new(true)},
 			expectedPass: true,
 		},
 	}
@@ -210,10 +216,10 @@ func TestRunUser_DetailsIncludePolicyConstraints(t *testing.T) {
 	})
 
 	policy := &user.Policy{
-		MinUID:         ptrUintCmd(1000),
-		MaxUID:         ptrUintCmd(65534),
+		MinUID:         new(uint(1000)),
+		MaxUID:         new(uint(65534)),
 		BlockedUsers:   []string{"daemon"},
-		RequireNumeric: ptrBoolCmd(true),
+		RequireNumeric: new(true),
 	}
 
 	result, err := runUser(context.Background(), imageRef, policy)
@@ -503,7 +509,7 @@ func TestRunUser_WithPolicyFile_Stdin(t *testing.T) {
 
 func TestRunUser_CLIOverridesPolicy(t *testing.T) {
 	// Policy says min-uid: 2000, but CLI override lowers to 500
-	basePolicy := &user.Policy{MinUID: ptrUintCmd(2000)}
+	basePolicy := &user.Policy{MinUID: new(uint(2000))}
 
 	// Override min-uid to 500
 	overridden := uint(500)
@@ -517,7 +523,7 @@ func TestRunUser_CLIOverridesPolicy(t *testing.T) {
 
 func TestRunUser_JSONOutput(t *testing.T) {
 	imageRef := createTestImage(t, testImageOptions{user: "500", created: time.Now()})
-	policy := &user.Policy{MinUID: ptrUintCmd(1000), MaxUID: ptrUintCmd(65534)}
+	policy := &user.Policy{MinUID: new(uint(1000)), MaxUID: new(uint(65534))}
 
 	result, err := runUser(context.Background(), imageRef, policy)
 	require.NoError(t, err)
@@ -574,7 +580,7 @@ func TestRunUser_JSONOutput_Passing(t *testing.T) {
 
 func TestRunUser_TextOutput_WithViolations(t *testing.T) {
 	imageRef := createTestImage(t, testImageOptions{user: "500", created: time.Now()})
-	policy := &user.Policy{MinUID: ptrUintCmd(1000)}
+	policy := &user.Policy{MinUID: new(uint(1000))}
 
 	result, err := runUser(context.Background(), imageRef, policy)
 	require.NoError(t, err)
@@ -841,12 +847,4 @@ func TestUserCommand_RunE(t *testing.T) {
 		assert.Equal(t, ValidationFailed, Result)
 		assert.Contains(t, out, "numeric")
 	})
-}
-
-func ptrUintCmd(v uint) *uint {
-	return &v
-}
-
-func ptrBoolCmd(v bool) *bool {
-	return &v
 }

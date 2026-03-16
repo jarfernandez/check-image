@@ -86,10 +86,7 @@ func sectionHeader(name string) string {
 	const leftPrefix = "── "
 	const rightPrefix = " "
 
-	rightLen := width - len([]rune(leftPrefix)) - len([]rune(name)) - len([]rune(rightPrefix))
-	if rightLen < 2 {
-		rightLen = 2
-	}
+	rightLen := max(width-len([]rune(leftPrefix))-len([]rune(name))-len([]rune(rightPrefix)), 2)
 
 	line := leftPrefix + name + rightPrefix + strings.Repeat("─", rightLen)
 	return sectionStyle.Render(line)

@@ -34,8 +34,8 @@ func TestParseCheckNameList(t *testing.T) {
 		},
 		{
 			name:     "all checks",
-			input:    "age,size,ports,registry,root-user,secrets",
-			expected: map[string]bool{"age": true, "size": true, "ports": true, "registry": true, "root-user": true, "secrets": true},
+			input:    "age,size,ports,registry,secrets",
+			expected: map[string]bool{"age": true, "size": true, "ports": true, "registry": true, "secrets": true},
 		},
 		{
 			name:     "with whitespace",
@@ -88,7 +88,7 @@ func TestLoadAllConfig(t *testing.T) {
   size:
     max-size: 200
     max-layers: 10
-  root-user: {}
+  user: {}
 `
 		err := os.WriteFile(cfgFile, []byte(content), 0600)
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestLoadAllConfig(t *testing.T) {
 		require.NotNil(t, cfg.Checks.Size.MaxLayers)
 		assert.Equal(t, uint(10), *cfg.Checks.Size.MaxLayers)
 
-		require.NotNil(t, cfg.Checks.RootUser)
+		require.NotNil(t, cfg.Checks.User)
 
 		assert.Nil(t, cfg.Checks.Ports)
 		assert.Nil(t, cfg.Checks.Registry)
@@ -136,21 +136,21 @@ func TestLoadAllConfig(t *testing.T) {
 		require.NotNil(t, cfg.Checks.Secrets)
 		assert.Nil(t, cfg.Checks.Size)
 		assert.Nil(t, cfg.Checks.Registry)
-		assert.Nil(t, cfg.Checks.RootUser)
+		assert.Nil(t, cfg.Checks.User)
 	})
 
-	t.Run("root-user with empty object", func(t *testing.T) {
+	t.Run("user with empty object", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		cfgFile := filepath.Join(tmpDir, "config.yaml")
 		content := `checks:
-  root-user: {}
+  user: {}
 `
 		err := os.WriteFile(cfgFile, []byte(content), 0600)
 		require.NoError(t, err)
 
 		cfg, err := loadAllConfig(cfgFile)
 		require.NoError(t, err)
-		require.NotNil(t, cfg.Checks.RootUser)
+		require.NotNil(t, cfg.Checks.User)
 	})
 
 	t.Run("nonexistent file", func(t *testing.T) {
@@ -898,7 +898,7 @@ func TestLoadAllConfig_Healthcheck(t *testing.T) {
 	content := `checks:
   age:
     max-age: 30
-  root-user: {}
+  user: {}
   healthcheck: {}
 `
 	err := os.WriteFile(cfgFile, []byte(content), 0600)
@@ -907,7 +907,7 @@ func TestLoadAllConfig_Healthcheck(t *testing.T) {
 	cfg, err := loadAllConfig(cfgFile)
 	require.NoError(t, err)
 	require.NotNil(t, cfg.Checks.Age)
-	require.NotNil(t, cfg.Checks.RootUser)
+	require.NotNil(t, cfg.Checks.User)
 	require.NotNil(t, cfg.Checks.Healthcheck)
 	assert.Nil(t, cfg.Checks.Size)
 	assert.Nil(t, cfg.Checks.Ports)

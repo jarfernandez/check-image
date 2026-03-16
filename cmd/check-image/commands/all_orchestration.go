@@ -21,7 +21,7 @@ var allCmd = &cobra.Command{
 	Short: "Run all validation checks on a container image",
 	Long: `Run all validation checks on a container image at once.
 
-By default, runs all checks (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform, user).
+By default, runs all checks (age, size, ports, registry, secrets, healthcheck, labels, entrypoint, platform, user).
 Use --config to specify which checks to run and their parameters.
 Use --include to run only specific checks.
 Use --skip to skip specific checks.
@@ -42,12 +42,12 @@ Precedence rules:
   5. --include and --skip always take precedence over the config file
 
 ` + imageArgFormatsDoc,
-	Example: `  check-image all nginx:latest --include age,size,root-user --max-age 30 --max-size 200
+	Example: `  check-image all nginx:latest --include age,size,user --max-age 30 --max-size 200
   check-image all nginx:latest --skip registry,secrets,labels,platform
   check-image all nginx:latest --allowed-platforms linux/amd64,linux/arm64 --skip registry,labels
   check-image all nginx:latest --config config/config.json
   check-image all nginx:latest -c config/config.yaml --max-age 20 --skip secrets
-  check-image all oci:/path/to/layout:1.0 --include age,size,root-user,ports,healthcheck
+  check-image all oci:/path/to/layout:1.0 --include age,size,user,ports,healthcheck
   check-image all oci-archive:/path/to/image.tar:latest --skip ports,registry,secrets,labels,platform
   check-image all nginx:latest --fail-fast --skip registry --config config/config.yaml --output json
   cat config/config.json | check-image all nginx:latest --config -`,
@@ -65,8 +65,8 @@ func init() {
 	rootCmd.AddCommand(allCmd)
 
 	allCmd.Flags().StringVarP(&configFile, "config", "c", "", "Configuration file (JSON or YAML) (optional)")
-	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform, user) (optional)")
-	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, root-user, secrets, healthcheck, labels, entrypoint, platform, user) (optional)")
+	allCmd.Flags().StringVar(&skipChecks, "skip", "", "Comma-separated list of checks to skip (age, size, ports, registry, secrets, healthcheck, labels, entrypoint, platform, user) (optional)")
+	allCmd.Flags().StringVar(&includeChecks, "include", "", "Comma-separated list of checks to run (age, size, ports, registry, secrets, healthcheck, labels, entrypoint, platform, user) (optional)")
 	allCmd.Flags().UintVarP(&maxAge, "max-age", "a", defaultMaxAgeDays, "Maximum age in days (optional)")
 	allCmd.Flags().UintVarP(&maxSize, "max-size", "m", defaultMaxSizeMB, "Maximum size in megabytes (optional)")
 	allCmd.Flags().UintVarP(&maxLayers, "max-layers", "y", defaultMaxLayerCount, "Maximum number of layers (optional)")
@@ -158,7 +158,6 @@ func buildCheckDefs(cfg *allConfig, p checkParams) []checkDef {
 		{checkRegistry, noCfg || cfg.Checks.Registry != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
 			return runRegistry(ctx, img, p.registryPolicy)
 		}, renderRegistryText},
-		{checkRootUser, noCfg || cfg.Checks.RootUser != nil, runRootUser, renderRootUserText},
 		{checkSecrets, noCfg || cfg.Checks.Secrets != nil, func(ctx context.Context, img string) (*output.CheckResult, error) {
 			return runSecrets(ctx, img, p.secretsPolicy, p.skipEnvVars, p.skipFiles)
 		}, renderSecretsText},

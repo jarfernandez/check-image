@@ -8,7 +8,6 @@ checks:
     allowed-ports: "@config/allowed-ports.yaml"
   registry:
     registry-policy: config/registry-policy.yaml
-  root-user: {}
   secrets:
     secrets-policy: config/secrets-policy.yaml
     skip-env-vars: false

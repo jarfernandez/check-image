@@ -107,7 +107,7 @@ func TestRenderJSON(t *testing.T) {
 			Passed: false,
 			Checks: []CheckResult{
 				{Check: "age", Image: "nginx:latest", Passed: true, Message: "ok"},
-				{Check: "root-user", Image: "nginx:latest", Passed: false, Message: "fail"},
+				{Check: "user", Image: "nginx:latest", Passed: false, Message: "fail"},
 			},
 			Summary: Summary{
 				Total:   6,

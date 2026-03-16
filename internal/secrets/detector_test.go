@@ -693,7 +693,7 @@ func TestCheckFilesInLayers_CorruptedLayer(t *testing.T) {
 func TestCheckFilesInLayers_CancelledContext(t *testing.T) {
 	// Create image with multiple layers
 	img := empty.Image
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		layer := createLayerWithFiles(t, map[string]string{
 			"/app/file" + string(rune('a'+i)) + ".txt": "content",
 		})

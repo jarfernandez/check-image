@@ -28,7 +28,6 @@ var textRenderers = map[string]func(*output.CheckResult){
 	checkSize:        renderSizeText,
 	checkPorts:       renderPortsText,
 	checkRegistry:    renderRegistryText,
-	checkRootUser:    renderRootUserText,
 	checkSecrets:     renderSecretsText,
 	checkHealthcheck: renderHealthcheckText,
 	checkLabels:      renderLabelsText,
@@ -125,11 +124,6 @@ func renderRegistryText(r *output.CheckResult) {
 	}
 
 	fmt.Printf("Image registry: %s\n", valueStyle.Render(d.Registry))
-	fmt.Println(statusPrefix(r.Passed) + r.Message)
-}
-
-func renderRootUserText(r *output.CheckResult) {
-	fmt.Println(headerStyle.Render(fmt.Sprintf("Checking if image %s is configured to run as a non-root user", r.Image)))
 	fmt.Println(statusPrefix(r.Passed) + r.Message)
 }
 

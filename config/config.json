@@ -13,7 +13,6 @@
     "registry": {
       "registry-policy": "config/registry-policy.json"
     },
-    "root-user": {},
     "secrets": {
       "secrets-policy": "config/secrets-policy.json",
       "skip-env-vars": false,

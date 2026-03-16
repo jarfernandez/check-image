@@ -14,7 +14,6 @@ checks:
         - ghcr.io
         - gcr.io
         - quay.io
-  root-user: {}
   secrets:
     secrets-policy:
       check-env-vars: true
